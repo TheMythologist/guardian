@@ -29,7 +29,7 @@ executables = [
     Executable('app.py', base=base, targetName='Guardian.exe', icon='logo.ico')
 ]
 
-version = '3.0.0'
+version = '3.0.1'
 
 try:
     os.remove('build/exe/guardian-{}.zip'.format(version))
@@ -49,6 +49,7 @@ except:
     pass
 try:
     shutil.copyfile('LICENSE', 'build/exe.win-amd64-3.6/LICENSE')
+    shutil.copyfile('SOURCE', 'build/exe.win-amd64-3.6/SOURCE')
 except:
     pass
 setup(name='Guardian',

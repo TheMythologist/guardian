@@ -23,7 +23,7 @@ import requests
 LF_FACESIZE = 32
 STD_OUTPUT_HANDLE = -11
 
-version = '3.0.0'
+version = '3.0.1'
 
 style = style_from_dict({
     Token.Separator: '#00FFFF',
