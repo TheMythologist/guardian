@@ -1,5 +1,6 @@
 from __future__ import print_function, unicode_literals
-from PyInquirer import prompt, Token, style_from_dict
+from questionary import Validator, ValidationError, prompt
+from prompt_toolkit.styles import Style
 import os
 import ctypes
 import data
@@ -8,7 +9,6 @@ from network.blocker import *
 import pydivert
 import sys
 from multiprocessing import freeze_support
-from PyInquirer import Validator, ValidationError
 import ipaddress
 from operator import itemgetter
 from network import networkmanager
@@ -23,17 +23,17 @@ import requests
 LF_FACESIZE = 32
 STD_OUTPUT_HANDLE = -11
 
-version = '3.0.1'
+version = '3.0.2'
 
-style = style_from_dict({
-    Token.Separator: '#00FFFF',
-    Token.QuestionMark: '#00FFFF bold',
-    Token.Selected: '#FFFFFF bold',  # default
-    Token.Pointer: '#00FFFF bold',
-    Token.Instruction: '#00FFFF',  # default
-    Token.Answer: '#00FFFF bold',
-    Token.Question: '#FFFFFF',
-})
+style = Style([
+    ('qmark', 'fg:#00FFFF bold'),     # token in front of the question
+    ('question', 'bold'),             # question text
+    ('answer', 'fg:#00FFFF bold'),    # submitted answer text behind the question
+    ('pointer', 'fg:#00FFFF bold'),   # pointer used in select and checkbox prompts
+    ('selected', 'fg:#FFFFFF bold'),       # style for a selected item of a checkbox
+    ('separator', 'fg:#00FFFF'),      # separator in lists
+    ('instruction', '')               # user instructions for select, rawselect, checkbox
+])
 
 
 def get_public_ip():
@@ -1293,7 +1293,7 @@ if __name__ == '__main__':
     print(Fore.LIGHTWHITE_EX + 'Booting up...' + Fore.RESET)
     if not pydivert.WinDivert.is_registered():
         pydivert.WinDivert.register()
-    ctypes.windll.kernel32.SetConsoleTitleW('Guardian {} © DigitalArc'.format(version))
+    ctypes.windll.kernel32.SetConsoleTitleW('Guardian {}'.format(version))
     conn = networkmanager.Cloud('')
     print(Fore.LIGHTWHITE_EX + 'Checking connections.' + Fore.RESET)
     if conn.check_connection():

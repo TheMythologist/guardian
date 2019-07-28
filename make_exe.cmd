@@ -1,3 +1,2 @@
-d:
-cd Projects\guardianpc
+cd %~dp0
 cmd /k builder.bat

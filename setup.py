@@ -16,12 +16,12 @@ excludes = [
     'asyncio',
     'bz2',
     'jinja2',
-    'xml'
 ]
 zip_exclude_packages = [
     'certifi',
+    'pydivert',
 ]
-buildOptions = dict(packages=[], excludes=excludes, includes=['idna.idnadata', 'codecs'], replace_paths=[("*", "")],
+buildOptions = dict(packages=[], excludes=excludes, includes=['idna.idnadata', 'codecs', 'pydivert'], replace_paths=[("*", "")],
                     optimize=2, zip_include_packages="*", zip_exclude_packages=zip_exclude_packages, silent=True)
 base = 'Console'
 
@@ -29,7 +29,7 @@ executables = [
     Executable('app.py', base=base, targetName='Guardian.exe', icon='logo.ico')
 ]
 
-version = '3.0.1'
+version = '3.0.2'
 
 try:
     os.remove('build/exe/guardian-{}.zip'.format(version))

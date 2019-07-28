@@ -1,6 +1,5 @@
 data.json
-init.cmd
-runner.cmd
+history.log
 .idea
 __pycache__
 build
