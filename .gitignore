@@ -3,3 +3,4 @@ history.log
 .idea
 __pycache__
 build
+venv
