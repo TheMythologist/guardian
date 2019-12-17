@@ -41,7 +41,7 @@ def get_public_ip():
         public_ip = networkmanager.Cloud().get_ip()
         Logger().info('Got a public IP')
         return public_ip
-    except requests.exceptions.SSLError:
+    except (requests.exceptions.SSLError, requests.exceptions.ConnectionError):
         Logger().warning('Failed to get public IP')
         return False
 
