@@ -5,6 +5,7 @@ import re
 import logging
 from network import networkmanager
 
+ipfilter = re.compile(r'^(185\.56\.6[4-7]\.\d{1,3})$')
 
 class Logger:
 
@@ -48,8 +49,7 @@ class Whitelist(object):
                 for packet in w:
                     ip = packet.ip.src_addr
                     temp = packet.ip.dst_addr
-                    if re.search('^185\.56\.(64|65|67)\.([0-9]|[1-9][0-9]|1([0-9][0-9])|2([0-4][0-9]|5[0-5]))$',
-                                 ip):
+                    if ipfilter.match(ip):
                         w.send(packet)
                     elif ip in self.ips:
                         w.send(packet)
@@ -140,8 +140,7 @@ class Debugger(object):
                 src = packet.ip.src_addr
                 reserved = False
                 whitelisted = False
-                ipfilter = '^185\.56\.(64|65|67)\.([0-9]|[1-9][0-9]|1([0-9][0-9])|2([0-4][0-9]|5[0-5]))$'
-                if re.search(ipfilter, dst) or re.search(ipfilter, src):
+                if ipfilter.match(dst) or ipfilter.match(src):
                     reserved = True
                 elif dst in self.ips or src in self.ips:
                     whitelisted = True
