@@ -21,9 +21,15 @@ import json
 import requests
 import logging
 
-logging.basicConfig(filename='history.log', filemode='a+', format='[%(asctime)s][%(levelname)s] %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S', level=logging.INFO)
 logger = logging.getLogger('guardian')
+logger.propagate = False
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    fh = logging.FileHandler(filename='history.log')
+    fh.setLevel(logging.INFO)
+    formatter = logging.Formatter('[%(asctime)s][%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
 
 LF_FACESIZE = 32
 STD_OUTPUT_HANDLE = -11
