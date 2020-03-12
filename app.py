@@ -19,6 +19,11 @@ from tqdm import tqdm
 import zipfile
 import json
 import requests
+import logging
+
+logging.basicConfig(filename='history.log', filemode='a+', format='[%(asctime)s][%(levelname)s] %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S', level=logging.INFO)
+logger = logging.getLogger('guardian')
 
 LF_FACESIZE = 32
 STD_OUTPUT_HANDLE = -11
@@ -39,27 +44,11 @@ style = Style([
 def get_public_ip():
     try:
         public_ip = networkmanager.Cloud().get_ip()
-        Logger().info('Got a public IP')
+        logger.info('Got a public IP')
         return public_ip
     except (requests.exceptions.SSLError, requests.exceptions.ConnectionError):
-        Logger().warning('Failed to get public IP')
+        logger.warning('Failed to get public IP')
         return False
-
-
-class Logger:
-
-    def writer(self, type, text):
-        with open('history.log', 'a+') as file:
-            file.write('[{}][{}] '.format(time.strftime("%Y-%m-%d %H:%M:%S"), type) + text + '\n')
-
-    def info(self, text):
-        self.writer(type='INFO', text=text)
-
-    def error(self, text):
-        self.writer(type='ERROR', text=text)
-
-    def warning(self, text):
-        self.writer(type='WARNING', text=text)
 
 
 class NameInCustom(Validator):
@@ -138,17 +127,17 @@ def main():
         if token:
             conn = networkmanager.Cloud(token)
             if conn.check_connection():
-                Logger().info('Cloud online.')
+                logger.info('Cloud online.')
                 print(Fore.LIGHTWHITE_EX + 'Cloud service online' + Fore.RESET)
 
                 if conn.check_token():
                     data.cloud_friends()
                 else:
-                    Logger().info('Invalid token.')
+                    logger.info('Invalid token.')
                     print(Fore.LIGHTWHITE_EX + 'Token invalid' + Fore.RESET)
 
             else:
-                Logger().info('Cloud offline.')
+                logger.info('Cloud offline.')
                 print(Fore.LIGHTWHITE_EX + 'Cloud service down' + Fore.RESET)
 
         options = {
@@ -211,7 +200,7 @@ def main():
         os.system('cls')
         option = answer['option']
         if option == 'solo':
-            Logger().info('Starting solo session')
+            logger.info('Starting solo session')
             print(Fore.LIGHTWHITE_EX + 'Running: "' + Fore.LIGHTCYAN_EX + 'Solo session' +
                   Fore.LIGHTWHITE_EX + '" Press "' + Fore.LIGHTCYAN_EX + 'CTRL + C' + Fore.LIGHTWHITE_EX +
                   '" to stop.' + Fore.RESET)
@@ -223,7 +212,7 @@ def main():
                     whitelist.stop()
                     time.sleep(15)
             except KeyboardInterrupt:
-                Logger().info('Stopped solo session')
+                logger.info('Stopped solo session')
                 print(
                     Fore.LIGHTWHITE_EX + 'Stopped: "' + Fore.LIGHTCYAN_EX + 'Solo session' +
                     Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
@@ -260,20 +249,20 @@ def main():
                                     ipaddress.IPv4Address(ip)
                                     mylist.append(ip)
                                 except ipaddress.AddressValueError:
-                                    Logger().warning('Not valid IP or URL: {}'.format(x.get('ip')))
+                                    logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
                                     print(
                                         Fore.LIGHTWHITE_EX + 'Not valid IP or URL: "' + Fore.LIGHTCYAN_EX + '{}'.format(
                                             x.get('ip')) +
                                         Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
                                     continue
                             except:
-                                Logger().warning('Not valid IP or URL: {}'.format(x.get('ip')))
+                                logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
                                 print(Fore.LIGHTWHITE_EX + 'Not valid IP or URL: "' + Fore.LIGHTCYAN_EX + '{}'.format(
                                     x.get('ip')) +
                                       Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
                                 continue
                         else:
-                            Logger().warning('Not valid IP or URL: {}'.format(x.get('ip')))
+                            logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
                             print(Fore.LIGHTWHITE_EX + 'Not valid IP or URL: "' + Fore.LIGHTCYAN_EX + '{}'.format(
                                 x.get('ip')) +
                                   Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
@@ -281,7 +270,7 @@ def main():
             for x in cloud_list:
                 if x.get('enabled'):
                     mylist.append(x.get('ip'))
-            Logger().info('Starting whitelisted session with {} IPs'.format(len(mylist)))
+            logger.info('Starting whitelisted session with {} IPs'.format(len(mylist)))
             print(Fore.LIGHTWHITE_EX + 'Running: "' + Fore.LIGHTCYAN_EX + 'Whitelisted session' +
                   Fore.LIGHTWHITE_EX + '" Press "' + Fore.LIGHTCYAN_EX + 'CTRL + C' + Fore.LIGHTWHITE_EX +
                   '" to stop.' + Fore.RESET)
@@ -293,7 +282,7 @@ def main():
                     whitelist.stop()
                     time.sleep(15)
             except KeyboardInterrupt:
-                Logger().info('Stopped whitelisted session')
+                logger.info('Stopped whitelisted session')
                 print(
                     Fore.LIGHTWHITE_EX + 'Stopped: "' + Fore.LIGHTCYAN_EX + 'Whitelisted session' +
                     Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
@@ -305,7 +294,7 @@ def main():
             for x in blacklist:
                 if x.get('enabled'):
                     mylist.append(x.get('ip'))
-            Logger().info('Starting blacklisted session with {} IPs'.format(len(mylist)))
+            logger.info('Starting blacklisted session with {} IPs'.format(len(mylist)))
             print(Fore.LIGHTWHITE_EX + 'Running: "' + Fore.LIGHTBLACK_EX + 'Blacklist' +
                   Fore.LIGHTWHITE_EX + '" Press "' + Fore.LIGHTBLACK_EX + 'CTRL + C' + Fore.LIGHTWHITE_EX +
                   '" to stop.' + Fore.RESET)
@@ -317,21 +306,21 @@ def main():
                     blacklist.stop()
                     time.sleep(15)
             except KeyboardInterrupt:
-                Logger().info('Stopped blacklisted session')
+                logger.info('Stopped blacklisted session')
                 print(
                     Fore.LIGHTWHITE_EX + 'Stopped: "' + Fore.LIGHTBLACK_EX + 'Blacklist' +
                     Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
 
         elif option == 'auto_whitelist':
-            Logger().info('Starting auto whitelisted session')
+            logger.info('Starting auto whitelisted session')
             collector = IPCollector()
-            Logger().info('Starting to collect IPs')
+            logger.info('Starting to collect IPs')
             collector.start()
             for i in tqdm(range(10), ascii=True, desc='Collecting session'):
                 time.sleep(1)
             collector.stop()
             mylist = list(set(collector.ips))
-            Logger().info('Collected {} IPs'.format(len(mylist)))
+            logger.info('Collected {} IPs'.format(len(mylist)))
             soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             soc.connect(("8.8.8.8", 80))
             local_ip = soc.getsockname()[0]
@@ -361,20 +350,20 @@ def main():
                                     ipaddress.IPv4Address(ip)
                                     mylist.append(ip)
                                 except ipaddress.AddressValueError:
-                                    Logger().warning('Not valid IP or URL: {}'.format(x.get('ip')))
+                                    logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
                                     print(
                                         Fore.LIGHTWHITE_EX + 'Not valid IP or URL: "' + Fore.LIGHTCYAN_EX + '{}'.format(
                                             x.get('ip')) +
                                         Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
                                     continue
                             except:
-                                Logger().warning('Not valid IP or URL: {}'.format(x.get('ip')))
+                                logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
                                 print(Fore.LIGHTWHITE_EX + 'Not valid IP or URL: "' + Fore.LIGHTCYAN_EX + '{}'.format(
                                     x.get('ip')) +
                                       Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
                                 continue
                         else:
-                            Logger().warning('Not valid IP or URL: {}'.format(x.get('ip')))
+                            logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
                             print(Fore.LIGHTWHITE_EX + 'Not valid IP or URL: "' + Fore.LIGHTCYAN_EX + '{}'.format(
                                 x.get('ip')) +
                                   Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
@@ -384,7 +373,7 @@ def main():
                     mylist.append(x.get('ip'))
             mylist = list(set(mylist))
             os.system('cls')
-            Logger().info('Starting whitelisted session with {} IPs'.format(len(mylist)))
+            logger.info('Starting whitelisted session with {} IPs'.format(len(mylist)))
             print(Fore.LIGHTWHITE_EX + 'Running: "' + Fore.LIGHTCYAN_EX + 'Whitelisted session' +
                   Fore.LIGHTWHITE_EX + '" Press "' + Fore.LIGHTCYAN_EX + 'CTRL + C' + Fore.LIGHTWHITE_EX +
                   '" to stop.' + Fore.RESET)
@@ -396,7 +385,7 @@ def main():
                     whitelist.stop()
                     time.sleep(15)
             except KeyboardInterrupt:
-                Logger().info('Stopping whitelisted session')
+                logger.info('Stopping whitelisted session')
                 print(
                     Fore.LIGHTWHITE_EX + 'Stopped: "' + Fore.LIGHTCYAN_EX + 'Whitelisted session' +
                     Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
@@ -1190,7 +1179,6 @@ def main():
                 os.system('cls')
                 continue
             if answer.get('agree'):
-                dir_path = os.path.dirname(os.path.realpath(sys.executable))
                 local_list = config.get('custom_ips')
                 cloud_list = config.get('friends')
                 mylist = []
@@ -1217,7 +1205,7 @@ def main():
                 for x in cloud_list:
                     if x.get('enabled'):
                         mylist.append(x.get('ip'))
-                debugger = Debugger(mylist, dir_path)
+                debugger = Debugger(mylist)
                 debugger.start()
                 for i in tqdm(range(60), ascii=True, desc='Collecting Requests'):
                     time.sleep(1)
@@ -1283,13 +1271,13 @@ def main():
 if __name__ == '__main__':
     freeze_support()
     os.system('cls')
-    Logger().info('Init')
+    logger.info('Init')
     if not ctypes.windll.shell32.IsUserAnAdmin():
         print(Fore.LIGHTWHITE_EX + 'Please start as administrator' + Fore.RESET)
-        Logger().info('Started without admin')
+        logger.info('Started without admin')
         input('Press enter to exit.')
         sys.exit()
-    Logger().info('Booting up')
+    logger.info('Booting up')
     print(Fore.LIGHTWHITE_EX + 'Booting up...' + Fore.RESET)
     if not pydivert.WinDivert.is_registered():
         pydivert.WinDivert.register()
