@@ -6,21 +6,7 @@ import logging
 from network import networkmanager
 
 ipfilter = re.compile(r'^(185\.56\.6[4-7]\.\d{1,3})$')
-
-class Logger:
-
-    def writer(self, type, text):
-        with open('history.log', 'a+') as file:
-            file.write('[{}][{}] '.format(time.strftime("%Y-%m-%d %H:%M:%S"), type) + text + '\n')
-
-    def info(self, text):
-        self.writer(type='INFO', text=text)
-
-    def error(self, text):
-        self.writer(type='ERROR', text=text)
-
-    def warning(self, text):
-        self.writer(type='WARNING', text=text)
+logger = logging.getLogger('guardian')
 
 
 class Whitelist(object):
@@ -35,11 +21,11 @@ class Whitelist(object):
 
     def start(self):
         self.process.start()
-        Logger().info('Dispatched whitelist blocker process')
+        logger.info('Dispatched whitelist blocker process')
 
     def stop(self):
         self.process.terminate()
-        Logger().info('Terminated whitelist blocker process')
+        logger.info('Terminated whitelist blocker process')
 
     def run(self):
         if not pydivert.WinDivert.is_registered():
@@ -69,11 +55,11 @@ class Blacklist(object):
 
     def start(self):
         self.process.start()
-        Logger().info('Dispatched blacklist blocker process')
+        logger.info('Dispatched blacklist blocker process')
 
     def stop(self):
         self.process.terminate()
-        Logger().info('Terminated blacklist blocker process')
+        logger.info('Terminated blacklist blocker process')
 
     def run(self):
         if not pydivert.WinDivert.is_registered():
@@ -109,16 +95,15 @@ class IPSyncer(object):
                     try:
                         conn.set_ip()
                     except:
-                        Logger().warning('Failed to update cloud IP')
+                        logger.warning('Failed to update cloud IP')
                 time.sleep(300)
             except KeyboardInterrupt:
                 pass
 
 
 class Debugger(object):
-    def __init__(self, ips, dir_path):
+    def __init__(self, ips):
         self.ips = ips
-        self.dir_path = dir_path
         self.process = multiprocessing.Process(target=self.run, args=())
         self.process.daemon = True
 
@@ -129,11 +114,13 @@ class Debugger(object):
         self.process.terminate()
 
     def run(self):
-        FORMAT = '%(asctime)s|%(levelname)s: %(message)s'
-        logging.basicConfig(format=FORMAT, filename=self.dir_path + '\debugger.log',
-                            filemode='a+', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
-        logger = logging.getLogger('debugger')
-        logger.debug('Started debugging')
+        debug_logger = logging.getLogger('debugger')
+        debug_logger.setLevel(logging.DEBUG)
+        fh = logging.FileHandler('debugger.log')
+        fh.setLevel(logging.DEBUG)
+        fh.setFormatter(logging.Formatter('%(asctime)s|%(levelname)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
+        debug_logger.addHandler(fh)
+        debug_logger.debug('Started debugging')
         with pydivert.WinDivert("(udp.SrcPort == 6672 or udp.DstPort == 6672) and ip") as w:
             for packet in w:
                 dst = packet.ip.dst_addr
@@ -156,7 +143,7 @@ class Debugger(object):
                     log = '[{}] {}:{} --> {}:{}'.format(filler, src, packet.src_port, dst, packet.dst_port)
                 else:
                     log = '[{}] {}:{} <-- {}:{}'.format(filler, src, packet.src_port, dst, packet.dst_port)
-                logger.debug(log)
+                debug_logger.debug(log)
                 w.send(packet)
 
 
@@ -168,12 +155,12 @@ class IPCollector(object):
 
     def start(self):
         self.process.start()
-        Logger().info('Dispatched ipcollector process')
+        logger.info('Dispatched ipcollector process')
 
     def stop(self):
         self.process.terminate()
-        Logger().info('Terminated ipcollector process')
-        Logger().info('Collected a total of {} IPs'.format(len(self.ips)))
+        logger.info('Terminated ipcollector process')
+        logger.info('Collected a total of {} IPs'.format(len(self.ips)))
 
     def run(self):
         with pydivert.WinDivert("(udp.SrcPort == 6672 or udp.DstPort == 6672) and ip") as w:
