@@ -37,14 +37,18 @@ STD_OUTPUT_HANDLE = -11
 version = '3.0.2'
 
 style = Style([
-    ('qmark', 'fg:#00FFFF bold'),     # token in front of the question
-    ('question', 'bold'),             # question text
-    ('answer', 'fg:#00FFFF bold'),    # submitted answer text behind the question
-    ('pointer', 'fg:#00FFFF bold'),   # pointer used in select and checkbox prompts
-    ('selected', 'fg:#FFFFFF bold'),       # style for a selected item of a checkbox
-    ('separator', 'fg:#00FFFF'),      # separator in lists
-    ('instruction', '')               # user instructions for select, rawselect, checkbox
+    ('qmark', 'fg:#00FFFF bold'),  # token in front of the question
+    ('question', 'bold'),  # question text
+    ('answer', 'fg:#00FFFF bold'),  # submitted answer text behind the question
+    ('pointer', 'fg:#00FFFF bold'),  # pointer used in select and checkbox prompts
+    ('selected', 'fg:#FFFFFF bold'),  # style for a selected item of a checkbox
+    ('separator', 'fg:#00FFFF'),  # separator in lists
+    ('instruction', '')  # user instructions for select, rawselect, checkbox
 ])
+
+
+def print_white(msg):
+    print(Fore.LIGHTWHITE_EX + msg + Fore.RESET)
 
 
 def get_public_ip():
@@ -134,17 +138,17 @@ def main():
             conn = networkmanager.Cloud(token)
             if conn.check_connection():
                 logger.info('Cloud online.')
-                print(Fore.LIGHTWHITE_EX + 'Cloud service online' + Fore.RESET)
+                print_white('Cloud service online')
 
                 if conn.check_token():
                     data.cloud_friends()
                 else:
                     logger.info('Invalid token.')
-                    print(Fore.LIGHTWHITE_EX + 'Token invalid' + Fore.RESET)
+                    print_white('Token invalid')
 
             else:
                 logger.info('Cloud offline.')
-                print(Fore.LIGHTWHITE_EX + 'Cloud service down' + Fore.RESET)
+                print_white('Cloud service down')
 
         options = {
             'type': 'list',
@@ -207,9 +211,10 @@ def main():
         option = answer['option']
         if option == 'solo':
             logger.info('Starting solo session')
-            print(Fore.LIGHTWHITE_EX + 'Running: "' + Fore.LIGHTCYAN_EX + 'Solo session' +
-                  Fore.LIGHTWHITE_EX + '" Press "' + Fore.LIGHTCYAN_EX + 'CTRL + C' + Fore.LIGHTWHITE_EX +
-                  '" to stop.' + Fore.RESET)
+            print_white('Running: "' +
+                        Fore.LIGHTCYAN_EX + 'Solo session' +
+                        Fore.LIGHTWHITE_EX + '" Press "' + Fore.LIGHTCYAN_EX + 'CTRL + C' +
+                        Fore.LIGHTWHITE_EX + '" to stop.')
             try:
                 while True:
                     whitelist = Whitelist(ips=[])
@@ -219,9 +224,9 @@ def main():
                     time.sleep(15)
             except KeyboardInterrupt:
                 logger.info('Stopped solo session')
-                print(
-                    Fore.LIGHTWHITE_EX + 'Stopped: "' + Fore.LIGHTCYAN_EX + 'Solo session' +
-                    Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
+                print_white('Stopped: "' +
+                            Fore.LIGHTCYAN_EX + 'Solo session' +
+                            Fore.LIGHTWHITE_EX + '"')
                 continue
 
         elif option == 'whitelist':
@@ -237,8 +242,7 @@ def main():
             if public_ip:
                 mylist.append(public_ip)
             else:
-                print(
-                    Fore.LIGHTWHITE_EX + 'Failed to get Public IP. Running without.' + Fore.RESET)
+                print_white('Failed to get Public IP. Running without.')
 
             for x in local_list:
                 if x.get('enabled'):
@@ -256,30 +260,31 @@ def main():
                                     mylist.append(ip)
                                 except ipaddress.AddressValueError:
                                     logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
-                                    print(
-                                        Fore.LIGHTWHITE_EX + 'Not valid IP or URL: "' + Fore.LIGHTCYAN_EX + '{}'.format(
-                                            x.get('ip')) +
-                                        Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
+                                    print_white('Not valid IP or URL: "' +
+                                                Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
+                                                Fore.LIGHTWHITE_EX + '"')
                                     continue
                             except:
                                 logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
-                                print(Fore.LIGHTWHITE_EX + 'Not valid IP or URL: "' + Fore.LIGHTCYAN_EX + '{}'.format(
-                                    x.get('ip')) +
-                                      Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
+                                print_white('Not valid IP or URL: "' +
+                                            Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
+                                            Fore.LIGHTWHITE_EX + '"')
                                 continue
                         else:
                             logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
-                            print(Fore.LIGHTWHITE_EX + 'Not valid IP or URL: "' + Fore.LIGHTCYAN_EX + '{}'.format(
-                                x.get('ip')) +
-                                  Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
+                            print_white('Not valid IP or URL: "' +
+                                        Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
+                                        Fore.LIGHTWHITE_EX + '"')
                             continue
             for x in cloud_list:
                 if x.get('enabled'):
                     mylist.append(x.get('ip'))
             logger.info('Starting whitelisted session with {} IPs'.format(len(mylist)))
-            print(Fore.LIGHTWHITE_EX + 'Running: "' + Fore.LIGHTCYAN_EX + 'Whitelisted session' +
-                  Fore.LIGHTWHITE_EX + '" Press "' + Fore.LIGHTCYAN_EX + 'CTRL + C' + Fore.LIGHTWHITE_EX +
-                  '" to stop.' + Fore.RESET)
+            print_white('Running: "' +
+                        Fore.LIGHTCYAN_EX + 'Whitelisted session' +
+                        Fore.LIGHTWHITE_EX + '" Press "' +
+                        Fore.LIGHTCYAN_EX + 'CTRL + C' +
+                        Fore.LIGHTWHITE_EX + '" to stop.')
             try:
                 while True:
                     whitelist = Whitelist(ips=mylist)
@@ -289,9 +294,9 @@ def main():
                     time.sleep(15)
             except KeyboardInterrupt:
                 logger.info('Stopped whitelisted session')
-                print(
-                    Fore.LIGHTWHITE_EX + 'Stopped: "' + Fore.LIGHTCYAN_EX + 'Whitelisted session' +
-                    Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
+                print_white('Stopped: "' +
+                            Fore.LIGHTCYAN_EX + 'Whitelisted session' +
+                            Fore.LIGHTWHITE_EX + '"')
 
         elif option == 'blacklist':
             config = data.read_file()
@@ -301,9 +306,11 @@ def main():
                 if x.get('enabled'):
                     mylist.append(x.get('ip'))
             logger.info('Starting blacklisted session with {} IPs'.format(len(mylist)))
-            print(Fore.LIGHTWHITE_EX + 'Running: "' + Fore.LIGHTBLACK_EX + 'Blacklist' +
-                  Fore.LIGHTWHITE_EX + '" Press "' + Fore.LIGHTBLACK_EX + 'CTRL + C' + Fore.LIGHTWHITE_EX +
-                  '" to stop.' + Fore.RESET)
+            print_white('Running: "' +
+                        Fore.LIGHTBLACK_EX + 'Blacklist' +
+                        Fore.LIGHTWHITE_EX + '" Press "' +
+                        Fore.LIGHTBLACK_EX + 'CTRL + C' +
+                        Fore.LIGHTWHITE_EX + '" to stop.')
             try:
                 while True:
                     blacklist = Blacklist(ips=mylist)
@@ -313,9 +320,9 @@ def main():
                     time.sleep(15)
             except KeyboardInterrupt:
                 logger.info('Stopped blacklisted session')
-                print(
-                    Fore.LIGHTWHITE_EX + 'Stopped: "' + Fore.LIGHTBLACK_EX + 'Blacklist' +
-                    Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
+                print_white('Stopped: "' +
+                            Fore.LIGHTBLACK_EX + 'Blacklist' +
+                            Fore.LIGHTWHITE_EX + '"')
 
         elif option == 'auto_whitelist':
             logger.info('Starting auto whitelisted session')
@@ -335,8 +342,7 @@ def main():
             if public_ip:
                 mylist.append(public_ip)
             else:
-                print(
-                    Fore.LIGHTWHITE_EX + 'Failed to get Public IP. Running without.' + Fore.RESET)
+                print_white('Failed to get Public IP. Running without.')
             mylist.append(local_ip)
             config = data.read_file()
             local_list = config.get('custom_ips')
@@ -357,22 +363,21 @@ def main():
                                     mylist.append(ip)
                                 except ipaddress.AddressValueError:
                                     logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
-                                    print(
-                                        Fore.LIGHTWHITE_EX + 'Not valid IP or URL: "' + Fore.LIGHTCYAN_EX + '{}'.format(
-                                            x.get('ip')) +
-                                        Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
+                                    print_white('Not valid IP or URL: "' +
+                                                Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
+                                                Fore.LIGHTWHITE_EX + '"')
                                     continue
                             except:
                                 logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
-                                print(Fore.LIGHTWHITE_EX + 'Not valid IP or URL: "' + Fore.LIGHTCYAN_EX + '{}'.format(
-                                    x.get('ip')) +
-                                      Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
+                                print_white('Not valid IP or URL: "' +
+                                            Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
+                                            Fore.LIGHTWHITE_EX + '"')
                                 continue
                         else:
                             logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
-                            print(Fore.LIGHTWHITE_EX + 'Not valid IP or URL: "' + Fore.LIGHTCYAN_EX + '{}'.format(
-                                x.get('ip')) +
-                                  Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
+                            print_white('Not valid IP or URL: "' +
+                                        Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
+                                        Fore.LIGHTWHITE_EX + '"')
                             continue
             for x in cloud_list:
                 if x.get('enabled'):
@@ -380,9 +385,10 @@ def main():
             mylist = list(set(mylist))
             os.system('cls')
             logger.info('Starting whitelisted session with {} IPs'.format(len(mylist)))
-            print(Fore.LIGHTWHITE_EX + 'Running: "' + Fore.LIGHTCYAN_EX + 'Whitelisted session' +
-                  Fore.LIGHTWHITE_EX + '" Press "' + Fore.LIGHTCYAN_EX + 'CTRL + C' + Fore.LIGHTWHITE_EX +
-                  '" to stop.' + Fore.RESET)
+            print_white('Running: "' +
+                        Fore.LIGHTCYAN_EX + 'Whitelisted session' +
+                        Fore.LIGHTCYAN_EX + 'CTRL + C' +
+                        Fore.LIGHTWHITE_EX + '" to stop.')
             try:
                 while True:
                     whitelist = Whitelist(ips=mylist)
@@ -392,9 +398,9 @@ def main():
                     time.sleep(15)
             except KeyboardInterrupt:
                 logger.info('Stopping whitelisted session')
-                print(
-                    Fore.LIGHTWHITE_EX + 'Stopped: "' + Fore.LIGHTCYAN_EX + 'Whitelisted session' +
-                    Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
+                print_white('Stopped: "' +
+                            Fore.LIGHTCYAN_EX + 'Whitelisted session' +
+                            Fore.LIGHTWHITE_EX + '"')
 
         elif option == 'lists':
             while True:
@@ -468,7 +474,7 @@ def main():
                             config = data.read_file()
                             c = []
                             if len(config['custom_ips']) <= 0:
-                                print(Fore.LIGHTWHITE_EX + 'No friends' + Fore.RESET)
+                                print_white('No friends')
                                 continue
                             else:
                                 for v in config['custom_ips']:
@@ -532,7 +538,7 @@ def main():
                                 config = data.read_file()
                                 c = []
                                 if len(config['custom_ips']) <= 0:
-                                    print(Fore.LIGHTWHITE_EX + 'No friends' + Fore.RESET)
+                                    print_white('No friends')
                                     break
                                 else:
                                     for v in config['custom_ips']:
@@ -664,7 +670,7 @@ def main():
                             config = data.read_file()
                             c = []
                             if len(config['blacklist']) <= 0:
-                                print(Fore.LIGHTWHITE_EX + 'No ips' + Fore.RESET)
+                                print_white('No ips')
                                 continue
                             else:
                                 for v in config['blacklist']:
@@ -728,7 +734,7 @@ def main():
                                 config = data.read_file()
                                 c = []
                                 if len(config['blacklist']) <= 0:
-                                    print(Fore.LIGHTWHITE_EX + 'No friends' + Fore.RESET)
+                                    print_white('No friends')
                                     break
                                 else:
                                     for v in config['blacklist']:
@@ -858,7 +864,7 @@ def main():
                             friends = config['friends']
                             d = []
                             if len(friends) <= 0:
-                                print(Fore.LIGHTWHITE_EX + 'No friends' + Fore.RESET)
+                                print_white('No friends')
                                 break
                             else:
                                 for v in friends:
@@ -892,7 +898,7 @@ def main():
                                 token = config.get('token')
                                 conn = networkmanager.Cloud(token)
                                 if not conn.check_connection():
-                                    print(Fore.LIGHTWHITE_EX + 'Cloud service down' + Fore.RESET)
+                                    print_white('Cloud service down')
                                     break
 
                                 options = {
@@ -931,7 +937,7 @@ def main():
                                         code, friends = conn.get_friends()
                                         d = []
                                         if len(friends.get('givenperm')) <= 0:
-                                            print(Fore.LIGHTWHITE_EX + 'None' + Fore.RESET)
+                                            print_white('None')
                                             break
                                         else:
                                             for x in friends.get('givenperm'):
@@ -950,9 +956,9 @@ def main():
                                             name = answer['option']
                                             code, msg = conn.revoke(name)
                                             if code == 200:
-                                                print(Fore.LIGHTWHITE_EX + 'Revoked' + Fore.RESET)
+                                                print_white('Revoked')
                                             else:
-                                                print(Fore.LIGHTWHITE_EX + '{}'.format(msg.get('error')) + Fore.RESET)
+                                                print_white('{}'.format(msg.get('error')))
 
                                 elif answer['option'] == 'request':
                                     # My friends who I don't have perms from
@@ -961,7 +967,7 @@ def main():
                                         code, friends = conn.get_all()
                                         d = []
                                         if len(friends.get('friends')) <= 0:
-                                            print(Fore.LIGHTWHITE_EX + 'No friends' + Fore.RESET)
+                                            print_white('No friends')
                                             break
                                         else:
                                             for x in friends.get('friends'):
@@ -980,9 +986,9 @@ def main():
                                             name = answer['option']
                                             code, msg = conn.request(name)
                                             if code == 200:
-                                                print(Fore.LIGHTWHITE_EX + 'Request sent' + Fore.RESET)
+                                                print_white('Request sent')
                                             else:
-                                                print(Fore.LIGHTWHITE_EX + '{}'.format(msg.get('error')) + Fore.RESET)
+                                                print_white('{}'.format(msg.get('error')))
 
                                 elif answer['option'] == 'pending':
                                     # friends who requested permission from me
@@ -991,7 +997,7 @@ def main():
                                         code, friends = conn.get_pending()
                                         d = []
                                         if len(friends.get('pending')) <= 0:
-                                            print(Fore.LIGHTWHITE_EX + 'None' + Fore.RESET)
+                                            print_white('None')
                                             break
                                         else:
                                             for x in friends.get('pending'):
@@ -1036,16 +1042,16 @@ def main():
                                         elif answer['option'] == 'accept':
                                             code, msg = conn.accept(name)
                                             if code == 200:
-                                                print(Fore.LIGHTWHITE_EX + 'Accepted' + Fore.RESET)
+                                                print_white('Accepted')
                                             else:
-                                                print(Fore.LIGHTWHITE_EX + '{}'.format(msg.get('error')) + Fore.RESET)
+                                                print_white('{}'.format(msg.get('error')))
 
                                         elif answer['option'] == 'decline':
                                             code, msg = conn.revoke(name)
                                             if code == 200:
-                                                print(Fore.LIGHTWHITE_EX + 'Request declined' + Fore.RESET)
+                                                print_white('Request declined')
                                             else:
-                                                print(Fore.LIGHTWHITE_EX + '{}'.format(msg.get('error')) + Fore.RESET)
+                                                print_white('{}'.format(msg.get('error')))
 
         elif option == 'kick_by_ip':
             collector = IPCollector()
@@ -1058,7 +1064,7 @@ def main():
             os.system('cls')
             d = []
             if len(mylist) <= 0:
-                print(Fore.LIGHTWHITE_EX + 'None' + Fore.RESET)
+                print_white('None')
                 break
             else:
                 for x in mylist:
@@ -1075,8 +1081,9 @@ def main():
                     os.system('cls')
                     break
             ips = answer['option']
-            print(Fore.LIGHTWHITE_EX + 'Running: "' + Fore.LIGHTBLACK_EX + 'Blacklist' +
-                  Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
+            print_white('Running: "' +
+                        Fore.LIGHTBLACK_EX + 'Blacklist' +
+                        Fore.LIGHTWHITE_EX + '"')
             blacklist = Blacklist(ips=ips)
             blacklist.start()
             time.sleep(10)
@@ -1095,8 +1102,7 @@ def main():
             if public_ip:
                 mylist.append(public_ip)
             else:
-                print(
-                    Fore.LIGHTWHITE_EX + 'Failed to get Public IP. Running without.' + Fore.RESET)
+                print_white('Failed to get Public IP. Running without.')
             for x in local_list:
                 if x.get('enabled'):
                     try:
@@ -1112,25 +1118,24 @@ def main():
                                     ipaddress.IPv4Address(ip)
                                     mylist.append(ip)
                                 except ipaddress.AddressValueError:
-                                    print(
-                                        Fore.LIGHTWHITE_EX + 'Not valid IP or URL: "' + Fore.LIGHTCYAN_EX + '{}'.format(
-                                            x.get('ip')) +
-                                        Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
+                                    print_white('Not valid IP or URL: "' +
+                                                Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
+                                                Fore.LIGHTWHITE_EX + '"')
                                     pass
                             except:
-                                print(Fore.LIGHTWHITE_EX + 'Not valid IP or URL: "' + Fore.LIGHTCYAN_EX + '{}'.format(
-                                    x.get('ip')) +
-                                      Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
+                                print_white('Not valid IP or URL: "' +
+                                            Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
+                                            Fore.LIGHTWHITE_EX + '"')
                                 pass
                         else:
-                            print(Fore.LIGHTWHITE_EX + 'Not valid IP or URL: "' + Fore.LIGHTCYAN_EX + '{}'.format(
-                                x.get('ip')) +
-                                  Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
+                            print_white('Not valid IP or URL: "' +
+                                        Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
+                                        Fore.LIGHTWHITE_EX + '"')
                             pass
             for x in cloud_list:
                 if x.get('enabled'):
                     mylist.append(x.get('ip'))
-            print(Fore.LIGHTWHITE_EX + 'Kicking unknowns' + Fore.RESET)
+            print_white('Kicking unknowns')
             time.sleep(2)
             whitelist = Whitelist(ips=mylist)
             whitelist.start()
@@ -1139,7 +1144,7 @@ def main():
             continue
 
         elif option == 'new':
-            print(Fore.LIGHTWHITE_EX + 'Creating new session' + Fore.RESET)
+            print_white('Creating new session')
             time.sleep(2)
             whitelist = Whitelist(ips=[])
             whitelist.start()
@@ -1166,14 +1171,15 @@ def main():
             config['token'] = answer['token']
             data.save_file(config)
             os.system('cls')
-            print(Fore.LIGHTWHITE_EX + 'New token: "' + Fore.LIGHTCYAN_EX + answer[
-                'token'] + Fore.LIGHTWHITE_EX + '"' + Fore.RESET)
+            print_white('New token: "' +
+                        Fore.LIGHTCYAN_EX + answer['token'] +
+                        Fore.LIGHTWHITE_EX + '"')
 
         elif option == 'support_zip':
             os.system('cls')
             config = data.read_file()
-            print(Fore.LIGHTWHITE_EX + 'NOTICE: This program will now log all udp traffic on port 6672 for 1 minute. '
-                                       'Only run this if you are okey with that.' + Fore.RESET)
+            print_white('NOTICE: This program will now log all udp traffic on port 6672 for 1 minute. '
+                        'Only run this if you are okey with that.')
             options = {
                 'type': 'confirm',
                 'name': 'agree',
@@ -1217,11 +1223,11 @@ def main():
                     time.sleep(1)
                 debugger.stop()
                 time.sleep(1)
-                print(Fore.LIGHTWHITE_EX + 'Collecting data' + Fore.RESET)
+                print_white('Collecting data')
                 customlist = config.get('custom_ips')
                 cloudlist = config.get('friends')
                 token = config.get('token')
-                print(Fore.LIGHTWHITE_EX + 'Checking connections' + Fore.RESET)
+                print_white('Checking connections')
                 runner = networkmanager.Cloud()
                 if runner.check_connection():
                     da_status = 'Online'
@@ -1246,10 +1252,10 @@ def main():
                     'cloud': cloudlist
                 }
 
-                print(Fore.LIGHTWHITE_EX + 'Writing data' + Fore.RESET)
+                print_white('Writing data')
                 with open("datacheck.json", "w+") as datafile:
                     json.dump(datas, datafile, indent=2)
-                print(Fore.LIGHTWHITE_EX + 'Packing debug request' + Fore.RESET)
+                print_white('Packing debug request')
                 compressed = zipfile.ZipFile('debugger-{}.zip'.format(time.strftime("%Y%m%d-%H%M%S")), "w",
                                              zipfile.ZIP_DEFLATED)
                 compressed.write('datacheck.json')
@@ -1262,11 +1268,11 @@ def main():
                     os.remove('debugger.log')
                 except FileNotFoundError:
                     pass
-                print(Fore.LIGHTWHITE_EX + 'Finished' + Fore.RESET)
+                print_white('Finished')
                 compressed.close()
                 continue
             else:
-                print(Fore.LIGHTWHITE_EX + 'Declined' + Fore.RESET)
+                print_white('Declined')
                 continue
         elif option == 'quit':
             if pydivert.WinDivert.is_registered():
@@ -1279,24 +1285,24 @@ if __name__ == '__main__':
     os.system('cls')
     logger.info('Init')
     if not ctypes.windll.shell32.IsUserAnAdmin():
-        print(Fore.LIGHTWHITE_EX + 'Please start as administrator' + Fore.RESET)
+        print_white('Please start as administrator')
         logger.info('Started without admin')
         input('Press enter to exit.')
         sys.exit()
     logger.info('Booting up')
-    print(Fore.LIGHTWHITE_EX + 'Booting up...' + Fore.RESET)
+    print_white('Booting up...')
     if not pydivert.WinDivert.is_registered():
         pydivert.WinDivert.register()
     ctypes.windll.kernel32.SetConsoleTitleW('Guardian {}'.format(version))
     conn = networkmanager.Cloud('')
-    print(Fore.LIGHTWHITE_EX + 'Checking connections.' + Fore.RESET)
+    print_white('Checking connections.')
     if conn.check_connection():
         code, cversion = conn.version()
         if code == 200:
             if cversion.get('version'):
                 if StrictVersion(cversion.get('version')) > StrictVersion(version):
                     os.system('cls')
-                    print(Fore.LIGHTWHITE_EX + 'An update was found.' + Fore.RESET)
+                    print_white('An update was found.')
                     options = {
                         'type': 'confirm',
                         'message': 'Open browser?',
@@ -1314,7 +1320,7 @@ if __name__ == '__main__':
             if conn.check_token():
                 ipsyncer = IPSyncer(token)
                 ipsyncer.start()
-                print(Fore.LIGHTWHITE_EX + 'Starting IP syncer.' + Fore.RESET)
+                print_white('Starting IP syncer.')
     while True:
         try:
             main()
