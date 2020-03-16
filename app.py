@@ -34,6 +34,9 @@ if not logger.handlers:
 LF_FACESIZE = 32
 STD_OUTPUT_HANDLE = -11
 
+ipv4 = re.compile(r"((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}")
+domain = re.compile(r"^[a-z]+([a-z0-9-]*[a-z0-9]+)?(\.([a-z]+([a-z0-9-]*[[a-z0-9]+)?)+)*$")
+
 version = '3.0.2'
 
 style = Style([
@@ -81,16 +84,18 @@ class NameInBlacklist(Validator):
 
 class IPValidator(Validator):
     def validate(self, document):
+        error = ValidationError(message='Not a valid IP or URL',
+                                cursor_position=len(document.text))  # Move cursor to end
         try:
-            ipaddress.IPv4Address(document.text)
-        except ipaddress.AddressValueError:
-            m = re.search('^([a-zA-Z0-9][a-zA-Z0-9-_]*\.)*[a-zA-Z0-9]*[a-zA-Z0-9-_]*[[a-zA-Z0-9]+$', document.text)
-            if m:
-                pass
+            ip = document.text
+            if ipv4.match(ip):
+                ipaddress.IPv4Address(ip)
             else:
-                raise ValidationError(
-                    message='Not a valid IP or URL',
-                    cursor_position=len(document.text))  # Move cursor to end
+                ip = socket.gethostbyname(document.text)
+                ipaddress.IPv4Address(ip)
+            return ip
+        except ipaddress.AddressValueError:
+            raise error
 
 
 class IPInCustom(IPValidator):
@@ -205,6 +210,7 @@ def main():
             sys.exit(0)
         os.system('cls')
         option = answer['option']
+
         if option == 'solo':
             logger.info('Starting solo session')
             print_white('Running: "' +
@@ -243,35 +249,14 @@ def main():
             for x in local_list:
                 if x.get('enabled'):
                     try:
-                        ipaddress.IPv4Address(x.get('ip'))
-                        mylist.append(x.get('ip'))
-                    except ipaddress.AddressValueError:
-                        m = re.search('^([a-zA-Z0-9][a-zA-Z0-9-_]*\.)*[a-zA-Z0-9]*[a-zA-Z0-9-_]*[[a-zA-Z0-9]+$',
-                                      x.get('ip'))
-                        if m:
-                            try:
-                                ip = socket.gethostbyname(x.get('ip'))
-                                try:
-                                    ipaddress.IPv4Address(ip)
-                                    mylist.append(ip)
-                                except ipaddress.AddressValueError:
-                                    logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
-                                    print_white('Not valid IP or URL: "' +
-                                                Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
-                                                Fore.LIGHTWHITE_EX + '"')
-                                    continue
-                            except:
-                                logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
-                                print_white('Not valid IP or URL: "' +
-                                            Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
-                                            Fore.LIGHTWHITE_EX + '"')
-                                continue
-                        else:
-                            logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
-                            print_white('Not valid IP or URL: "' +
-                                        Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
-                                        Fore.LIGHTWHITE_EX + '"')
-                            continue
+                        ip = IPValidator().validate({'text': x.get('ip')})
+                        mylist.append(ip)
+                    except ValidationError:
+                        logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
+                        print_white('Not valid IP or URL: "' +
+                                    Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
+                                    Fore.LIGHTWHITE_EX + '"')
+                        continue
             for x in cloud_list:
                 if x.get('enabled'):
                     mylist.append(x.get('ip'))
@@ -300,7 +285,15 @@ def main():
             mylist = []
             for x in blacklist:
                 if x.get('enabled'):
-                    mylist.append(x.get('ip'))
+                    try:
+                        ip = IPValidator().validate({'text': x.get('ip')})
+                        mylist.append(ip)
+                    except ValidationError:
+                        logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
+                        print_white('Not valid IP or URL: "' +
+                                    Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
+                                    Fore.LIGHTWHITE_EX + '"')
+                        continue
             logger.info('Starting blacklisted session with {} IPs'.format(len(mylist)))
             print_white('Running: "' +
                         Fore.LIGHTBLACK_EX + 'Blacklist' +
@@ -346,35 +339,14 @@ def main():
             for x in local_list:
                 if x.get('enabled'):
                     try:
-                        ipaddress.IPv4Address(x.get('ip'))
-                        mylist.append(x.get('ip'))
-                    except ipaddress.AddressValueError:
-                        m = re.search('^([a-zA-Z0-9][a-zA-Z0-9-_]*\.)*[a-zA-Z0-9]*[a-zA-Z0-9-_]*[[a-zA-Z0-9]+$',
-                                      x.get('ip'))
-                        if m:
-                            try:
-                                ip = socket.gethostbyname(x.get('ip'))
-                                try:
-                                    ipaddress.IPv4Address(ip)
-                                    mylist.append(ip)
-                                except ipaddress.AddressValueError:
-                                    logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
-                                    print_white('Not valid IP or URL: "' +
-                                                Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
-                                                Fore.LIGHTWHITE_EX + '"')
-                                    continue
-                            except:
-                                logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
-                                print_white('Not valid IP or URL: "' +
-                                            Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
-                                            Fore.LIGHTWHITE_EX + '"')
-                                continue
-                        else:
-                            logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
-                            print_white('Not valid IP or URL: "' +
-                                        Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
-                                        Fore.LIGHTWHITE_EX + '"')
-                            continue
+                        ip = IPValidator().validate({'text': x.get('ip')})
+                        mylist.append(ip)
+                    except ValidationError:
+                        logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
+                        print_white('Not valid IP or URL: "' +
+                                    Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
+                                    Fore.LIGHTWHITE_EX + '"')
+                        continue
             for x in cloud_list:
                 if x.get('enabled'):
                     mylist.append(x.get('ip'))
@@ -1102,32 +1074,14 @@ def main():
             for x in local_list:
                 if x.get('enabled'):
                     try:
-                        ipaddress.IPv4Address(x.get('ip'))
-                        mylist.append(x.get('ip'))
-                    except ipaddress.AddressValueError:
-                        m = re.search('^([a-zA-Z0-9][a-zA-Z0-9-_]*\.)*[a-zA-Z0-9]*[a-zA-Z0-9-_]*[[a-zA-Z0-9]+$',
-                                      x.get('ip'))
-                        if m:
-                            try:
-                                ip = socket.gethostbyname(x.get('ip'))
-                                try:
-                                    ipaddress.IPv4Address(ip)
-                                    mylist.append(ip)
-                                except ipaddress.AddressValueError:
-                                    print_white('Not valid IP or URL: "' +
-                                                Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
-                                                Fore.LIGHTWHITE_EX + '"')
-                                    pass
-                            except:
-                                print_white('Not valid IP or URL: "' +
-                                            Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
-                                            Fore.LIGHTWHITE_EX + '"')
-                                pass
-                        else:
-                            print_white('Not valid IP or URL: "' +
-                                        Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
-                                        Fore.LIGHTWHITE_EX + '"')
-                            pass
+                        ip = IPValidator().validate({'text': x.get('ip')})
+                        mylist.append(ip)
+                    except ValidationError:
+                        logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
+                        print_white('Not valid IP or URL: "' +
+                                    Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
+                                    Fore.LIGHTWHITE_EX + '"')
+                        continue
             for x in cloud_list:
                 if x.get('enabled'):
                     mylist.append(x.get('ip'))
@@ -1175,7 +1129,7 @@ def main():
             os.system('cls')
             config = data.read_file()
             print_white('NOTICE: This program will now log all udp traffic on port 6672 for 1 minute. '
-                        'Only run this if you are okey with that.')
+                        'Only run this if you are okay with that.')
             options = {
                 'type': 'confirm',
                 'name': 'agree',
@@ -1193,29 +1147,16 @@ def main():
                 for x in local_list:
                     if x.get('enabled'):
                         try:
-                            ipaddress.IPv4Address(x.get('ip'))
-                            mylist.append(x.get('ip'))
-                        except ipaddress.AddressValueError:
-                            m = re.search('^([a-zA-Z0-9][a-zA-Z0-9-_]*\.)*[a-zA-Z0-9]*[a-zA-Z0-9-_]*[[a-zA-Z0-9]+$',
-                                          x.get('ip'))
-                            if m:
-                                try:
-                                    ip = socket.gethostbyname(x.get('ip'))
-                                    try:
-                                        ipaddress.IPv4Address(ip)
-                                        mylist.append(ip)
-                                    except ipaddress.AddressValueError:
-                                        continue
-                                except:
-                                    continue
-                            else:
-                                continue
+                            ip = IPValidator().validate({'text': x.get('ip')})
+                            mylist.append(ip)
+                        except ValidationError:
+                            continue
                 for x in cloud_list:
                     if x.get('enabled'):
                         mylist.append(x.get('ip'))
                 debugger = Debugger(mylist)
                 debugger.start()
-                for i in tqdm(range(60), ascii=True, desc='Collecting Requests'):
+                for _ in tqdm(range(60), ascii=True, desc='Collecting Requests'):
                     time.sleep(1)
                 debugger.stop()
                 time.sleep(1)
@@ -1270,6 +1211,7 @@ def main():
             else:
                 print_white('Declined')
                 continue
+
         elif option == 'quit':
             if pydivert.WinDivert.is_registered():
                 pydivert.WinDivert.unregister()
