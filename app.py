@@ -90,26 +90,11 @@ class IPValidator(Validator):
             ip = document.text
             if ipv4.match(ip):
                 ipaddress.IPv4Address(ip)
-            elif not domain.match(ip):
-                raise error
-        except (ipaddress.AddressValueError, socket.gaierror):
-            raise error
-
-    @staticmethod
-    def validate_get(text):
-        error = ValidationError(message='Not a valid IP or URL',
-                                cursor_position=len(text))  # Move cursor to end
-        try:
-            ip = text
-            if ipv4.match(ip):
-                ipaddress.IPv4Address(ip)
-            elif domain.match(ip):
-                ip = socket.gethostbyname(text)
-                ipaddress.IPv4Address(ip)
             else:
-                raise error
+                ip = socket.gethostbyname(document.text)
+                ipaddress.IPv4Address(ip)
             return ip
-        except (ipaddress.AddressValueError, socket.gaierror):
+        except ipaddress.AddressValueError:
             raise error
 
 
@@ -264,7 +249,7 @@ def main():
             for x in local_list:
                 if x.get('enabled'):
                     try:
-                        ip = IPValidator().validate_get(x.get('ip'))
+                        ip = IPValidator().validate({'text': x.get('ip')})
                         mylist.append(ip)
                     except ValidationError:
                         logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
@@ -301,7 +286,7 @@ def main():
             for x in blacklist:
                 if x.get('enabled'):
                     try:
-                        ip = IPValidator().validate_get(x.get('ip'))
+                        ip = IPValidator().validate({'text': x.get('ip')})
                         mylist.append(ip)
                     except ValidationError:
                         logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
@@ -354,7 +339,7 @@ def main():
             for x in local_list:
                 if x.get('enabled'):
                     try:
-                        ip = IPValidator().validate_get(x.get('ip'))
+                        ip = IPValidator().validate({'text': x.get('ip')})
                         mylist.append(ip)
                     except ValidationError:
                         logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
@@ -1089,7 +1074,7 @@ def main():
             for x in local_list:
                 if x.get('enabled'):
                     try:
-                        ip = IPValidator().validate_get(x.get('ip'))
+                        ip = IPValidator().validate({'text': x.get('ip')})
                         mylist.append(ip)
                     except ValidationError:
                         logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
@@ -1162,7 +1147,7 @@ def main():
                 for x in local_list:
                     if x.get('enabled'):
                         try:
-                            ip = IPValidator().validate_get(x.get('ip'))
+                            ip = IPValidator().validate({'text': x.get('ip')})
                             mylist.append(ip)
                         except ValidationError:
                             continue
