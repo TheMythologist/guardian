@@ -5,6 +5,14 @@ import re
 import logging
 from network import networkmanager
 
+debug_logger = logging.getLogger('debugger')
+debug_logger.setLevel(logging.DEBUG)
+if not debug_logger.handlers:
+    fh = logging.FileHandler('debugger.log')
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(logging.Formatter('%(asctime)s|%(levelname)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
+    debug_logger.addHandler(fh)
+
 ipfilter = re.compile(r'^(185\.56\.6[4-7]\.\d{1,3})$')
 logger = logging.getLogger('guardian')
 
@@ -114,12 +122,6 @@ class Debugger(object):
         self.process.terminate()
 
     def run(self):
-        debug_logger = logging.getLogger('debugger')
-        debug_logger.setLevel(logging.DEBUG)
-        fh = logging.FileHandler('debugger.log')
-        fh.setLevel(logging.DEBUG)
-        fh.setFormatter(logging.Formatter('%(asctime)s|%(levelname)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
-        debug_logger.addHandler(fh)
         debug_logger.debug('Started debugging')
         with pydivert.WinDivert("(udp.SrcPort == 6672 or udp.DstPort == 6672) and ip") as w:
             for packet in w:
