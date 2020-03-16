@@ -79,9 +79,8 @@ class NameInBlacklist(Validator):
                 cursor_position=len(document.text))  # Move cursor to end
 
 
-class IPInCustom(Validator):
+class IPValidator(Validator):
     def validate(self, document):
-        config = data.read_file()
         try:
             ipaddress.IPv4Address(document.text)
         except ipaddress.AddressValueError:
@@ -92,6 +91,12 @@ class IPInCustom(Validator):
                 raise ValidationError(
                     message='Not a valid IP or URL',
                     cursor_position=len(document.text))  # Move cursor to end
+
+
+class IPInCustom(IPValidator):
+    def validate(self, document):
+        super().validate(document)
+        config = data.read_file()
         if any(x['ip'] == document.text for x in config['custom_ips']):
             raise ValidationError(
                 message='IP already in list',
@@ -100,17 +105,8 @@ class IPInCustom(Validator):
 
 class IPInBlacklist(Validator):
     def validate(self, document):
+        super().validate(document)
         config = data.read_file()
-        try:
-            ipaddress.IPv4Address(document.text)
-        except ipaddress.AddressValueError:
-            m = re.search('^([a-zA-Z0-9][a-zA-Z0-9-_]*\.)*[a-zA-Z0-9]*[a-zA-Z0-9-_]*[[a-zA-Z0-9]+$', document.text)
-            if m:
-                pass
-            else:
-                raise ValidationError(
-                    message='Not a valid IP or URL',
-                    cursor_position=len(document.text))  # Move cursor to end
         if any(x['ip'] == document.text for x in config['blacklist']):
             raise ValidationError(
                 message='IP already in list',
