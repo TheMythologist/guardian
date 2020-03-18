@@ -33,6 +33,13 @@ class Cloud:
     def get_friends(self):
         try:
             code, r = self._send_request('GET', 'guardian/friends')
+            return r.get('friends', None)
+        except (ConnectionError, AttributeError):
+            return None
+
+    def get_allowed(self):
+        try:
+            code, r = self._send_request('GET', 'guardian/friends')
             return r.get('givenperm', None)
         except (ConnectionError, AttributeError):
             return None

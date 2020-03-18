@@ -151,7 +151,7 @@ def main():
     while True:
         token = data.read_file().get('token')
         if token:
-            cloud = networkmanager.Cloud(token)
+            cloud.token = token
             if cloud.check_connection():
                 logger.info('Cloud online.')
                 print_white('Cloud service online')
@@ -917,7 +917,7 @@ def main():
                                     # My perms
                                     os.system('cls')
                                     while True:
-                                        allowed = cloud.get_friends()
+                                        allowed = cloud.get_allowed()
                                         if len(allowed) <= 0:
                                             print_white('None')
                                             break
