@@ -15,7 +15,7 @@ if not debug_logger.handlers:
 
 ipfilter = re.compile(r'^(185\.56\.6[4-7]\.\d{1,3})$')
 logger = logging.getLogger('guardian')
-
+packetfilter = "(udp.SrcPort == 6672 or udp.DstPort == 6672) and ip"
 
 class Whitelist(object):
     def __init__(self, ips):
@@ -39,7 +39,7 @@ class Whitelist(object):
         if not pydivert.WinDivert.is_registered():
             pydivert.WinDivert.register()
         try:
-            with pydivert.WinDivert("(udp.SrcPort == 6672 or udp.DstPort == 6672) and ip") as w:
+            with pydivert.WinDivert(packetfilter) as w:
                 for packet in w:
                     ip = packet.ip.src_addr
                     temp = packet.ip.dst_addr
@@ -73,7 +73,7 @@ class Blacklist(object):
         if not pydivert.WinDivert.is_registered():
             pydivert.WinDivert.register()
         try:
-            with pydivert.WinDivert("(udp.SrcPort == 6672 or udp.DstPort == 6672) and ip") as w:
+            with pydivert.WinDivert(packetfilter) as w:
                 for packet in w:
                     ip = packet.ip.src_addr
                     temp = packet.ip.dst_addr
@@ -123,7 +123,7 @@ class Debugger(object):
 
     def run(self):
         debug_logger.debug('Started debugging')
-        with pydivert.WinDivert("(udp.SrcPort == 6672 or udp.DstPort == 6672) and ip") as w:
+        with pydivert.WinDivert(packetfilter) as w:
             for packet in w:
                 dst = packet.ip.dst_addr
                 src = packet.ip.src_addr
@@ -165,7 +165,7 @@ class IPCollector(object):
         logger.info('Collected a total of {} IPs'.format(len(self.ips)))
 
     def run(self):
-        with pydivert.WinDivert("(udp.SrcPort == 6672 or udp.DstPort == 6672) and ip") as w:
+        with pydivert.WinDivert(packetfilter) as w:
             for packet in w:
                 dst = packet.ip.dst_addr
                 src = packet.ip.src_addr
