@@ -100,9 +100,7 @@ class IPSyncer(object):
             try:
                 conn = networkmanager.Cloud(self.token)
                 if conn.check_token():
-                    try:
-                        conn.set_ip()
-                    except:
+                    if not conn.set_ip():
                         logger.warning('Failed to update cloud IP')
                 time.sleep(300)
             except KeyboardInterrupt:

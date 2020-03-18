@@ -55,11 +55,11 @@ def print_white(msg):
 
 
 def get_public_ip():
-    try:
-        public_ip = networkmanager.Cloud().get_ip()
+    public_ip = networkmanager.Cloud().get_ip()
+    if public_ip:
         logger.info('Got a public IP')
         return public_ip
-    except (requests.exceptions.SSLError, requests.exceptions.ConnectionError):
+    else:
         logger.warning('Failed to get public IP')
         return False
 
@@ -151,12 +151,12 @@ def main():
     while True:
         token = data.read_file().get('token')
         if token:
-            conn = networkmanager.Cloud(token)
-            if conn.check_connection():
+            cloud = networkmanager.Cloud(token)
+            if cloud.check_connection():
                 logger.info('Cloud online.')
                 print_white('Cloud service online')
 
-                if conn.check_token():
+                if cloud.check_token():
                     data.cloud_friends()
                 else:
                     logger.info('Invalid token.')
@@ -879,8 +879,8 @@ def main():
                             while True:
                                 config = data.read_file()
                                 token = config.get('token')
-                                conn = networkmanager.Cloud(token)
-                                if not conn.check_connection():
+                                cloud = networkmanager.Cloud(token)
+                                if not cloud.check_connection():
                                     print_white('Cloud service down')
                                     break
 
@@ -917,86 +917,75 @@ def main():
                                     # My perms
                                     os.system('cls')
                                     while True:
-                                        code, friends = conn.get_friends()
-                                        d = []
-                                        if len(friends.get('givenperm')) <= 0:
+                                        allowed = cloud.get_friends()
+                                        if len(allowed) <= 0:
                                             print_white('None')
                                             break
+                                        options = {
+                                            'type': 'list',
+                                            'name': 'option',
+                                            'qmark': '@',
+                                            'message': 'Who to revoke',
+                                            'choices': [f.get('name') for f in allowed]
+                                        }
+                                        answer = prompt(options, style=style)
+                                        if not answer:
+                                            os.system('cls')
+                                            break
+                                        name = answer['option']
+                                        code, msg = cloud.revoke(name)
+                                        if code == 200:
+                                            print_white('Revoked')
                                         else:
-                                            for x in friends.get('givenperm'):
-                                                d.append({'name': x.get('name')})
-                                            options = {
-                                                'type': 'list',
-                                                'name': 'option',
-                                                'qmark': '@',
-                                                'message': 'Who to revoke',
-                                                'choices': d
-                                            }
-                                            answer = prompt(options, style=style)
-                                            if not answer:
-                                                os.system('cls')
-                                                break
-                                            name = answer['option']
-                                            code, msg = conn.revoke(name)
-                                            if code == 200:
-                                                print_white('Revoked')
-                                            else:
-                                                print_white('{}'.format(msg.get('error')))
+                                            print_white('{}'.format(msg.get('error')))
 
                                 elif answer['option'] == 'request':
                                     # My friends who I don't have perms from
                                     os.system('cls')
                                     while True:
-                                        code, friends = conn.get_all()
-                                        d = []
-                                        if len(friends.get('friends')) <= 0:
+                                        friends = cloud.get_all()
+                                        if len(friends) <= 0:
                                             print_white('No friends')
                                             break
+                                        options = {
+                                            'type': 'list',
+                                            'name': 'option',
+                                            'qmark': '@',
+                                            'message': 'Request from who',
+                                            'choices': [f.get('name') for f in friends]
+                                        }
+                                        answer = prompt(options, style=style)
+                                        if not answer:
+                                            os.system('cls')
+                                            break
+                                        name = answer['option']
+                                        result, msg = cloud.request(name)
+                                        if result:
+                                            print_white('Request sent')
                                         else:
-                                            for x in friends.get('friends'):
-                                                d.append({'name': x.get('name')})
-                                            options = {
-                                                'type': 'list',
-                                                'name': 'option',
-                                                'qmark': '@',
-                                                'message': 'Request from who',
-                                                'choices': d
-                                            }
-                                            answer = prompt(options, style=style)
-                                            if not answer:
-                                                os.system('cls')
-                                                break
-                                            name = answer['option']
-                                            code, msg = conn.request(name)
-                                            if code == 200:
-                                                print_white('Request sent')
-                                            else:
-                                                print_white('{}'.format(msg.get('error')))
+                                            print_white('{}'.format(msg))
 
                                 elif answer['option'] == 'pending':
                                     # friends who requested permission from me
                                     os.system('cls')
                                     while True:
-                                        code, friends = conn.get_pending()
-                                        d = []
-                                        if len(friends.get('pending')) <= 0:
+                                        pending = cloud.get_pending()
+                                        if len(pending) <= 0:
                                             print_white('None')
                                             break
-                                        else:
-                                            for x in friends.get('pending'):
-                                                d.append({'name': x.get('name')})
-                                            options = {
-                                                'type': 'list',
-                                                'name': 'option',
-                                                'qmark': '@',
-                                                'message': 'Select user',
-                                                'choices': d
-                                            }
-                                            answer = prompt(options, style=style)
-                                            name = answer['option']
-                                            if not answer:
-                                                os.system('cls')
-                                                break
+                                        options = {
+                                            'type': 'list',
+                                            'name': 'option',
+                                            'qmark': '@',
+                                            'message': 'Select user',
+                                            'choices': [f.get('name') for f in pending]
+                                        }
+                                        answer = prompt(options, style=style)
+                                        name = answer['option']
+                                        if not answer:
+                                            os.system('cls')
+                                            break
+
                                         options = {
                                             'type': 'list',
                                             'name': 'option',
@@ -1023,18 +1012,18 @@ def main():
                                             os.system('cls')
                                             break
                                         elif answer['option'] == 'accept':
-                                            code, msg = conn.accept(name)
-                                            if code == 200:
+                                            result, msg = cloud.accept(name)
+                                            if result:
                                                 print_white('Accepted')
                                             else:
-                                                print_white('{}'.format(msg.get('error')))
+                                                print_white('{}'.format(msg))
 
                                         elif answer['option'] == 'decline':
-                                            code, msg = conn.revoke(name)
-                                            if code == 200:
+                                            result, msg = cloud.revoke(name)
+                                            if result:
                                                 print_white('Request declined')
                                             else:
-                                                print_white('{}'.format(msg.get('error')))
+                                                print_white('{}'.format(msg))
 
         elif option == 'kick_by_ip':
             collector = IPCollector()
@@ -1250,22 +1239,22 @@ if __name__ == '__main__':
     conn = networkmanager.Cloud('')
     print_white('Checking connections.')
     if conn.check_connection():
-        code, cversion = conn.version()
-        if code == 200:
-            if cversion.get('version'):
-                if StrictVersion(cversion.get('version')) > StrictVersion(version):
-                    os.system('cls')
-                    print_white('An update was found.')
-                    options = {
-                        'type': 'confirm',
-                        'message': 'Open browser?',
-                        'name': 'option',
-                        'qmark': '@',
-                        'default': True
-                    }
-                    answer = prompt(options, style=style)
-                    if answer['option']:
-                        webbrowser.open('https://www.thedigitalarc.com/software/Guardian')
+        version = conn.version()
+        version = version.get('version', None) if version else None
+        if version:
+            if StrictVersion(version) > StrictVersion(version):
+                os.system('cls')
+                print_white('An update was found.')
+                options = {
+                    'type': 'confirm',
+                    'message': 'Open browser?',
+                    'name': 'option',
+                    'qmark': '@',
+                    'default': True
+                }
+                answer = prompt(options, style=style)
+                if answer['option']:
+                    webbrowser.open('https://www.thedigitalarc.com/software/Guardian')
         config = data.read_file()
         token = config.get('token')
         if token:

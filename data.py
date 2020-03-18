@@ -41,15 +41,15 @@ def cloud_friends():
     config = read_file()
     token = config['token']
     runner = Cloud(token)
-    code, r = runner.get_friends()
-    for friend in r.get('friends'):
+    friends = runner.get_friends()
+    for friend in friends:
         d = [x for x in config['friends'] if x.get('name') == friend.get('name')]
         if d:
             d[0]['ip'] = friend.get('ip')
         else:
             config['friends'].append({'name': friend.get('name'), 'ip': friend.get('ip'), 'enabled': False})
     for friend in config['friends']:
-        if not any(d.get('name') == friend.get('name') for d in r.get('friends')):
-            config['friends'][:] = [d for d in config['friends'] if d.get('name') == r.get('friends')]
+        if not any(d.get('name') == friend.get('name') for d in friends):
+            config['friends'][:] = [d for d in config['friends'] if d.get('name') == friends]
     save_file(config)
     return config.get('friends')
