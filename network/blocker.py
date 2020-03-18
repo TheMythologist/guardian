@@ -3,7 +3,9 @@ import pydivert
 import time
 import re
 import logging
+import data
 from network import networkmanager
+from app import IPValidator
 
 debug_logger = logging.getLogger('debugger')
 debug_logger.setLevel(logging.DEBUG)
@@ -102,6 +104,24 @@ class IPSyncer(object):
                 if conn.check_token():
                     if not conn.set_ip():
                         logger.warning('Failed to update cloud IP')
+                config = data.ConfigData(data.file_name)
+                lists = [data.CustomList('blacklist'), data.CustomList('custom_ips')]
+                for l in lists:
+                    outdated = []
+                    new = {}
+                    for ip, item in l:
+                        domain = item.get('value')
+                        if domain:
+                            ip_calc = IPValidator.validate_get(domain)
+                            if ip != ip_calc:
+                                outdated.append(ip)
+                                new[ip_calc] = item
+                    for old, new, item in zip(outdated, new.keys(), new.values()):
+                        l.delete(old)
+                        l.add(new, item)
+                        logger.info("Updated {} ip".format(item.get('name', 'Unknown')))
+
+                config.save()
                 time.sleep(300)
             except KeyboardInterrupt:
                 pass

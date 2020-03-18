@@ -3,14 +3,12 @@ from questionary import Validator, ValidationError, prompt
 from prompt_toolkit.styles import Style
 import os
 import ctypes
-import data
 from colorama import Fore
 from network.blocker import *
 import pydivert
 import sys
 from multiprocessing import freeze_support
 import ipaddress
-from operator import itemgetter
 from network import networkmanager
 from distutils.version import StrictVersion
 import webbrowser
@@ -18,7 +16,6 @@ import socket
 from tqdm import tqdm
 import zipfile
 import json
-import requests
 import logging
 
 logger = logging.getLogger('guardian')
@@ -64,10 +61,18 @@ def get_public_ip():
         return False
 
 
+def get_private_ip():
+    soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    soc.connect(("8.8.8.8", 80))
+    local_ip = soc.getsockname()[0]
+    soc.close()
+    return local_ip
+
+
 class NameInCustom(Validator):
     def validate(self, document):
-        config = data.read_file()
-        if any(x['name'] == document.text for x in config['custom_ips']):
+        global custom_ips
+        if custom_ips.find(document.text):
             raise ValidationError(
                 message='Name already in list',
                 cursor_position=len(document.text))  # Move cursor to end
@@ -75,8 +80,8 @@ class NameInCustom(Validator):
 
 class NameInBlacklist(Validator):
     def validate(self, document):
-        config = data.read_file()
-        if any(x['name'] == document.text for x in config['blacklist']):
+        global blacklist
+        if blacklist.find(document.text):
             raise ValidationError(
                 message='Name already in list',
                 cursor_position=len(document.text))  # Move cursor to end
@@ -116,21 +121,23 @@ class IPValidator(Validator):
 class IPInCustom(IPValidator):
     def validate(self, document):
         super().validate(document)
-        config = data.read_file()
-        if any(x['ip'] == document.text for x in config['custom_ips']):
+        global custom_ips
+        if document.text in custom_ips or custom_ips.find(document.text, 'value'):
             raise ValidationError(
                 message='IP already in list',
-                cursor_position=len(document.text))  # Move cursor to end
+                cursor_position=len(document.text)
+            )  # Move cursor to end
 
 
 class IPInBlacklist(Validator):
     def validate(self, document):
         super().validate(document)
-        config = data.read_file()
-        if any(x['ip'] == document.text for x in config['blacklist']):
+        global blacklist
+        if document.text in blacklist or blacklist.find(document.text, 'value'):
             raise ValidationError(
                 message='IP already in list',
-                cursor_position=len(document.text))  # Move cursor to end
+                cursor_position=len(document.text)
+            )  # Move cursor to end
 
 
 class ValidateToken(Validator):
@@ -148,8 +155,9 @@ class ValidateToken(Validator):
 
 
 def main():
+    global cloud, config, custom_ips, blacklist, friends
     while True:
-        token = data.read_file().get('token')
+        token = config.get('token')
         if token:
             cloud.token = token
             if cloud.check_connection():
@@ -157,7 +165,7 @@ def main():
                 print_white('Cloud service online')
 
                 if cloud.check_token():
-                    data.cloud_friends()
+                    data.update_cloud_friends()
                 else:
                     logger.info('Invalid token.')
                     print_white('Token invalid')
@@ -165,7 +173,6 @@ def main():
             else:
                 logger.info('Cloud offline.')
                 print_white('Cloud service down')
-
         options = {
             'type': 'list',
             'name': 'option',
@@ -234,10 +241,10 @@ def main():
                         Fore.LIGHTWHITE_EX + '" to stop.')
             try:
                 while True:
-                    whitelist = Whitelist(ips=[])
-                    whitelist.start()
+                    packet_filter = Whitelist(ips=[])
+                    packet_filter.start()
                     time.sleep(10)
-                    whitelist.stop()
+                    packet_filter.stop()
                     time.sleep(15)
             except KeyboardInterrupt:
                 logger.info('Stopped solo session')
@@ -247,35 +254,31 @@ def main():
                 continue
 
         elif option == 'whitelist':
-            config = data.read_file()
-            local_list = config.get('custom_ips')
-            cloud_list = config.get('friends')
-            soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            soc.connect(("8.8.8.8", 80))
-            local_ip = soc.getsockname()[0]
-            soc.close()
-            mylist = [local_ip]
+            local_ip = get_private_ip()
+            ip_set = {local_ip}
             public_ip = get_public_ip()
             if public_ip:
-                mylist.append(public_ip)
+                ip_set.add(public_ip)
             else:
                 print_white('Failed to get Public IP. Running without.')
 
-            for x in local_list:
-                if x.get('enabled'):
+            for ip, friend in custom_ips:
+                if friend.get('enabled'):
                     try:
-                        ip = IPValidator().validate_get(x.get('ip'))
-                        mylist.append(ip)
+                        ip_calc = IPValidator().validate_get(ip)
+                        ip_set.add(ip_calc)
                     except ValidationError:
-                        logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
+                        logger.warning('Not valid IP or URL: {}'.format(ip))
                         print_white('Not valid IP or URL: "' +
-                                    Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
+                                    Fore.LIGHTCYAN_EX + '{}'.format(ip) +
                                     Fore.LIGHTWHITE_EX + '"')
                         continue
-            for x in cloud_list:
-                if x.get('enabled'):
-                    mylist.append(x.get('ip'))
-            logger.info('Starting whitelisted session with {} IPs'.format(len(mylist)))
+
+            for ip, friend in friends:
+                if friend.get('enabled'):
+                    ip_set.add(ip)
+
+            logger.info('Starting whitelisted session with {} IPs'.format(len(ip_set)))
             print_white('Running: "' +
                         Fore.LIGHTCYAN_EX + 'Whitelisted session' +
                         Fore.LIGHTWHITE_EX + '" Press "' +
@@ -283,10 +286,10 @@ def main():
                         Fore.LIGHTWHITE_EX + '" to stop.')
             try:
                 while True:
-                    whitelist = Whitelist(ips=mylist)
-                    whitelist.start()
+                    packet_filter = Whitelist(ips=ip_set)
+                    packet_filter.start()
                     time.sleep(10)
-                    whitelist.stop()
+                    packet_filter.stop()
                     time.sleep(15)
             except KeyboardInterrupt:
                 logger.info('Stopped whitelisted session')
@@ -295,21 +298,19 @@ def main():
                             Fore.LIGHTWHITE_EX + '"')
 
         elif option == 'blacklist':
-            config = data.read_file()
-            blacklist = config.get('blacklist')
-            mylist = []
-            for x in blacklist:
-                if x.get('enabled'):
+            ip_set = set()
+            for ip, item in blacklist:
+                if item.get('enabled'):
                     try:
-                        ip = IPValidator().validate_get(x.get('ip'))
-                        mylist.append(ip)
+                        ip = IPValidator().validate_get(item.get('ip'))
+                        ip_set.add(ip)
                     except ValidationError:
-                        logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
+                        logger.warning('Not valid IP or URL: {}'.format(ip))
                         print_white('Not valid IP or URL: "' +
-                                    Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
+                                    Fore.LIGHTCYAN_EX + '{}'.format(ip) +
                                     Fore.LIGHTWHITE_EX + '"')
                         continue
-            logger.info('Starting blacklisted session with {} IPs'.format(len(mylist)))
+            logger.info('Starting blacklisted session with {} IPs'.format(len(ip_set)))
             print_white('Running: "' +
                         Fore.LIGHTBLACK_EX + 'Blacklist' +
                         Fore.LIGHTWHITE_EX + '" Press "' +
@@ -317,10 +318,10 @@ def main():
                         Fore.LIGHTWHITE_EX + '" to stop.')
             try:
                 while True:
-                    blacklist = Blacklist(ips=mylist)
-                    blacklist.start()
+                    packet_filter = Blacklist(ips=ip_set)
+                    packet_filter.start()
                     time.sleep(10)
-                    blacklist.stop()
+                    packet_filter.stop()
                     time.sleep(15)
             except KeyboardInterrupt:
                 logger.info('Stopped blacklisted session')
@@ -333,51 +334,47 @@ def main():
             collector = IPCollector()
             logger.info('Starting to collect IPs')
             collector.start()
-            for i in tqdm(range(10), ascii=True, desc='Collecting session'):
+            for _ in tqdm(range(10), ascii=True, desc='Collecting session'):
                 time.sleep(1)
             collector.stop()
-            mylist = list(set(collector.ips))
-            logger.info('Collected {} IPs'.format(len(mylist)))
-            soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            soc.connect(("8.8.8.8", 80))
-            local_ip = soc.getsockname()[0]
-            soc.close()
+            ip_set = set(collector.ips)
+            logger.info('Collected {} IPs'.format(len(ip_set)))
+            local_ip = get_private_ip()
+            ip_set.add(local_ip)
             public_ip = get_public_ip()
             if public_ip:
-                mylist.append(public_ip)
+                ip_set.add(public_ip)
             else:
                 print_white('Failed to get Public IP. Running without.')
-            mylist.append(local_ip)
-            config = data.read_file()
-            local_list = config.get('custom_ips')
-            cloud_list = config.get('friends')
-            for x in local_list:
-                if x.get('enabled'):
+
+            for ip, friend in custom_ips:
+                if friend.get('enabled'):
                     try:
-                        ip = IPValidator().validate_get(x.get('ip'))
-                        mylist.append(ip)
+                        ip_calc = IPValidator().validate_get(ip)
+                        ip_set.add(ip_calc)
                     except ValidationError:
-                        logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
+                        logger.warning('Not valid IP or URL: {}'.format(ip))
                         print_white('Not valid IP or URL: "' +
-                                    Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
+                                    Fore.LIGHTCYAN_EX + '{}'.format(ip) +
                                     Fore.LIGHTWHITE_EX + '"')
                         continue
-            for x in cloud_list:
-                if x.get('enabled'):
-                    mylist.append(x.get('ip'))
-            mylist = list(set(mylist))
+
+            for ip, friend in friends:
+                if friend.get('enabled'):
+                    ip_set.add(ip)
+
             os.system('cls')
-            logger.info('Starting whitelisted session with {} IPs'.format(len(mylist)))
+            logger.info('Starting whitelisted session with {} IPs'.format(len(ip_set)))
             print_white('Running: "' +
                         Fore.LIGHTCYAN_EX + 'Whitelisted session' +
                         Fore.LIGHTCYAN_EX + 'CTRL + C' +
                         Fore.LIGHTWHITE_EX + '" to stop.')
             try:
                 while True:
-                    whitelist = Whitelist(ips=mylist)
-                    whitelist.start()
+                    packet_filter = Whitelist(ips=ip_set)
+                    packet_filter.start()
                     time.sleep(10)
-                    whitelist.stop()
+                    packet_filter.stop()
                     time.sleep(15)
             except KeyboardInterrupt:
                 logger.info('Stopping whitelisted session')
@@ -411,7 +408,6 @@ def main():
                         }
                     ]
                 }
-                config = data.read_file()
                 if not config.get('token'):
                     options['choices'][1]['disabled'] = 'No token'
                 answer = prompt(options, style=style)
@@ -454,17 +450,14 @@ def main():
 
                         elif answer['option'] == 'select':
                             os.system('cls')
-                            config = data.read_file()
-                            c = []
-                            if len(config['custom_ips']) <= 0:
+                            if len(custom_ips) <= 0:
                                 print_white('No friends')
                                 continue
                             else:
-                                for v in config['custom_ips']:
-                                    c.append({
-                                        'name': v.get('name'),
-                                        'checked': True if v.get('enabled') else None,
-                                    })
+                                c = [{
+                                    'name': f.get('name'),
+                                    'checked': True if f.get('enabled') else None
+                                } for ip, f in custom_ips]
                                 options = {
                                     'type': 'checkbox',
                                     'name': 'option',
@@ -476,16 +469,12 @@ def main():
                                 if not answer:
                                     os.system('cls')
                                     continue
-                                for v in config['custom_ips']:
-                                    if v['name'] in answer['option']:
-                                        v['enabled'] = True
-                                    else:
-                                        v['enabled'] = False
-                                data.save_file(config)
+                                for ip, item in custom_ips:
+                                    item['enabled'] = item.get('name') in answer['option']
+                                config.save()
 
                         elif answer['option'] == 'add':
                             os.system('cls')
-                            config = data.read_file()
                             options = [
                                 {
                                     'type': 'input',
@@ -507,28 +496,27 @@ def main():
                             if not answer:
                                 os.system('cls')
                                 continue
-                            config['custom_ips'].append({
+                            ip = IPValidator.validate_get(answer['ip'])
+                            item = {
                                 'name': answer['name'],
-                                'ip': answer['ip'],
                                 'enabled': True
-                            })
-                            config['custom_ips'][:] = sorted(config['custom_ips'], key=itemgetter('name'))
-                            data.save_file(config)
+                            }
+                            if ip != answer['ip']:
+                                item['value'] = answer['ip']
+                            custom_ips.add(ip, item)
+                            config.save()
 
                         elif answer['option'] == 'list':
                             os.system('cls')
                             while True:
-                                config = data.read_file()
-                                c = []
-                                if len(config['custom_ips']) <= 0:
+                                if len(custom_ips) <= 0:
                                     print_white('No friends')
                                     break
                                 else:
-                                    for v in config['custom_ips']:
-                                        c.append({
-                                            'name': v.get('name'),
-                                            'checked': True if v.get('enabled') else None,
-                                        })
+                                    c = [{
+                                        'name': f.get('name'),
+                                        'checked': True if f.get('enabled') else None
+                                    } for ip, f in custom_ips]
                                     options = {
                                         'type': 'list',
                                         'name': 'name',
@@ -570,11 +558,10 @@ def main():
                                         while True:
                                             print(
                                                 'Notice, user deleted. Press enter to go back / Save. Quit and you lose him.')
-                                            config = data.read_file()
-                                            ip = [d for d in config['custom_ips'] if d.get('name') == name][0].get('ip')
-                                            config['custom_ips'][:] = [d for d in config['custom_ips'] if
-                                                                       d.get('name') != name]
-                                            data.save_file(config)
+                                            ip, item = custom_ips.find(name)
+                                            entry = item.get('value', ip)
+                                            custom_ips.delete(ip)
+                                            config.save()
                                             options = [
                                                 {
                                                     'type': 'input',
@@ -590,7 +577,7 @@ def main():
                                                     'message': 'IP/URL',
                                                     'qmark': '@',
                                                     'validate': IPInCustom,
-                                                    'default': ip
+                                                    'default': entry
                                                 },
                                             ]
 
@@ -598,22 +585,22 @@ def main():
                                             if not answer:
                                                 os.system('cls')
                                                 break
-                                            config['custom_ips'].append({
-                                                'name': answer['name'],
-                                                'ip': answer['ip'],
-                                                'enabled': False
-                                            })
-                                            config['custom_ips'][:] = sorted(config['custom_ips'],
-                                                                             key=itemgetter('name'))
-                                            data.save_file(config)
+                                            ip = IPValidator.validate_get(answer['ip'])
+                                            item['name'] = answer['name']
+                                            item['enabled'] = True
+                                            if ip != answer['ip']:
+                                                item['value'] = answer['ip']
+                                            custom_ips.add(ip, item)
+                                            config.save()
+                                            custom_ips.add(ip, item)
+                                            config.save()
                                             os.system('cls')
                                             break
 
                                     elif answer['option'] == 'delete':
-                                        config = data.read_file()
-                                        config['custom_ips'][:] = [d for d in config['custom_ips'] if
-                                                                   d.get('name') != name]
-                                        data.save_file(config)
+                                        ip, item = custom_ips.find(name)
+                                        custom_ips.delete(ip)
+                                        config.save()
 
                 elif answer['option'] == 'blacklist':
                     os.system('cls')
@@ -650,17 +637,14 @@ def main():
 
                         elif answer['option'] == 'select':
                             os.system('cls')
-                            config = data.read_file()
-                            c = []
-                            if len(config['blacklist']) <= 0:
+                            if len(blacklist) <= 0:
                                 print_white('No ips')
                                 continue
                             else:
-                                for v in config['blacklist']:
-                                    c.append({
-                                        'name': v.get('name'),
-                                        'checked': True if v.get('enabled') else None,
-                                    })
+                                c = [{
+                                    'name': f.get('name'),
+                                    'checked': True if f.get('enabled') else None
+                                } for ip, f in blacklist]
                                 options = {
                                     'type': 'checkbox',
                                     'name': 'option',
@@ -672,16 +656,12 @@ def main():
                                 if not answer:
                                     os.system('cls')
                                     continue
-                                for v in config['blacklist']:
-                                    if v['name'] in answer['option']:
-                                        v['enabled'] = True
-                                    else:
-                                        v['enabled'] = False
-                                data.save_file(config)
+                                for ip, item in blacklist:
+                                    item['enabled'] = item.get('name') in answer['option']
+                                config.save()
 
                         elif answer['option'] == 'add':
                             os.system('cls')
-                            config = data.read_file()
                             options = [
                                 {
                                     'type': 'input',
@@ -703,28 +683,27 @@ def main():
                             if not answer:
                                 os.system('cls')
                                 continue
-                            config['blacklist'].append({
+                            ip = IPValidator.validate_get(answer['ip'])
+                            item = {
                                 'name': answer['name'],
-                                'ip': answer['ip'],
                                 'enabled': True
-                            })
-                            config['blacklist'][:] = sorted(config['blacklist'], key=itemgetter('name'))
-                            data.save_file(config)
+                            }
+                            if ip != answer['ip']:
+                                item['value'] = answer['ip']
+                            blacklist.add(ip, item)
+                            config.save()
 
                         elif answer['option'] == 'list':
                             os.system('cls')
                             while True:
-                                config = data.read_file()
-                                c = []
-                                if len(config['blacklist']) <= 0:
+                                if len(blacklist) <= 0:
                                     print_white('No friends')
                                     break
                                 else:
-                                    for v in config['blacklist']:
-                                        c.append({
-                                            'name': v.get('name'),
-                                            'checked': True if v.get('enabled') else None,
-                                        })
+                                    c = [{
+                                        'name': f.get('name'),
+                                        'checked': True if f.get('enabled') else None
+                                    } for ip, f in blacklist]
                                     options = {
                                         'type': 'list',
                                         'name': 'name',
@@ -766,18 +745,17 @@ def main():
                                         while True:
                                             print(
                                                 'Notice, user deleted. Press enter to go back / Save. Quit and you lose him.')
-                                            config = data.read_file()
-                                            ip = [d for d in config['blacklist'] if d.get('name') == name][0].get('ip')
-                                            config['blacklist'][:] = [d for d in config['blacklist'] if
-                                                                      d.get('name') != name]
-                                            data.save_file(config)
+                                            ip, item = blacklist.find(name)
+                                            blacklist.delete(ip)
+                                            config.save()
+                                            entry = item.get('value', ip)
                                             options = [
                                                 {
                                                     'type': 'input',
                                                     'name': 'name',
                                                     'message': 'Name',
                                                     'qmark': '@',
-                                                    'validate': NameInCustom,
+                                                    'validate': NameInBlacklist,
                                                     'default': name
                                                 },
                                                 {
@@ -785,8 +763,8 @@ def main():
                                                     'name': 'ip',
                                                     'message': 'IP/URL',
                                                     'qmark': '@',
-                                                    'validate': IPInCustom,
-                                                    'default': ip
+                                                    'validate': IPInBlacklist,
+                                                    'default': entry
                                                 },
                                             ]
 
@@ -794,22 +772,22 @@ def main():
                                             if not answer:
                                                 os.system('cls')
                                                 break
-                                            config['blacklist'].append({
-                                                'name': answer['name'],
-                                                'ip': answer['ip'],
-                                                'enabled': False
-                                            })
-                                            config['blacklist'][:] = sorted(config['blacklist'],
-                                                                            key=itemgetter('name'))
-                                            data.save_file(config)
+                                            ip = IPValidator.validate_get(answer['ip'])
+                                            item['name'] = answer['name']
+                                            item['enabled'] = True
+                                            if ip != answer['ip']:
+                                                item['value'] = answer['ip']
+                                            blacklist.add(ip, item)
+                                            config.save()
+                                            blacklist.add(ip, item)
+                                            config.save()
                                             os.system('cls')
                                             break
 
                                     elif answer['option'] == 'delete':
-                                        config = data.read_file()
-                                        config['blacklist'][:] = [d for d in config['blacklist'] if
-                                                                  d.get('name') != name]
-                                        data.save_file(config)
+                                        ip, item = blacklist.find(name)
+                                        blacklist.delete(ip)
+                                        config.save()
 
                 elif answer['option'] == 'cloud':
                     os.system('cls')
@@ -842,42 +820,33 @@ def main():
 
                         elif answer['option'] == 'select':
                             os.system('cls')
-                            data.cloud_friends()
-                            config = data.read_file()
-                            friends = config['friends']
-                            d = []
+                            data.update_cloud_friends()
                             if len(friends) <= 0:
                                 print_white('No friends')
                                 break
                             else:
-                                for v in friends:
-                                    d.append({
-                                        'name': v.get('name'),
-                                        'value': v.get('name'),
-                                        'checked': True if v.get('enabled') else None,
-                                    })
                                 options = {
                                     'type': 'checkbox',
                                     'name': 'option',
                                     'qmark': '@',
                                     'message': 'Select who to enable',
-                                    'choices': d
+                                    'choices': [{
+                                        'name': f.get('name'),
+                                        'value': f.get('name'),
+                                        'checked': True if f.get('enabled') else None,
+                                    } for ip, f in friends]
                                 }
                                 answer = prompt(options, style=style)
                                 if not answer:
                                     os.system('cls')
                                     break
-                                for v in friends:
-                                    if v['name'] in answer['option']:
-                                        v['enabled'] = True
-                                    else:
-                                        v['enabled'] = False
-                                data.save_file(config)
+                                for ip, f in friends:
+                                    f['enabled'] = f.get('name') in answer['option']
+                                config.save()
 
                         elif answer['option'] == 'permission':
                             os.system('cls')
                             while True:
-                                config = data.read_file()
                                 token = config.get('token')
                                 cloud = networkmanager.Cloud(token)
                                 if not cloud.check_connection():
@@ -952,7 +921,7 @@ def main():
                                             'name': 'option',
                                             'qmark': '@',
                                             'message': 'Request from who',
-                                            'choices': [f.get('name') for f in friends]
+                                            'choices': [f.get('name') for ip, f in friends]
                                         }
                                         answer = prompt(options, style=style)
                                         if not answer:
@@ -1028,86 +997,76 @@ def main():
         elif option == 'kick_by_ip':
             collector = IPCollector()
             collector.start()
-            for i in tqdm(range(10), ascii=True, desc='Collecting session'):
+            for _ in tqdm(range(10), ascii=True, desc='Collecting session'):
                 time.sleep(1)
             collector.stop()
-            mylist = collector.ips
-            mylist = list(set(mylist))
+            ip_set = set(collector.ips)
             os.system('cls')
-            d = []
-            if len(mylist) <= 0:
+            if len(ip_set) <= 0:
                 print_white('None')
                 break
-            else:
-                for x in mylist:
-                    d.append({'name': x})
-                options = {
-                    'type': 'checkbox',
-                    'name': 'option',
-                    'qmark': '@',
-                    'message': 'Select IP\'s to kick',
-                    'choices': d
-                }
-                answer = prompt(options, style=style)
-                if not answer:
-                    os.system('cls')
-                    break
+            options = {
+                'type': 'checkbox',
+                'name': 'option',
+                'qmark': '@',
+                'message': 'Select IP\'s to kick',
+                'choices': [ip for ip in ip_set]
+            }
+            answer = prompt(options, style=style)
+            if not answer:
+                os.system('cls')
+                break
+
             ips = answer['option']
             print_white('Running: "' +
                         Fore.LIGHTBLACK_EX + 'Blacklist' +
                         Fore.LIGHTWHITE_EX + '"')
-            blacklist = Blacklist(ips=ips)
-            blacklist.start()
+            packet_filter = Blacklist(ips=ips)
+            packet_filter.start()
             time.sleep(10)
-            blacklist.stop()
+            packet_filter.stop()
 
         elif option == 'kick':
-            config = data.read_file()
-            local_list = config.get('custom_ips')
-            cloud_list = config.get('friends')
-            soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            soc.connect(("8.8.8.8", 80))
-            local_ip = soc.getsockname()[0]
-            soc.close()
-            mylist = [local_ip]
+            local_ip = get_private_ip()
+            ip_set = {local_ip}
             public_ip = get_public_ip()
             if public_ip:
-                mylist.append(public_ip)
+                ip_set.add(public_ip)
             else:
                 print_white('Failed to get Public IP. Running without.')
-            for x in local_list:
-                if x.get('enabled'):
+            for ip, friend in custom_ips:
+                if friend.get('enabled'):
                     try:
-                        ip = IPValidator().validate_get(x.get('ip'))
-                        mylist.append(ip)
+                        ip_calc = IPValidator().validate_get(ip)
+                        ip_set.add(ip_calc)
                     except ValidationError:
-                        logger.warning('Not valid IP or URL: {}'.format(x.get('ip')))
+                        logger.warning('Not valid IP or URL: {}'.format(ip))
                         print_white('Not valid IP or URL: "' +
-                                    Fore.LIGHTCYAN_EX + '{}'.format(x.get('ip')) +
+                                    Fore.LIGHTCYAN_EX + '{}'.format(ip) +
                                     Fore.LIGHTWHITE_EX + '"')
                         continue
-            for x in cloud_list:
-                if x.get('enabled'):
-                    mylist.append(x.get('ip'))
+
+            for ip, friend in friends:
+                if friend.get('enabled'):
+                    ip_set.add(ip)
             print_white('Kicking unknowns')
             time.sleep(2)
-            whitelist = Whitelist(ips=mylist)
-            whitelist.start()
+            packet_filter = Whitelist(ips=ip_set)
+            packet_filter.start()
             time.sleep(10)
-            whitelist.stop()
+            packet_filter.stop()
             continue
 
         elif option == 'new':
             print_white('Creating new session')
             time.sleep(2)
-            whitelist = Whitelist(ips=[])
-            whitelist.start()
+            packet_filter = Whitelist(ips=[])
+            packet_filter.start()
             time.sleep(10)
-            whitelist.stop()
+            packet_filter.stop()
             continue
 
         elif option == 'token':
-            config = data.read_file()
             token = config.get('token')
             options = {
                 'type': 'input',
@@ -1122,8 +1081,8 @@ def main():
             if not answer:
                 os.system('cls')
                 continue
-            config['token'] = answer['token']
-            data.save_file(config)
+            config.set('token', answer['token'])
+            config.save()
             os.system('cls')
             print_white('New token: "' +
                         Fore.LIGHTCYAN_EX + answer['token'] +
@@ -1131,7 +1090,6 @@ def main():
 
         elif option == 'support_zip':
             os.system('cls')
-            config = data.read_file()
             print_white('NOTICE: This program will now log all udp traffic on port 6672 for 1 minute. '
                         'Only run this if you are okay with that.')
             options = {
@@ -1147,26 +1105,24 @@ def main():
             if answer.get('agree'):
                 local_list = config.get('custom_ips')
                 cloud_list = config.get('friends')
-                mylist = []
-                for x in local_list:
-                    if x.get('enabled'):
+                ip_set = []
+                for friend in local_list:
+                    if friend.get('enabled'):
                         try:
-                            ip = IPValidator().validate_get(x.get('ip'))
-                            mylist.append(ip)
+                            ip = IPValidator().validate_get(friend.get('ip'))
+                            ip_set.append(ip)
                         except ValidationError:
                             continue
-                for x in cloud_list:
-                    if x.get('enabled'):
-                        mylist.append(x.get('ip'))
-                debugger = Debugger(mylist)
+                for friend in cloud_list:
+                    if friend.get('enabled'):
+                        ip_set.append(friend.get('ip'))
+                debugger = Debugger(ip_set)
                 debugger.start()
                 for _ in tqdm(range(60), ascii=True, desc='Collecting Requests'):
                     time.sleep(1)
                 debugger.stop()
                 time.sleep(1)
                 print_white('Collecting data')
-                customlist = config.get('custom_ips')
-                cloudlist = config.get('friends')
                 token = config.get('token')
                 print_white('Checking connections')
                 runner = networkmanager.Cloud()
@@ -1189,8 +1145,8 @@ def main():
                 datas = {
                     'token': has_token,
                     'da_status': da_status,
-                    'customlist': customlist,
-                    'cloud': cloudlist
+                    'customlist': custom_ips,
+                    'cloud': friends
                 }
 
                 print_white('Writing data')
@@ -1224,6 +1180,17 @@ def main():
 
 if __name__ == '__main__':
     freeze_support()
+    config = data.ConfigData(data.file_name)
+    try:
+        blacklist = data.CustomList('blacklist')
+        custom_ips = data.CustomList('custom_ips')
+        friends = data.CustomList('friends')
+    except data.MigrationRequired:
+        data.migrate_to_dict()
+        print_white("Config files required migration, please restart the program.")
+        time.sleep(5)
+        exit(0)
+
     os.system('cls')
     logger.info('Init')
     if not ctypes.windll.shell32.IsUserAnAdmin():
@@ -1236,10 +1203,10 @@ if __name__ == '__main__':
     if not pydivert.WinDivert.is_registered():
         pydivert.WinDivert.register()
     ctypes.windll.kernel32.SetConsoleTitleW('Guardian {}'.format(version))
-    conn = networkmanager.Cloud('')
+    cloud = networkmanager.Cloud()
     print_white('Checking connections.')
-    if conn.check_connection():
-        version = conn.version()
+    if cloud.check_connection():
+        version = cloud.version()
         version = version.get('version', None) if version else None
         if version:
             if StrictVersion(version) > StrictVersion(version):
@@ -1255,11 +1222,10 @@ if __name__ == '__main__':
                 answer = prompt(options, style=style)
                 if answer['option']:
                     webbrowser.open('https://www.thedigitalarc.com/software/Guardian')
-        config = data.read_file()
         token = config.get('token')
         if token:
-            conn = networkmanager.Cloud(token)
-            if conn.check_token():
+            cloud.token = token
+            if cloud.check_token():
                 ipsyncer = IPSyncer(token)
                 ipsyncer.start()
                 print_white('Starting IP syncer.')
