@@ -1,6 +1,8 @@
 import os
 import json
 from network.networkmanager import Cloud
+from app import IPValidator, print_white
+from questionary import ValidationError, confirm
 file_name = 'data.json'
 
 
@@ -119,12 +121,28 @@ def update_cloud_friends():
 
 
 def migrate_to_dict():
+    error = False
     config = ConfigData(file_name)
     for key, value in config:
         if type(value) is list:
             d = {}
             for item in value:
-                ip = item.pop('ip')
-                d[ip] = item
+                try:
+                    ip = item.pop('ip')
+                    ip_calc = IPValidator.validate_get(ip)
+                    if ip != ip_calc:
+                        item['value'] = ip
+                    d[ip_calc] = item
+                except ValidationError as e:
+                    print_white(e.message)
+                    delete = confirm("Do you want to delete it").ask()
+                    print(delete)
+                    if not delete:
+                        error = True
+                    continue
             config.set(key, d)
-    config.save()
+    if not error:
+        config.save()
+        print_white("Config files required migration, please restart the program.")
+    else:
+        print_white("Issues found in some items, delete or fix them manually to proceed.")

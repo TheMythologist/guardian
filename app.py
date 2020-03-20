@@ -114,8 +114,11 @@ class IPValidator(Validator):
             else:
                 raise error
             return ip
-        except (ipaddress.AddressValueError, socket.gaierror):
+        except ipaddress.AddressValueError:
             raise error
+        except socket.gaierror:
+            raise ValidationError(message='URL {} can\'t be resolved to IP.'.format(text),
+                                  cursor_position=len(text))  # Move cursor to end
 
 
 class IPInCustom(IPValidator):
@@ -1187,7 +1190,6 @@ if __name__ == '__main__':
         friends = data.CustomList('friends')
     except data.MigrationRequired:
         data.migrate_to_dict()
-        print_white("Config files required migration, please restart the program.")
         time.sleep(5)
         exit(0)
 
