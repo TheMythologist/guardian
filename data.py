@@ -124,7 +124,7 @@ def migrate_to_dict():
         if type(value) is list:
             d = {}
             for item in value:
-                item.pop('ip')
-                d['ip'] = item
+                ip = item.pop('ip')
+                d[ip] = item
             config.set(key, d)
     config.save()
