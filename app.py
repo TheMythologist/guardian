@@ -265,7 +265,7 @@ def main():
             for ip, friend in custom_ips:
                 if friend.get('enabled'):
                     try:
-                        ip_calc = IPValidator().validate_get(ip)
+                        ip_calc = IPValidator.validate_get(ip)
                         ip_set.add(ip_calc)
                     except ValidationError:
                         logger.warning('Not valid IP or URL: {}'.format(ip))
@@ -302,7 +302,7 @@ def main():
             for ip, item in blacklist:
                 if item.get('enabled'):
                     try:
-                        ip = IPValidator().validate_get(item.get('ip'))
+                        ip = IPValidator.validate_get(item.get('ip'))
                         ip_set.add(ip)
                     except ValidationError:
                         logger.warning('Not valid IP or URL: {}'.format(ip))
@@ -350,7 +350,7 @@ def main():
             for ip, friend in custom_ips:
                 if friend.get('enabled'):
                     try:
-                        ip_calc = IPValidator().validate_get(ip)
+                        ip_calc = IPValidator.validate_get(ip)
                         ip_set.add(ip_calc)
                     except ValidationError:
                         logger.warning('Not valid IP or URL: {}'.format(ip))
@@ -1037,7 +1037,7 @@ def main():
             for ip, friend in custom_ips:
                 if friend.get('enabled'):
                     try:
-                        ip_calc = IPValidator().validate_get(ip)
+                        ip_calc = IPValidator.validate_get(ip)
                         ip_set.add(ip_calc)
                     except ValidationError:
                         logger.warning('Not valid IP or URL: {}'.format(ip))
@@ -1109,7 +1109,7 @@ def main():
                 for friend in local_list:
                     if friend.get('enabled'):
                         try:
-                            ip = IPValidator().validate_get(friend.get('ip'))
+                            ip = IPValidator.validate_get(friend.get('ip'))
                             ip_set.append(ip)
                         except ValidationError:
                             continue
