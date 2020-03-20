@@ -499,15 +499,18 @@ def main():
                             if not answer:
                                 os.system('cls')
                                 continue
-                            ip = IPValidator.validate_get(answer['ip'])
-                            item = {
-                                'name': answer['name'],
-                                'enabled': True
-                            }
-                            if ip != answer['ip']:
-                                item['value'] = answer['ip']
-                            custom_ips.add(ip, item)
-                            config.save()
+                            try:
+                                ip = IPValidator.validate_get(answer['ip'])
+                                item = {
+                                    'name': answer['name'],
+                                    'enabled': True
+                                }
+                                if ip != answer['ip']:
+                                    item['value'] = answer['ip']
+                                custom_ips.add(ip, item)
+                                config.save()
+                            except ValidationError as e:
+                                print_white(e.message)
 
                         elif answer['option'] == 'list':
                             os.system('cls')
@@ -588,16 +591,19 @@ def main():
                                             if not answer:
                                                 os.system('cls')
                                                 break
-                                            ip = IPValidator.validate_get(answer['ip'])
-                                            item['name'] = answer['name']
-                                            item['enabled'] = True
-                                            if ip != answer['ip']:
-                                                item['value'] = answer['ip']
-                                            custom_ips.add(ip, item)
-                                            config.save()
-                                            custom_ips.add(ip, item)
-                                            config.save()
-                                            os.system('cls')
+                                            try:
+                                                ip = IPValidator.validate_get(answer['ip'])
+                                                item['name'] = answer['name']
+                                                item['enabled'] = True
+                                                if ip != answer['ip']:
+                                                    item['value'] = answer['ip']
+                                                custom_ips.add(ip, item)
+                                                config.save()
+                                                os.system('cls')
+                                            except ValidationError as e:
+                                                custom_ips.add(ip, item)
+                                                config.save()
+                                                print_white('Original item was restored due to error: '+e.message)
                                             break
 
                                     elif answer['option'] == 'delete':
@@ -686,15 +692,18 @@ def main():
                             if not answer:
                                 os.system('cls')
                                 continue
-                            ip = IPValidator.validate_get(answer['ip'])
-                            item = {
-                                'name': answer['name'],
-                                'enabled': True
-                            }
-                            if ip != answer['ip']:
-                                item['value'] = answer['ip']
-                            blacklist.add(ip, item)
-                            config.save()
+                            try:
+                                ip = IPValidator.validate_get(answer['ip'])
+                                item = {
+                                    'name': answer['name'],
+                                    'enabled': True
+                                }
+                                if ip != answer['ip']:
+                                    item['value'] = answer['ip']
+                                blacklist.add(ip, item)
+                                config.save()
+                            except ValidationError as e:
+                                print_white(e.message)
 
                         elif answer['option'] == 'list':
                             os.system('cls')
@@ -775,16 +784,19 @@ def main():
                                             if not answer:
                                                 os.system('cls')
                                                 break
-                                            ip = IPValidator.validate_get(answer['ip'])
-                                            item['name'] = answer['name']
-                                            item['enabled'] = True
-                                            if ip != answer['ip']:
-                                                item['value'] = answer['ip']
-                                            blacklist.add(ip, item)
-                                            config.save()
-                                            blacklist.add(ip, item)
-                                            config.save()
-                                            os.system('cls')
+                                            try:
+                                                ip = IPValidator.validate_get(answer['ip'])
+                                                item['name'] = answer['name']
+                                                item['enabled'] = True
+                                                if ip != answer['ip']:
+                                                    item['value'] = answer['ip']
+                                                blacklist.add(ip, item)
+                                                config.save()
+                                                os.system('cls')
+                                            except ValidationError as e:
+                                                blacklist.add(ip, item)
+                                                config.save()
+                                                print_white('Original item was restored due to error: '+e.message)
                                             break
 
                                     elif answer['option'] == 'delete':
