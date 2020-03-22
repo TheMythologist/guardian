@@ -85,7 +85,7 @@ class CustomList(ConfigData):
 
     def find(self, value, key='name'):
         items = self.find_all(value, key)
-        return items[0] if items else None
+        return items[0] if items else (None, None)
 
     def find_all(self, value, key='name'):
         return [(k, val) for k, val in self.data.items() if val.get(key, None) == value]
