@@ -116,7 +116,7 @@ def update_cloud_friends():
             missing.append(key)
     for key in missing:
         friends.delete(key)
-    friends.save()
+    config.save()
     return friends
 
 
