@@ -1203,7 +1203,7 @@ if __name__ == '__main__':
     except data.MigrationRequired:
         data.migrate_to_dict()
         time.sleep(5)
-        exit(0)
+        sys.exit()
 
     os.system('cls')
     logger.info('Init')
@@ -1218,6 +1218,7 @@ if __name__ == '__main__':
         pydivert.WinDivert.register()
     ctypes.windll.kernel32.SetConsoleTitleW('Guardian {}'.format(version))
     cloud = networkmanager.Cloud()
+    ipsyncer = IPSyncer(None)
     print_white('Checking connections.')
     if cloud.check_connection():
         version = cloud.version()
@@ -1240,7 +1241,7 @@ if __name__ == '__main__':
         if token:
             cloud.token = token
             if cloud.check_token():
-                ipsyncer = IPSyncer(token)
+                ipsyncer.token = token
                 ipsyncer.start()
                 print_white('Starting IP syncer.')
     while True:
@@ -1248,3 +1249,5 @@ if __name__ == '__main__':
             main()
         except KeyboardInterrupt:
             continue
+        finally:
+            ipsyncer.stop()
