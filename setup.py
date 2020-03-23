@@ -2,6 +2,7 @@ from cx_Freeze import setup, Executable
 import zipfile
 import os
 import shutil
+import sys
 # Dependencies are automatically detected, but it might need
 # fine tuning.
 zip_exclude_packages = [
@@ -17,8 +18,10 @@ executables = [
 
 version = '3.0.2'
 
-if os.path.exists('build/exe.win-amd64-3.6'):
-    shutil.rmtree('build/exe.win-amd64-3.6')
+build_path = 'build/exe.win-amd64-{}.{}'.format(sys.version_info.major, sys.version_info.minor)
+
+if os.path.exists(build_path):
+    shutil.rmtree(build_path)
 
 if not os.path.exists('build/exe'):
     os.makedirs('build/exe')
@@ -48,18 +51,18 @@ def zip_folder(folder_path, output_path):
             absolute_path = os.path.join(root, folder_name)
             relative_path = absolute_path.replace(parent_folder + '\\',
                                                   '')
-            zip_file.write(absolute_path, relative_path.replace('build/exe.win-amd64-3.6', ''))
+            zip_file.write(absolute_path, relative_path.replace(build_path, ''))
         for file_name in files:
             absolute_path = os.path.join(root, file_name)
             relative_path = absolute_path.replace(parent_folder + '\\',
                                                   '')
-            zip_file.write(absolute_path, relative_path.replace('build/exe.win-amd64-3.6', ''))
+            zip_file.write(absolute_path, relative_path.replace(build_path, ''))
     zip_file.close()
 
 try:
-    shutil.copyfile('LICENSE', 'build/exe.win-amd64-3.6/LICENSE')
-    shutil.copyfile('SOURCE', 'build/exe.win-amd64-3.6/SOURCE')
+    shutil.copyfile('LICENSE', build_path + '/LICENSE')
+    shutil.copyfile('SOURCE', build_path + '/SOURCE')
 except:
     pass
 
-zip_folder('build/exe.win-amd64-3.6', 'build\exe\guardian-{}.zip'.format(version))
+zip_folder(build_path, 'build\exe\guardian-{}.zip'.format(version))
