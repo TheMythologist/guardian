@@ -6,6 +6,7 @@ import logging
 import data
 from network import networkmanager
 from app import IPValidator
+from questionary import ValidationError
 
 debug_logger = logging.getLogger('debugger')
 debug_logger.setLevel(logging.DEBUG)
@@ -112,10 +113,14 @@ class IPSyncer(object):
                     for ip, item in l:
                         domain = item.get('value')
                         if domain:
-                            ip_calc = IPValidator.validate_get(domain)
-                            if ip != ip_calc:
-                                outdated.append(ip)
-                                new[ip_calc] = item
+                            try:
+                                ip_calc = IPValidator.validate_get(domain)
+                                if ip != ip_calc:
+                                    outdated.append(ip)
+                                    new[ip_calc] = item
+                            except ValidationError as e:
+                                logger.warning(e.message)
+                                continue
                     for old, new, item in zip(outdated, new.keys(), new.values()):
                         l.delete(old)
                         l.add(new, item)
