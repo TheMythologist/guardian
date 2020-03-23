@@ -7,14 +7,29 @@ file_name = 'data.json'
 
 
 class MigrationRequired(Exception):
+    """
+    Custom exception to notify data migration is required
+    """
     pass
 
 
 class ConfigData:
+    """
+    Abstraction of the configuration storage implemented in a singleton-like way to have easy global access and avoid re-reads
+    :var instance: Global instance of the internal class for the data source
+    :vartype instance: __DataSource
+    """
     instance = None
 
     class __DataSource:
+        """
+        Configuration data source
+        """
         def __init__(self, data_file):
+            """
+
+            :param data_file:
+            """
             self.data_file = data_file
             self.data = {
                 'config': {},
@@ -29,26 +44,55 @@ class ConfigData:
             self.token = self.data.get('token', None)
 
         def save(self):
+            """
+
+            :return: None
+            """
             if not os.path.isfile(self.data_file):
                 self.__create()
             with open(self.data_file, "w") as file:
                 json.dump(self.data, file, indent=4)
 
         def __create(self):
+            """
+
+            :return: None
+            """
             with open(self.data_file, "w") as write_file:
                 json.dump(self.data, write_file, indent=4)
 
     def __init__(self, data_file):
+        """
+        Instantiate the data source item if it isn't defined already.
+        :param data_file: Config file path
+        :vartype data_file: str
+        """
         if not ConfigData.instance:
             ConfigData.instance = ConfigData.__DataSource(data_file)
 
     def get(self, key, default=None):
+        """
+        Retrieve data from the configuration
+        :param key: Key to find in the config data
+        :param default: Value to return if key is not present
+        :return: Appropiate value or None
+        """
         return self.instance.data.get(key, default)
 
     def set(self, key, value):
+        """
+        Set data to configuration
+        :param key: Key to store the data on the config
+        :param value: Value to store
+        :return:  None
+        """
         self.instance.data[key] = value
 
     def save(self):
+        """
+        Store the changes made on memory to the data file
+        :return:  None
+        """
         if self.instance:
             self.instance.save()
 
@@ -57,7 +101,14 @@ class ConfigData:
 
 
 class CustomList(ConfigData):
+    """
+    Extra lists to store on the configuration data
+    """
     def __init__(self, name):
+        """
+        Retrieves or initializes the list with specified name
+        :param name: List name
+        """
         super().__init__(None)
         self.name = name
         self.data = self.instance.data.get(name, None) if self.instance else None
@@ -78,26 +129,65 @@ class CustomList(ConfigData):
         return len(self.data)
 
     def add(self, key, value):
+        """
+        Add item to the list
+        :param key: Key to store the data on the list
+        :param value: Value to store
+        :return: None
+        """
         self.data[key] = value
 
     def get(self, key, default=None):
+        """
+        Retrieve data from the list
+        :param key: Key identifying the data to retrieve
+        :param default: Value to return if Key is not found on the list
+        :return: Appropiate data from the list or default
+        """
         return self.data.get(key, default)
 
     def find(self, value, key='name'):
+        """
+        Retrieve the first item from the list by it's key property value
+        :param value: Value to find
+        :param key: Name of the attribute to compare with
+        :return: The item or None
+        """
         items = self.find_all(value, key)
         return items[0] if items else (None, None)
 
     def find_all(self, value, key='name'):
+        """
+        Retrieve all items from the list whose key property equals value
+        :param value: Value to find
+        :param key: Name of the attribute to compare with
+        :return: List with all the items matching
+        """
         return [(k, val) for k, val in self.data.items() if val.get(key, None) == value]
 
     def pop(self, key, default=None):
+        """
+        Retrieve and delete an item from the list
+        :param key: Key identifying the item to retrieve
+        :param default: Value to return if Key is not found on the list
+        :return: Appropiate item from the list or default
+        """
         return self.data.pop(key, default)
 
     def delete(self, key):
+        """
+        Delete an item from the list
+        :param key: Key identifying the item to delete
+        :return: None
+        """
         self.pop(key, None)
 
 
 def update_cloud_friends():
+    """
+    Get the list of approved friends from cloud
+    :return: Dict of cloud friends
+    """
     config = ConfigData(file_name)
     friends = CustomList('friends')
     token = config.get('token', None)
@@ -121,6 +211,10 @@ def update_cloud_friends():
 
 
 def migrate_to_dict():
+    """
+    Aux function to migrate if old data file is being used
+    :return: None
+    """
     error = False
     config = ConfigData(file_name)
     for key, value in config:

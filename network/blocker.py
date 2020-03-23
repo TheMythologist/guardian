@@ -20,10 +20,13 @@ ipfilter = re.compile(r'^(185\.56\.6[4-7]\.\d{1,3})$')
 logger = logging.getLogger('guardian')
 packetfilter = "(udp.SrcPort == 6672 or udp.DstPort == 6672) and ip"
 
+
 class Whitelist(object):
+    """
+    Packet filter that will allow packets from with source ip present on ips list
+    """
     def __init__(self, ips):
         """
-
         :param list ips:
         """
         self.ips = ips
@@ -45,7 +48,6 @@ class Whitelist(object):
             with pydivert.WinDivert(packetfilter) as w:
                 for packet in w:
                     ip = packet.ip.src_addr
-                    temp = packet.ip.dst_addr
                     if ipfilter.match(ip):
                         w.send(packet)
                     elif ip in self.ips:
@@ -55,9 +57,11 @@ class Whitelist(object):
 
 
 class Blacklist(object):
+    """
+    Packet filter that will block packets from with source ip present on ips list
+    """
     def __init__(self, ips):
         """
-
         :param list ips:
         """
         self.ips = ips
@@ -79,7 +83,6 @@ class Blacklist(object):
             with pydivert.WinDivert(packetfilter) as w:
                 for packet in w:
                     ip = packet.ip.src_addr
-                    temp = packet.ip.dst_addr
                     if ip not in self.ips:
                         w.send(packet)
         except KeyboardInterrupt:
@@ -87,13 +90,22 @@ class Blacklist(object):
 
 
 class IPSyncer(object):
+    """
+    Looper thread to update user ip to the cloud and domain based list items ips
+    """
     def __init__(self, token):
+        """
+        :param token: Cloud api token
+        """
         self.token = token
         self.process = multiprocessing.Process(target=self.run, args=())
         self.process.daemon = True
 
     def start(self):
-        self.process.start()
+        if self.token:
+            self.process.start()
+        else:
+            logger.warning("Tried to start IPSyncer without token")
 
     def stop(self):
         self.process.terminate()
@@ -133,6 +145,9 @@ class IPSyncer(object):
 
 
 class Debugger(object):
+    """
+    Thread to create a log of the ips matching the packet filter
+    """
     def __init__(self, ips):
         self.ips = ips
         self.process = multiprocessing.Process(target=self.run, args=())
@@ -173,6 +188,9 @@ class Debugger(object):
 
 
 class IPCollector(object):
+    """
+    Thread to store all the ip addresses matching the packet filter
+    """
     def __init__(self):
         self.process = multiprocessing.Process(target=self.run, args=())
         self.process.daemon = True
