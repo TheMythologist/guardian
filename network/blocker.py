@@ -1,6 +1,5 @@
 import multiprocessing
 import pydivert
-import time
 import re
 import logging
 import data
@@ -93,13 +92,13 @@ class IPSyncer(object):
     """
     Looper thread to update user ip to the cloud and domain based list items ips
     """
-    def __init__(self, token):
+    def __init__(self, token, event):
         """
         :param token: Cloud api token
         """
         self.token = token
         self.process = multiprocessing.Process(target=self.run, args=())
-        self.process.daemon = True
+        self.exit = event
 
     def start(self):
         if self.token:
@@ -108,10 +107,12 @@ class IPSyncer(object):
             logger.warning("Tried to start IPSyncer without token")
 
     def stop(self):
-        self.process.terminate()
+        if self.token:
+            self.exit.set()
+            self.process.join()
 
     def run(self):
-        while True:
+        while not self.exit.is_set():
             try:
                 conn = networkmanager.Cloud(self.token)
                 if conn.check_token():
@@ -139,7 +140,7 @@ class IPSyncer(object):
                         logger.info("Updated {} ip".format(item.get('name', 'Unknown')))
 
                 config.save()
-                time.sleep(300)
+                self.exit.wait(300)
             except KeyboardInterrupt:
                 pass
 

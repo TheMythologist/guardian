@@ -7,7 +7,7 @@ from colorama import Fore
 from network.blocker import *
 import pydivert
 import sys
-from multiprocessing import freeze_support
+from multiprocessing import freeze_support, Event
 import ipaddress
 from network import networkmanager
 from distutils.version import StrictVersion
@@ -16,6 +16,7 @@ import socket
 from tqdm import tqdm
 import zipfile
 import json
+import time
 import logging
 
 logger = logging.getLogger('guardian')
@@ -1218,7 +1219,7 @@ if __name__ == '__main__':
         pydivert.WinDivert.register()
     ctypes.windll.kernel32.SetConsoleTitleW('Guardian {}'.format(version))
     cloud = networkmanager.Cloud()
-    ipsyncer = IPSyncer(None)
+    ipsyncer = IPSyncer(None, Event())
     print_white('Checking connections.')
     if cloud.check_connection():
         version = cloud.version()
