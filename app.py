@@ -7,7 +7,7 @@ from colorama import Fore
 from network.blocker import *
 import pydivert
 import sys
-from multiprocessing import freeze_support, Event
+from multiprocessing import freeze_support
 import ipaddress
 from network import networkmanager
 from distutils.version import StrictVersion
@@ -1219,7 +1219,7 @@ if __name__ == '__main__':
         pydivert.WinDivert.register()
     ctypes.windll.kernel32.SetConsoleTitleW('Guardian {}'.format(version))
     cloud = networkmanager.Cloud()
-    ipsyncer = IPSyncer(None, Event())
+    ipsyncer = IPSyncer(None)
     print_white('Checking connections.')
     if cloud.check_connection():
         version = cloud.version()
