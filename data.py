@@ -114,7 +114,7 @@ class CustomList(ConfigData):
         self.data = self.instance.data.get(name, None) if self.instance else None
         if type(self.data) is list:
             raise MigrationRequired("Need to update to using dicts")
-        if not self.data:
+        if self.data is None:
             self.data = {}
             self.instance.data[self.name] = self.data
             self.save()
@@ -145,6 +145,16 @@ class CustomList(ConfigData):
         :return: Appropiate data from the list or default
         """
         return self.data.get(key, default)
+
+    def has(self, value, key='name'):
+        """
+        Check if item exists from the list by it's key property value
+        :param value:
+        :param key:
+        :return:
+        """
+        items = self.find_all(value, key)
+        return True if items else False
 
     def find(self, value, key='name'):
         """

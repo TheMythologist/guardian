@@ -92,13 +92,13 @@ class IPSyncer(object):
     """
     Looper thread to update user ip to the cloud and domain based list items ips
     """
-    def __init__(self, token, event):
+    def __init__(self, token):
         """
         :param token: Cloud api token
         """
         self.token = token
         self.process = multiprocessing.Process(target=self.run, args=())
-        self.exit = event
+        self.exit = multiprocessing.Event()
 
     def start(self):
         if self.token:

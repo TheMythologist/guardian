@@ -7,7 +7,7 @@ from colorama import Fore
 from network.blocker import *
 import pydivert
 import sys
-from multiprocessing import freeze_support, Event
+from multiprocessing import freeze_support
 import ipaddress
 from network import networkmanager
 from distutils.version import StrictVersion
@@ -73,7 +73,7 @@ def get_private_ip():
 class NameInCustom(Validator):
     def validate(self, document):
         global custom_ips
-        if custom_ips.find(document.text):
+        if custom_ips.has(document.text):
             raise ValidationError(
                 message='Name already in list',
                 cursor_position=len(document.text))  # Move cursor to end
@@ -82,7 +82,7 @@ class NameInCustom(Validator):
 class NameInBlacklist(Validator):
     def validate(self, document):
         global blacklist
-        if blacklist.find(document.text):
+        if blacklist.has(document.text):
             raise ValidationError(
                 message='Name already in list',
                 cursor_position=len(document.text))  # Move cursor to end
@@ -126,7 +126,7 @@ class IPInCustom(IPValidator):
     def validate(self, document):
         super().validate(document)
         global custom_ips
-        if document.text in custom_ips or custom_ips.find(document.text, 'value'):
+        if document.text in custom_ips or custom_ips.has(document.text, 'value'):
             raise ValidationError(
                 message='IP already in list',
                 cursor_position=len(document.text)
@@ -137,7 +137,7 @@ class IPInBlacklist(Validator):
     def validate(self, document):
         super().validate(document)
         global blacklist
-        if document.text in blacklist or blacklist.find(document.text, 'value'):
+        if document.text in blacklist or blacklist.has(document.text, 'value'):
             raise ValidationError(
                 message='IP already in list',
                 cursor_position=len(document.text)
@@ -1219,7 +1219,7 @@ if __name__ == '__main__':
         pydivert.WinDivert.register()
     ctypes.windll.kernel32.SetConsoleTitleW('Guardian {}'.format(version))
     cloud = networkmanager.Cloud()
-    ipsyncer = IPSyncer(None, Event())
+    ipsyncer = IPSyncer(None)
     print_white('Checking connections.')
     if cloud.check_connection():
         version = cloud.version()
