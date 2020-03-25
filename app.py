@@ -126,7 +126,7 @@ class IPInCustom(IPValidator):
     def validate(self, document):
         super().validate(document)
         global custom_ips
-        if document.text in custom_ips or custom_ips.find(document.text, 'value'):
+        if document.text in custom_ips or custom_ips.has(document.text, 'value'):
             raise ValidationError(
                 message='IP already in list',
                 cursor_position=len(document.text)
