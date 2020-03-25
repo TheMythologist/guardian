@@ -114,7 +114,7 @@ class CustomList(ConfigData):
         self.data = self.instance.data.get(name, None) if self.instance else None
         if type(self.data) is list:
             raise MigrationRequired("Need to update to using dicts")
-        if not self.data:
+        if self.data is None:
             self.data = {}
             self.instance.data[self.name] = self.data
             self.save()
