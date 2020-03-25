@@ -146,6 +146,16 @@ class CustomList(ConfigData):
         """
         return self.data.get(key, default)
 
+    def has(self, value, key='name'):
+        """
+        Check if item exists from the list by it's key property value
+        :param value:
+        :param key:
+        :return:
+        """
+        items = self.find_all(value, key)
+        return True if items else False
+
     def find(self, value, key='name'):
         """
         Retrieve the first item from the list by it's key property value

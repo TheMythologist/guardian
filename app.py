@@ -73,7 +73,7 @@ def get_private_ip():
 class NameInCustom(Validator):
     def validate(self, document):
         global custom_ips
-        if custom_ips.find(document.text):
+        if custom_ips.has(document.text):
             raise ValidationError(
                 message='Name already in list',
                 cursor_position=len(document.text))  # Move cursor to end
@@ -82,7 +82,7 @@ class NameInCustom(Validator):
 class NameInBlacklist(Validator):
     def validate(self, document):
         global blacklist
-        if blacklist.find(document.text):
+        if blacklist.has(document.text):
             raise ValidationError(
                 message='Name already in list',
                 cursor_position=len(document.text))  # Move cursor to end
@@ -137,7 +137,7 @@ class IPInBlacklist(Validator):
     def validate(self, document):
         super().validate(document)
         global blacklist
-        if document.text in blacklist or blacklist.find(document.text, 'value'):
+        if document.text in blacklist or blacklist.has(document.text, 'value'):
             raise ValidationError(
                 message='IP already in list',
                 cursor_position=len(document.text)
