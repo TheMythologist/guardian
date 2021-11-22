@@ -26,11 +26,12 @@ to confirm if that actually is the case. Ideally, ipfilter should be a range of 
 and / or matchmaking requests, and so the checks for packet sizes will be done only if the packet has come from an IP
 in the ipfilter range.
 
-So, ipfilter currently remains unused.
+So, ipfilter's usage has been removed from the Whitelist class. I didn't completely remove it because I think it would
+still be useful to compare how the new rules can drop tunnels while still letting heartbeats and matchmaking through.
 """
 ipfilter = re.compile(r'^(185\.56\.6[4-7]\.\d{1,3})$')
 logger = logging.getLogger('guardian')
-#packetfilter = "(udp.SrcPort == 6672 or udp.DstPort == 6672) and ip"
+# packetfilter = "(udp.SrcPort == 6672 or udp.DstPort == 6672) and ip"
 
 """
 I decided to filter only on packets inbound to 6672 because most of the new filtering logic only checks inbound packets,
@@ -51,13 +52,15 @@ should be let through so the session stays online)
 
 Interesting note: All the matchmaker requests have payload sizes that may be 16 bytes apart.
 """
-heartbeat_sizes = {12, 18}                  # sets allow O(1) lookup
-matchmaking_sizes = {245, 261, 277, 293}    # probably a player looking to join the session.
+heartbeat_sizes = {12, 18}  # sets allow O(1) lookup
+matchmaking_sizes = {245, 261, 277, 293}  # probably a player looking to join the session.
+
 
 class Whitelist(object):
     """
     Packet filter that will allow packets from with source ip present on ips list
     """
+
     def __init__(self, ips):
         """
         :param list ips:
@@ -102,6 +105,7 @@ class Blacklist(object):
     """
     Packet filter that will block packets from with source ip present on ips list
     """
+
     def __init__(self, ips):
         """
         :param list ips:
@@ -135,6 +139,7 @@ class IPSyncer(object):
     """
     Looper thread to update user ip to the cloud and domain based list items ips
     """
+
     def __init__(self, token):
         """
         :param token: Cloud api token
@@ -192,6 +197,7 @@ class Debugger(object):
     """
     Thread to create a log of the ips matching the packet filter
     """
+
     def __init__(self, ips):
         self.ips = ips
         self.process = multiprocessing.Process(target=self.run, args=())
@@ -213,16 +219,16 @@ class Debugger(object):
                 whitelisted = False
                 reserved_allow = False  # Packet from a reserved IP was allowed.
                 reserved_block = False  # Packet from a reserved IP was blocked.
-                service = False         # Packet was allowed because it could be heartbeat / matchmaker but is not from a reserved IP.
+                service = False  # Packet allowed because it could be heartbeat / matchmaker but not from a reserved IP.
                 if ipfilter.match(dst) or ipfilter.match(src):
                     if (size in heartbeat_sizes) or (size in matchmaking_sizes):
                         reserved_allow = True
                     else:
-                        reserved_block = True   # Came from a "reserved" IP but was blocked under the new rules.
+                        reserved_block = True  # Came from a "reserved" IP but was blocked under the new rules.
                 elif dst in self.ips or src in self.ips:
                     whitelisted = True
                 elif (size in heartbeat_sizes) or (size in matchmaking_sizes):
-                    service = True      # Was allowed because it may be service-related, but wasn't from a reserved IP.
+                    service = True  # Was allowed because it may be service-related, but wasn't from a reserved IP.
 
                 if whitelisted:
                     filler = 'Whitelist'
@@ -247,6 +253,7 @@ class IPCollector(object):
     """
     Thread to store all the ip addresses matching the packet filter
     """
+
     def __init__(self):
         self.process = multiprocessing.Process(target=self.run, args=())
         self.process.daemon = True
