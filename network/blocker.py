@@ -15,6 +15,19 @@ if not debug_logger.handlers:
     fh.setFormatter(logging.Formatter('%(asctime)s|%(levelname)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
     debug_logger.addHandler(fh)
 
+"""
+The main flaw in Guardian lies here, in the reserved IP range. I believe this is the R* / T2 IP space, right?
+In the current public build, any packet from these IPs is allowed, but we can no longer do this. We have to block
+tunnelled connections which may come from this IP range, while still allowing certain services like the
+session heartbeat and matchmaking requests.
+
+Currently, my proof-of-concept does not discern whether a heartbeat has come from a R* / T2 IP as I have not been able
+to confirm if that actually is the case. Ideally, ipfilter should be a range of all IPs that can send heartbeats
+and / or matchmaking requests, and so the checks for packet sizes will be done only if the packet has come from an IP
+in the ipfilter range.
+
+So, ipfilter currently remains unused.
+"""
 ipfilter = re.compile(r'^(185\.56\.6[4-7]\.\d{1,3})$')
 logger = logging.getLogger('guardian')
 #packetfilter = "(udp.SrcPort == 6672 or udp.DstPort == 6672) and ip"
@@ -32,6 +45,12 @@ NOTE: If R* ever updates Online to support IPv6, then "and ip" should be removed
 """
 packetfilter = "(udp.DstPort == 6672 and udp.PayloadLength > 0) and ip"
 
+"""
+Based on network observation, the payload sizes of packets which are probably some sort of heartbeat (and therefore
+should be let through so the session stays online)
+"""
+heartbeat_sizes = {12, 18}                  # sets allow O(1) lookup
+matchmaking_sizes = {245, 261, 277, 293}    # probably a player looking to join the session. they're all 16 bytes apart.
 
 class Whitelist(object):
     """
@@ -60,9 +79,10 @@ class Whitelist(object):
             with pydivert.WinDivert(packetfilter) as w:
                 for packet in w:
                     ip = packet.ip.src_addr
-                    if ipfilter.match(ip):
-                        w.send(packet)
-                    elif ip in self.ips:
+                    # The below rule had to go so we can block session tunnels.
+                    """if ipfilter.match(ip):
+                        w.send(packet)"""
+                    if ip in self.ips:
                         w.send(packet)
         except KeyboardInterrupt:
             pass
