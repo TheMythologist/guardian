@@ -17,7 +17,20 @@ if not debug_logger.handlers:
 
 ipfilter = re.compile(r'^(185\.56\.6[4-7]\.\d{1,3})$')
 logger = logging.getLogger('guardian')
-packetfilter = "(udp.SrcPort == 6672 or udp.DstPort == 6672) and ip"
+#packetfilter = "(udp.SrcPort == 6672 or udp.DstPort == 6672) and ip"
+
+"""
+I decided to filter only on packets inbound to 6672 because most of the new filtering logic only checks inbound packets,
+and I don't think it makes much sense to add extra load by checking outbound packets when we're not doing
+anything interesting with them at the moment. I also found the packet payload sizes to be more consistent when coming
+from R*-owned resources instead of looking at the responses to those requests.
+I also believe that strictly filtering on inbound helps the game remain unaware that packets are being filtered and
+this might mean that the game will probably behave in a more consistent manner.
+(If the game was aware packets weren't reaching clients, it may change its' behaviour)
+
+NOTE: If R* ever updates Online to support IPv6, then "and ip" should be removed.
+"""
+packetfilter = "(udp.DstPort == 6672 and udp.PayloadLength > 0) and ip"
 
 
 class Whitelist(object):
