@@ -48,9 +48,11 @@ packetfilter = "(udp.DstPort == 6672 and udp.PayloadLength > 0) and ip"
 """
 Based on network observation, the payload sizes of packets which are probably some sort of heartbeat (and therefore
 should be let through so the session stays online)
+
+Interesting note: All the matchmaker requests have payload sizes that may be 16 bytes apart.
 """
 heartbeat_sizes = {12, 18}                  # sets allow O(1) lookup
-matchmaking_sizes = {245, 261, 277, 293}    # probably a player looking to join the session. they're all 16 bytes apart.
+matchmaking_sizes = {245, 261, 277, 293}    # probably a player looking to join the session.
 
 class Whitelist(object):
     """
@@ -79,11 +81,19 @@ class Whitelist(object):
             with pydivert.WinDivert(packetfilter) as w:
                 for packet in w:
                     ip = packet.ip.src_addr
+                    size = len(packet.payload)  # the size of the payload. used to guess packet's behaviour / "intent"
                     # The below rule had to go so we can block session tunnels.
                     """if ipfilter.match(ip):
                         w.send(packet)"""
                     if ip in self.ips:
                         w.send(packet)
+                        """
+                    The "special sauce" for the new filtering logic. We're using payload sizes to guess if the packet
+                    has a behaviour we want to allow through.
+                    """
+                    elif (size in heartbeat_sizes) or (size in matchmaking_sizes):
+                        w.send(packet)
+
         except KeyboardInterrupt:
             pass
 
@@ -199,17 +209,29 @@ class Debugger(object):
             for packet in w:
                 dst = packet.ip.dst_addr
                 src = packet.ip.src_addr
-                reserved = False
+                size = len(packet.payload)
                 whitelisted = False
+                reserved_allow = False  # Packet from a reserved IP was allowed.
+                reserved_block = False  # Packet from a reserved IP was blocked.
+                service = False         # Packet was allowed because it could be heartbeat / matchmaker but is not from a reserved IP.
                 if ipfilter.match(dst) or ipfilter.match(src):
-                    reserved = True
+                    if (size in heartbeat_sizes) or (size in matchmaking_sizes):
+                        reserved_allow = True
+                    else:
+                        reserved_block = True   # Came from a "reserved" IP but was blocked under the new rules.
                 elif dst in self.ips or src in self.ips:
                     whitelisted = True
+                elif (size in heartbeat_sizes) or (size in matchmaking_sizes):
+                    service = True      # Was allowed because it may be service-related, but wasn't from a reserved IP.
 
-                if reserved:
-                    filler = 'Reserved'
-                elif whitelisted:
+                if whitelisted:
                     filler = 'Whitelist'
+                elif reserved_allow:
+                    filler = 'Reserved (Allowed)'
+                elif reserved_block:
+                    filler = 'Reserved (Blocked)'
+                elif service:
+                    filler = 'Service (Allowed)'
                 else:
                     filler = 'Blocked'
 
