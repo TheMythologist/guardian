@@ -7,6 +7,9 @@ from network import networkmanager
 from app import IPValidator
 from questionary import ValidationError
 
+from secret import my_local_ip  # I've hidden my actual local IP in a file that won't be publicly shared.
+# This "secret" module does not exist anywhere, I'll make sure this is all cleaned up before the final release.
+
 debug_logger = logging.getLogger('debugger')
 debug_logger.setLevel(logging.DEBUG)
 if not debug_logger.handlers:
@@ -114,27 +117,26 @@ class Whitelist(object):
                     # The below rule had to go so we can block session tunnels.
                     """if ipfilter.match(ip):
                         w.send(packet)"""
+                    """ Note that my_local_ip is in a .gitignore'd file so I don't leak it when this fork goes public
+                        and people check through the commits. """
+                    if ip == my_local_ip:
+                        print(packet)
                     if ip in self.ips:
                         w.send(packet)
-                        print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)) + " | " + str(packet.ip.src_addr))
+                        print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
                         """
                     The "special sauce" for the new filtering logic. We're using payload sizes to guess if the packet
                     has a behaviour we want to allow through.
                     """
                     elif (size in heartbeat_sizes) or (size in matchmaking_sizes):
                         w.send(packet)
-                        print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)) + " | " + str(packet.ip.src_addr))
+                        print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
                     else:
                         print("DROPPING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
 
         except KeyboardInterrupt:
-            print("hit a KeyboardInterrupt")
-            #raise KeyboardInterrupt     # throw the KeyboardInterrupt back to the runner so it knows it's time to stop.
-            """
-                Actually, looking at how this threading is designed, re-throwing probably won't be caught by the runner
-                and would instead terminate the process (as that is the default CTRL+C behaviour and are
-                overriding it). 
-            """
+            """ This never hits, but the override is still necessary to stop the program from quitting on CTRL + C. """
+            pass
 
 
 class Blacklist(object):
