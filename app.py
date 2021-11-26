@@ -290,11 +290,13 @@ def main():
                         Fore.LIGHTWHITE_EX + '" to stop.')
             try:
                 while True:
+                    # i... eh????? what is this nonsense
+                    # whyyy are you consistently starting and stopping the filter loop, no wonder the filter is broken
                     packet_filter = Whitelist(ips=ip_set)
                     packet_filter.start()
-                    time.sleep(10)
+                    time.sleep(10)         # you absolute numbnuts, this is 10 SECONDS of sleep
                     packet_filter.stop()
-                    time.sleep(15)
+                    time.sleep(15)         # so the filter runs for 10 seconds, stops for 15s, then runs for another 10.
             except KeyboardInterrupt:
                 logger.info('Stopped whitelisted session')
                 print_white('Stopped: "' +
