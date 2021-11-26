@@ -14,6 +14,21 @@ if not debug_logger.handlers:
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(logging.Formatter('%(asctime)s|%(levelname)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
     debug_logger.addHandler(fh)
+"""
+It appears that there is *ONE* more problem we need to take care of which was missed during testing of the prototype.
+Apparently, it's not only R* tunnels, but also client tunnels! If the circumstances are right, then it turns out that
+people in your session can also tunnel players if they could not connect to you directly. Such is the joy of P2P
+gaming.
+
+This conundrum could be easily solved with packet inspection but I'm going go back on my previous words and try to
+solve this by filtering some outbound packets, as it's the only solution I can think of.
+
+My idea is that if we receive a matchmaking request (or what could be a matchmaking request), then we will temporarily
+drop responses from us to any other client in the session. This, again, will have to be guessed from the payload size.
+Currently, I have no idea whether the responses to matchmaking requests are unique enough to be blocked without risking
+dropping other game traffic from someone who is actually in the session.
+"""
+
 
 """
 The main flaw in Guardian lies here, in the reserved IP range. I believe this is the R* / T2 IP space, right?
