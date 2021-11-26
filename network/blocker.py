@@ -128,7 +128,7 @@ class Whitelist(object):
                         print("DROPPING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
 
         except KeyboardInterrupt:
-            pass
+            print("hit a KeyboardInterrupt")
 
 
 class Blacklist(object):
