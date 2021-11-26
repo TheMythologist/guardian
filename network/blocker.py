@@ -103,6 +103,7 @@ class Whitelist(object):
         logger.info('Terminated whitelist blocker process')
 
     def run(self):
+        print("ips: " + str(self.ips))
         if not pydivert.WinDivert.is_registered():
             pydivert.WinDivert.register()
         try:
