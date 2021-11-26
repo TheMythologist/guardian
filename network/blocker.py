@@ -129,6 +129,12 @@ class Whitelist(object):
 
         except KeyboardInterrupt:
             print("hit a KeyboardInterrupt")
+            #raise KeyboardInterrupt     # throw the KeyboardInterrupt back to the runner so it knows it's time to stop.
+            """
+                Actually, looking at how this threading is designed, re-throwing probably won't be caught by the runner
+                and would instead terminate the process (as that is the default CTRL+C behaviour and are
+                overriding it). 
+            """
 
 
 class Blacklist(object):

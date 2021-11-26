@@ -35,7 +35,7 @@ STD_OUTPUT_HANDLE = -11
 ipv4 = re.compile(r"((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}")
 domain = re.compile(r"^[a-z]+([a-z0-9-]*[a-z0-9]+)?(\.([a-z]+([a-z0-9-]*[\[a-z0-9]+)?)+)*$")
 
-version = '3.0.2a3'
+version = '3.0.2a4'
 
 style = Style([
     ('qmark', 'fg:#00FFFF bold'),  # token in front of the question
@@ -288,16 +288,15 @@ def main():
                         Fore.LIGHTWHITE_EX + '" Press "' +
                         Fore.LIGHTCYAN_EX + 'CTRL + C' +
                         Fore.LIGHTWHITE_EX + '" to stop.')
+
+            """ Set up packet_filter outside the try-catch so it can be safely referenced inside KeyboardInterrupt."""
+            packet_filter = Whitelist(ips=ip_set)
             try:
+                packet_filter.start()
                 while True:
-                    # i... eh????? what is this nonsense
-                    # whyyy are you consistently starting and stopping the filter loop, no wonder the filter is broken
-                    packet_filter = Whitelist(ips=ip_set)
-                    packet_filter.start()
-                    time.sleep(10)         # you absolute numbnuts, this is 10 SECONDS of sleep
-                    packet_filter.stop()
-                    time.sleep(15)         # so the filter runs for 10 seconds, stops for 15s, then runs for another 10.
+                    time.sleep(10)  # this is still very terrible but might be good enough for now?
             except KeyboardInterrupt:
+                packet_filter.stop()
                 logger.info('Stopped whitelisted session')
                 print_white('Stopped: "' +
                             Fore.LIGHTCYAN_EX + 'Whitelisted session' +
