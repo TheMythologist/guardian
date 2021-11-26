@@ -70,6 +70,16 @@ Interesting note: All the matchmaker requests have payload sizes that may be 16 
 heartbeat_sizes = {12, 18}  # sets allow O(1) lookup
 matchmaking_sizes = {245, 261, 277, 293}  # probably a player looking to join the session.
 
+"""
+Matchmaking response sizes might be: 45, 125, 205?
+The size 45 payload definitely cannot be blocked as it pops up frequently in normal gameplay.
+It appears that the 125 and 205 packets also pop up from time to time.
+The first *two* packets sent to a client joining do appear to be size 125 and 205, though. Hmmm...
+So the initial join response appears to be 125, 205, 45, 317, 493?
+
+Looks like blocking 205 inbound is our best bet. 493 outbound is also a possibility but probably has a change of
+accidentally dropping the client tunnel.
+"""
 
 class Whitelist(object):
     """
@@ -105,12 +115,16 @@ class Whitelist(object):
                         w.send(packet)"""
                     if ip in self.ips:
                         w.send(packet)
+                        print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)) + " | " + str(packet.ip.src_addr))
                         """
                     The "special sauce" for the new filtering logic. We're using payload sizes to guess if the packet
                     has a behaviour we want to allow through.
                     """
                     elif (size in heartbeat_sizes) or (size in matchmaking_sizes):
                         w.send(packet)
+                        print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)) + " | " + str(packet.ip.src_addr))
+                    else:
+                        print("DROPPING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
 
         except KeyboardInterrupt:
             pass
