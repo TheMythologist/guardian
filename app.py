@@ -35,7 +35,7 @@ STD_OUTPUT_HANDLE = -11
 ipv4 = re.compile(r"((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}")
 domain = re.compile(r"^[a-z]+([a-z0-9-]*[a-z0-9]+)?(\.([a-z]+([a-z0-9-]*[\[a-z0-9]+)?)+)*$")
 
-version = '3.0.2a6'
+version = '3.1.0b1'
 
 style = Style([
     ('qmark', 'fg:#00FFFF bold'),  # token in front of the question
@@ -188,7 +188,7 @@ def main():
                     'value': 'solo'
                 },
                 {
-                    'name': 'Whitelisted session',
+                    'name': 'Whitelisted session (experimental)',
                     'value': 'whitelist',
                 },
                 {
@@ -229,7 +229,7 @@ def main():
                 }
             ]
         }
-        answer = prompt(options, style=style)
+        answer = prompt(options, style=style, )
         if not answer:
             if pydivert.WinDivert.is_registered():
                 pydivert.WinDivert.unregister()
