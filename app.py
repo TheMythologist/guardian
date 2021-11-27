@@ -35,7 +35,7 @@ STD_OUTPUT_HANDLE = -11
 ipv4 = re.compile(r"((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}")
 domain = re.compile(r"^[a-z]+([a-z0-9-]*[a-z0-9]+)?(\.([a-z]+([a-z0-9-]*[\[a-z0-9]+)?)+)*$")
 
-version = '3.0.2'
+version = '3.1.0b1'
 
 style = Style([
     ('qmark', 'fg:#00FFFF bold'),  # token in front of the question
@@ -184,27 +184,27 @@ def main():
             'qmark': '@',
             'choices': [
                 {
-                    'name': 'Solo session',
+                    'name': 'Solo session               [Untested]',
                     'value': 'solo'
                 },
                 {
-                    'name': 'Whitelisted session',
+                    'name': 'Whitelisted session        [Experimental]',
                     'value': 'whitelist',
                 },
                 {
-                    'name': 'Blacklisted session',
+                    'name': 'Blacklisted session        [Not working]',
                     'value': 'blacklist',
                 },
                 {
-                    'name': 'Auto whitelisted session',
+                    'name': 'Auto whitelisted session   [Untested]',
                     'value': 'auto_whitelist',
                 },
                 {
-                    'name': 'Kick unknowns',
+                    'name': 'Kick unknowns              [Untested]',
                     'value': 'kick'
                 },
                 {
-                    'name': 'New session',
+                    'name': 'New session                [Untested]',
                     'value': 'new'
                 },
                 {
@@ -212,7 +212,7 @@ def main():
                     'value': 'lists'
                 },
                 {
-                    'name': 'Kick by IP',
+                    'name': 'Kick by IP                 [Untested]',
                     'value': 'kick_by_ip'
                 },
                 {
@@ -229,7 +229,7 @@ def main():
                 }
             ]
         }
-        answer = prompt(options, style=style)
+        answer = prompt(options, style=style, )
         if not answer:
             if pydivert.WinDivert.is_registered():
                 pydivert.WinDivert.unregister()
@@ -243,14 +243,14 @@ def main():
                         Fore.LIGHTCYAN_EX + 'Solo session' +
                         Fore.LIGHTWHITE_EX + '" Press "' + Fore.LIGHTCYAN_EX + 'CTRL + C' +
                         Fore.LIGHTWHITE_EX + '" to stop.')
+
+            packet_filter = Whitelist(ips=[])
             try:
+                packet_filter.start()
                 while True:
-                    packet_filter = Whitelist(ips=[])
-                    packet_filter.start()
-                    time.sleep(10)
-                    packet_filter.stop()
-                    time.sleep(15)
+                    time.sleep(10)  # this is still very terrible
             except KeyboardInterrupt:
+                packet_filter.stop()
                 logger.info('Stopped solo session')
                 print_white('Stopped: "' +
                             Fore.LIGHTCYAN_EX + 'Solo session' +
@@ -288,14 +288,24 @@ def main():
                         Fore.LIGHTWHITE_EX + '" Press "' +
                         Fore.LIGHTCYAN_EX + 'CTRL + C' +
                         Fore.LIGHTWHITE_EX + '" to stop.')
+
+            """ Set up packet_filter outside the try-catch so it can be safely referenced inside KeyboardInterrupt."""
+            packet_filter = Whitelist(ips=ip_set)
+
+            print("Experimental support for Online 1.54+ developed by Speyedr.\n",
+                  "Not working? Found a bug?", "https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues",
+                  "(Pressing ENTER will open the link in your web browser.)", sep="\n")
+
             try:
+                packet_filter.start()
                 while True:
-                    packet_filter = Whitelist(ips=ip_set)
-                    packet_filter.start()
-                    time.sleep(10)
-                    packet_filter.stop()
-                    time.sleep(15)
+                    #time.sleep(10)  # this is still very terrible but might be good enough for now?
+                    input()
+                    # if we reach here then the user pressed ENTER
+                    webbrowser.open("https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues")
+                    time.sleep(1)      # prevents the user from opening the page a ludicrous amount of times?
             except KeyboardInterrupt:
+                packet_filter.stop()
                 logger.info('Stopped whitelisted session')
                 print_white('Stopped: "' +
                             Fore.LIGHTCYAN_EX + 'Whitelisted session' +
@@ -320,14 +330,14 @@ def main():
                         Fore.LIGHTWHITE_EX + '" Press "' +
                         Fore.LIGHTBLACK_EX + 'CTRL + C' +
                         Fore.LIGHTWHITE_EX + '" to stop.')
+
+            packet_filter = Whitelist(ips=ip_set)
             try:
+                packet_filter.start()
                 while True:
-                    packet_filter = Blacklist(ips=ip_set)
-                    packet_filter.start()
-                    time.sleep(10)
-                    packet_filter.stop()
-                    time.sleep(15)
+                    time.sleep(10)  # this is still very terrible
             except KeyboardInterrupt:
+                packet_filter.stop()
                 logger.info('Stopped blacklisted session')
                 print_white('Stopped: "' +
                             Fore.LIGHTBLACK_EX + 'Blacklist' +
@@ -373,14 +383,14 @@ def main():
                         Fore.LIGHTCYAN_EX + 'Whitelisted session' +
                         Fore.LIGHTCYAN_EX + 'CTRL + C' +
                         Fore.LIGHTWHITE_EX + '" to stop.')
+
+            packet_filter = Whitelist(ips=ip_set)
             try:
+                packet_filter.start()
                 while True:
-                    packet_filter = Whitelist(ips=ip_set)
-                    packet_filter.start()
-                    time.sleep(10)
-                    packet_filter.stop()
-                    time.sleep(15)
+                    time.sleep(10)  # this is still very terrible
             except KeyboardInterrupt:
+                packet_filter.stop()
                 logger.info('Stopping whitelisted session')
                 print_white('Stopped: "' +
                             Fore.LIGHTCYAN_EX + 'Whitelisted session' +

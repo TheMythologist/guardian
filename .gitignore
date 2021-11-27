@@ -4,3 +4,4 @@ history.log
 __pycache__
 build
 venv
+/network/secret.py
