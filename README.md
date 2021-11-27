@@ -14,8 +14,8 @@ I never quite liked the idea of firewalled sessions, however modders were target
   - [Packages](#packages)
 - [Build from source](#build-from-source)
 - [Donations](#donations)
-- [Credits](#credits-(for-this-fork))
-- [License](LICENSE)HANGELOG.md
+- [Credits](#credits-for-this-fork)
+- [License](LICENSE)
 
 ## Requirements
 #### System
