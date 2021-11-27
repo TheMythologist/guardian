@@ -13,8 +13,11 @@ I never quite liked the idea of firewalled sessions, however modders were target
   - [System](#system)
   - [Packages](#packages)
 - [Build from source](#build-from-source)
-- [Donations](#donations)
+- [Miscellaneous](#miscellaneous)
 - [Credits](#credits-for-this-fork)
+  - [Developers](#developers)
+  - [Guinea Pigs](#guinea-pigs)
+- [Donations](#donations)
 - [License](LICENSE)
 
 ## Requirements
