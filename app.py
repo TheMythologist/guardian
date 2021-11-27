@@ -184,27 +184,27 @@ def main():
             'qmark': '@',
             'choices': [
                 {
-                    'name': 'Solo session',
+                    'name': 'Solo session               [Untested]',
                     'value': 'solo'
                 },
                 {
-                    'name': 'Whitelisted session \t[Experimental]',
+                    'name': 'Whitelisted session        [Experimental]',
                     'value': 'whitelist',
                 },
                 {
-                    'name': 'Blacklisted session \t[Not working]',
+                    'name': 'Blacklisted session        [Not working]',
                     'value': 'blacklist',
                 },
                 {
-                    'name': 'Auto whitelisted session \t[Untested]',
+                    'name': 'Auto whitelisted session   [Untested]',
                     'value': 'auto_whitelist',
                 },
                 {
-                    'name': 'Kick unknowns \t\t[Untested]',
+                    'name': 'Kick unknowns              [Untested]',
                     'value': 'kick'
                 },
                 {
-                    'name': 'New session \t\t[Untested]',
+                    'name': 'New session                [Untested]',
                     'value': 'new'
                 },
                 {
@@ -212,7 +212,7 @@ def main():
                     'value': 'lists'
                 },
                 {
-                    'name': 'Kick by IP \t\t[Untested]',
+                    'name': 'Kick by IP                 [Untested]',
                     'value': 'kick_by_ip'
                 },
                 {
