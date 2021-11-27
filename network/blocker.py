@@ -18,7 +18,7 @@ if not debug_logger.handlers:
     fh.setFormatter(logging.Formatter('%(asctime)s|%(levelname)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
     debug_logger.addHandler(fh)
 """
-It appears that there is *ONE* more problem we need to take care of which was missed during testing of the prototype.
+It appears that there is *ONE* more problem we may need to take care of which was missed during testing of the prototype.
 Apparently, it's not only R* tunnels, but also client tunnels! If the circumstances are right, then it turns out that
 people in your session can also tunnel players if they could not connect to you directly. Such is the joy of P2P
 gaming.
@@ -30,11 +30,15 @@ My idea is that if we receive a matchmaking request (or what could be a matchmak
 drop responses from us to any other client in the session. This, again, will have to be guessed from the payload size.
 Currently, I have no idea whether the responses to matchmaking requests are unique enough to be blocked without risking
 dropping other game traffic from someone who is actually in the session.
+
+It's possible that this behaviour can be mitigated by making the whitelist filter "air-tight" as there was a bug in the
+official build which was leaking packets. However, if this bug is reported significantly in testing then I'll go ahead
+and develop my theoretical solution.
 """
 
 
 """
-The main flaw in Guardian lies here, in the reserved IP range. I believe this is the R* / T2 IP space, right?
+The main flaw in Guardian lied here, in the reserved IP range. I believe this is the R* / T2 IP space, right?
 In the current public build, any packet from these IPs is allowed, but we can no longer do this. We have to block
 tunnelled connections which may come from this IP range, while still allowing certain services like the
 session heartbeat and matchmaking requests.
@@ -60,13 +64,15 @@ I also believe that strictly filtering on inbound helps the game remain unaware 
 this might mean that the game will probably behave in a more consistent manner.
 (If the game was aware packets weren't reaching clients, it may change its' behaviour)
 
-NOTE: If R* ever updates Online to support IPv6, then "and ip" should be removed.
+NOTE: If R* ever updates Online to support IPv6, then "and ip" should be removed from packetfilter,
+      and parts of the filter logic (in the Whitelist class) that use the packet.ip attribute should be changed.
 """
 packetfilter = "(udp.DstPort == 6672 and udp.PayloadLength > 0) and ip"
 
 """
 Based on network observation, the payload sizes of packets which are probably some sort of heartbeat (and therefore
-should be let through so the session stays online)
+should be let through so the session stays online), or a matchmaking request (and therefore should be let through so we
+can see who's attempting to connect to us).
 
 Interesting note: All the matchmaker requests have payload sizes that may be 16 bytes apart.
 """
@@ -80,9 +86,14 @@ It appears that the 125 and 205 packets also pop up from time to time.
 The first *two* packets sent to a client joining do appear to be size 125 and 205, though. Hmmm...
 So the initial join response appears to be 125, 205, 45, 317, 493?
 
-Looks like blocking 205 inbound is our best bet. 493 outbound is also a possibility but probably has a change of
-accidentally dropping the client tunnel.
+Looks like blocking 205 inbound is our best bet. 493 outbound is also a possibility but probably has a chance of
+accidentally dropping the client non-tunnels.
+
+After I wrote these comments it was discovered that Guardian wasn't filtering packets all the time. This bug has since
+been fixed and hopefully will also mean these "client tunnels" are now no longer an issue. Leaving these notes in just
+in case they're useful later on.
 """
+
 
 class Whitelist(object):
     """

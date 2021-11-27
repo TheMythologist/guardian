@@ -16,7 +16,7 @@ executables = [
     Executable('app.py', targetName='Guardian.exe', icon='logo.ico')
 ]
 
-version = '3.0.2-fastload-fix-indev_3-leak_patch_1'
+version = '3.0.2-fastload-fix-indev_4-local_ip_investigation'
 
 build_path = 'build/exe.win-amd64-{}.{}'.format(sys.version_info.major, sys.version_info.minor)
 
