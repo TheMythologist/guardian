@@ -114,8 +114,9 @@ class Whitelist(object):
         logger.info('Terminated whitelist blocker process')
 
     def run(self):
-        print("Experimental support for Online 1.54+ enabled, developed by Speyedr.",
+        print("Experimental support for Online 1.54+ developed by Speyedr.\n",
               "Not working? Found a bug? https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues")
+        # FIXME: Find out how prompt does HTML and make the URL a hyperlink instead of unselectable text.
         #print("ips: " + str(self.ips))
         if not pydivert.WinDivert.is_registered():
             pydivert.WinDivert.register()
