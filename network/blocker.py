@@ -7,9 +7,6 @@ from network import networkmanager
 from app import IPValidator
 from questionary import ValidationError
 
-from secret import my_local_ip  # I've hidden my actual local IP in a file that won't be publicly shared.
-# This "secret" module does not exist anywhere, I'll make sure this is all cleaned up before the final release.
-
 debug_logger = logging.getLogger('debugger')
 debug_logger.setLevel(logging.DEBUG)
 if not debug_logger.handlers:
@@ -128,10 +125,6 @@ class Whitelist(object):
                     # The below rule had to go so we can block session tunnels.
                     """if ipfilter.match(ip):
                         w.send(packet)"""
-                    """ Note that my_local_ip is in a .gitignore'd file so I don't leak it when this fork goes public
-                        and people check through the commits. """
-                    if ip == my_local_ip:
-                        print(packet)
                     if ip in self.ips:
                         w.send(packet)
                         print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
