@@ -13,9 +13,9 @@ I never quite liked the idea of firewalled sessions, however modders were target
   - [System](#system)
   - [Packages](#packages)
 - [Build from source](#build-from-source)
-- [Contributions](#contributions)
-- [Changelog](CHANGELOG.md)
-- [License](LICENSE)
+- [Donations](#donations)
+- [Credits](#credits-(for-this-fork))
+- [License](LICENSE)HANGELOG.md
 
 ## Requirements
 #### System
@@ -24,14 +24,12 @@ I never quite liked the idea of firewalled sessions, however modders were target
 - Administrator Privileges
 #### Packages
 - See [requirements.txt](requirements.txt)
+- To install these required packages, run `pip install -r requirements.txt` in your command prompt in the context of the virtual environment you will also be using to run `setup.py`.
 
 ## Build from source
-Run `make_exe.cmd` or
-```
-set TCL_LIBRARY=P:\Program Files (x86)\Python36\tcl\tcl8.6
-set TK_LIBRARY=P:\Program Files (x86)\Python36\tcl\tk8.6
-python setup.py build
-```
+- Install the necessary packages.
+- Open a command prompt in the top-level repo folder and run `python setup.py build`.
+  - If python cannot be found, you will need to provide the full location of `python.exe` instead. Your command prompt will still need to be in the same directory as `setup.py` though.
 
 ## Miscellaneous
 - Producing this fork took approximately 2 months of casual research and testing to complete.
@@ -54,5 +52,10 @@ python setup.py build
 - Cochvik
 - n3rdfury
 
-## Contributions
-All contributions are helpful, feel free to make a Merge Request.
+## Donations
+Supporting my projects financially is the best way to ensure long-term support.
+If you found this fork beneficial, consider throwing some coins my way:
+- BTC: `347M8sHnahA98c7MjHGmvsb5pVUJeUcMZ5`
+- LTC: `MBtuSCxeptJ6Lr1rDeWLyHKySbm7LdRA1Y`
+- ETH: `0xDBAa338137Fc53BA007D7Cf99DD94908e8Fdb6d8`
+- ADA: `addr1qy6xlrpv43xjwhjpdvalccjxm3tf46f5cu7uh5uhexzgwyudcmm3ty8entef6tu3dgf8chn70tc3uql0kkrj0f62mw9sxh29w3`
