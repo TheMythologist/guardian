@@ -10,6 +10,7 @@ zip_exclude_packages = [
     'pydivert',
 ]
 buildOptions = dict(packages=[], includes=['idna.idnadata', 'codecs', 'pydivert'],
+                    include_files=['network/secret.py'],
                     replace_paths=[("*", "")], optimize=2, zip_include_packages="*",
                     zip_exclude_packages=zip_exclude_packages, silent=True)
 executables = [
