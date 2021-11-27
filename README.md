@@ -50,6 +50,8 @@ python setup.py build
 - WristyGolf
 - Bulki
 - ElkTastic
+- Raiulyn
+- Cochvik
 - n3rdfury
 
 ## Contributions
