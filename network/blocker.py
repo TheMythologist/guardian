@@ -114,7 +114,7 @@ class Whitelist(object):
         logger.info('Terminated whitelist blocker process')
 
     def run(self):
-        print("ips: " + str(self.ips))
+        #print("ips: " + str(self.ips))
         if not pydivert.WinDivert.is_registered():
             pydivert.WinDivert.register()
         try:
@@ -122,21 +122,18 @@ class Whitelist(object):
                 for packet in w:
                     ip = packet.ip.src_addr
                     size = len(packet.payload)  # the size of the payload. used to guess packet's behaviour / "intent"
-                    # The below rule had to go so we can block session tunnels.
-                    """if ipfilter.match(ip):
-                        w.send(packet)"""
-                    if ip in self.ips:
-                        w.send(packet)
-                        print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
-                        """
+
+                    """
                     The "special sauce" for the new filtering logic. We're using payload sizes to guess if the packet
                     has a behaviour we want to allow through.
                     """
-                    elif (size in heartbeat_sizes) or (size in matchmaking_sizes):
+                    if (ip in self.ips) or (size in heartbeat_sizes) or (size in matchmaking_sizes):
                         w.send(packet)
-                        print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
+                        #print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
+
                     else:
-                        print("DROPPING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
+                        #print("DROPPING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
+                        pass    # drop the packet because it didn't match our filter.
 
         except KeyboardInterrupt:
             """ This never hits, but the override is still necessary to stop the program from quitting on CTRL + C. """
