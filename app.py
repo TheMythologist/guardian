@@ -192,19 +192,19 @@ def main():
                     'value': 'whitelist',
                 },
                 {
-                    'name': 'Blacklisted session',
+                    'name': 'Blacklisted session (not working)',
                     'value': 'blacklist',
                 },
                 {
-                    'name': 'Auto whitelisted session',
+                    'name': 'Auto whitelisted session (untested)',
                     'value': 'auto_whitelist',
                 },
                 {
-                    'name': 'Kick unknowns',
+                    'name': 'Kick unknowns (untested)',
                     'value': 'kick'
                 },
                 {
-                    'name': 'New session',
+                    'name': 'New session (untested)',
                     'value': 'new'
                 },
                 {
@@ -212,7 +212,7 @@ def main():
                     'value': 'lists'
                 },
                 {
-                    'name': 'Kick by IP',
+                    'name': 'Kick by IP (untested)',
                     'value': 'kick_by_ip'
                 },
                 {
@@ -244,6 +244,7 @@ def main():
                         Fore.LIGHTWHITE_EX + '" Press "' + Fore.LIGHTCYAN_EX + 'CTRL + C' +
                         Fore.LIGHTWHITE_EX + '" to stop.')
             try:
+                # FIXME: This still uses the borked filter logic which has a huge leak.
                 while True:
                     packet_filter = Whitelist(ips=[])
                     packet_filter.start()

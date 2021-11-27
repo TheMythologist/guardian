@@ -168,7 +168,18 @@ class Blacklist(object):
             with pydivert.WinDivert(packetfilter) as w:
                 for packet in w:
                     ip = packet.ip.src_addr
-                    if ip not in self.ips:
+                    size = len(packet.payload)  # the size of the payload. used to guess packet's behaviour / "intent"
+
+                    """
+                    If the IP is in our blacklist (or it's a R* IP) and the packet can't contain traffic necessary
+                    to keep the session alive then we will drop that packet.
+                    
+                    NOTE: This probably isn't a complete list of R* tunnels. Ideally, ipfilter should contain all
+                          possible ranges of inbound (and maybe even outbound?) tunnels.
+                    """
+                    if (ip in self.ips or ipfilter.match(ip)) and not ((size in matchmaking_sizes) or size in heartbeat_sizes):
+                        pass    # drop the packet because it's not allowed.
+                    else:
                         w.send(packet)
         except KeyboardInterrupt:
             pass
