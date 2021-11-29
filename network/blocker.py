@@ -246,11 +246,11 @@ class LockedWhitelist(object):
 
     def start(self):
         self.process.start()
-        logger.info('Dispatched locker blocker process')
+        logger.info('Dispatched locker w/ whitelist blocker process')
 
     def stop(self):
         self.process.terminate()
-        logger.info('Terminated locker blocker process')
+        logger.info('Terminated locker w/ whitelist blocker process')
 
     def run(self):
         if not pydivert.WinDivert.is_registered():

@@ -200,7 +200,7 @@ def main():
                     'value': 'auto_whitelist',
                 },
                 {
-                    'name': 'Lock session               [Experimental]',
+                    'name': 'Locked session             [Experimental]',
                     'value': 'lock_session',
                 },
                 {
@@ -455,6 +455,7 @@ def main():
             logger.info('Starting locked session with {} IP overrides'.format(len(ip_set)))
             print_white('Running: "' +
                         Fore.LIGHTCYAN_EX + 'Locked session w/ Whitelist override' +
+                        Fore.LIGHTWHITE_EX + '" Press "' +
                         Fore.LIGHTCYAN_EX + 'CTRL + C' +
                         Fore.LIGHTWHITE_EX + '" to stop.')
             # TODO: There's a formatting fail here and in at least one other session type.
