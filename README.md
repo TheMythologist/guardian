@@ -5,7 +5,7 @@ This fork uses new methods to drop packets to R*-owned resources that are likely
 
 By simply observing network activity when playing GTA Online, it was discovered that while all packets were encrypted, the "type" of packet can still be determined from simply checking the packet's payload size. Guardian already uses PyDivert which conveniently supports filtering on individual packets, so only a few minor modifications to the filtering rules were necessary to produce this fork which supports Online 1.54 and onwards.
 
-### [Download 3.1.0b1 (latest)](https://gitlab.com/Speyedr/guardian-fastload-fix/-/raw/master/public_builds/guardian-3.1.0b1-fastload-fix.zip)
+### [Download 3.1.0b2 (latest)](https://gitlab.com/Speyedr/guardian-fastload-fix/-/raw/master/public_builds/guardian-3.1.0b2-fastload-fix.zip)
 
 ## Usage
 To increase the chance of a successful session, it is recommended that you follow these instructions:
