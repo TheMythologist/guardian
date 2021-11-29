@@ -221,9 +221,13 @@ class Locked(object):
                         captures show that these payload sizes don't occur in any regular game traffic so...    
                     """
                     if size in matchmaking_sizes:
+                        print("DROPPING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(
+                            len(packet.payload)))
                         pass  # probably someone trying to join the session?
                     else:
                         w.send(packet)
+                        print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(
+                            len(packet.payload)))
         except KeyboardInterrupt:
             pass
 
@@ -264,9 +268,13 @@ class LockedWhitelist(object):
                         just happened to have the same size as a matchmaking request.
                     """
                     if size in matchmaking_sizes and (ip not in self.ips):
-                        pass  # probably someone trying to join the session?
+                        print("DROPPING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(
+                            len(packet.payload)))
+                        #pass  # probably someone trying to join the session?
                     else:
                         w.send(packet)
+                        print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(
+                            len(packet.payload)))
         except KeyboardInterrupt:
             pass
 

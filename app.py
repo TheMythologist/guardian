@@ -200,6 +200,14 @@ def main():
                     'value': 'auto_whitelist',
                 },
                 {
+                    'name': 'Lock session               [Experimental]',
+                    'value': 'lock_session',
+                },
+                {
+                    'name': 'Lock session w/ Whitelist  [Experimental]',
+                    'value': 'lock_whitelist',
+                },
+                {
                     'name': 'Kick unknowns              [Untested]',
                     'value': 'kick'
                 },
@@ -395,6 +403,73 @@ def main():
                 logger.info('Stopping whitelisted session')
                 print_white('Stopped: "' +
                             Fore.LIGHTCYAN_EX + 'Whitelisted session' +
+                            Fore.LIGHTWHITE_EX + '"')
+
+        elif option == "lock_session":
+            os.system('cls')
+            logger.info('Session will now lock. All requests to join this session should fail.')
+            print_white('Running: "' +
+                        Fore.LIGHTCYAN_EX + 'Locked session' +
+                        Fore.LIGHTWHITE_EX + '" Press "' +
+                        Fore.LIGHTCYAN_EX + 'CTRL + C' +
+                        Fore.LIGHTWHITE_EX + '" to unlock session.')
+
+            packet_filter = Locked()
+            try:
+                packet_filter.start()
+                while True:
+                    time.sleep(10)  # this is still very terrible
+            except KeyboardInterrupt:
+                packet_filter.stop()
+                logger.info('Stopping whitelisted session')
+                print_white('Stopped: "' +
+                            Fore.LIGHTCYAN_EX + 'Locked session' +
+                            Fore.LIGHTWHITE_EX + '"')
+
+        elif option == "lock_whitelist":
+            local_ip = get_private_ip()
+            ip_set = {local_ip}
+            public_ip = get_public_ip()
+            if public_ip:
+                ip_set.add(public_ip)
+            else:
+                print_white('Failed to get Public IP. Running without.')
+
+            for ip, friend in custom_ips:
+                if friend.get('enabled'):
+                    try:
+                        ip_calc = IPValidator.validate_get(ip)
+                        ip_set.add(ip_calc)
+                    except ValidationError:
+                        logger.warning('Not valid IP or URL: {}'.format(ip))
+                        print_white('Not valid IP or URL: "' +
+                                    Fore.LIGHTCYAN_EX + '{}'.format(ip) +
+                                    Fore.LIGHTWHITE_EX + '"')
+                        continue
+
+            for ip, friend in friends:
+                if friend.get('enabled'):
+                    ip_set.add(ip)
+
+            os.system('cls')
+            logger.info('Starting locked session with {} IP overrides'.format(len(ip_set)))
+            print_white('Running: "' +
+                        Fore.LIGHTCYAN_EX + 'Locked session w/ Whitelist override' +
+                        Fore.LIGHTCYAN_EX + 'CTRL + C' +
+                        Fore.LIGHTWHITE_EX + '" to stop.')
+            # TODO: There's a formatting fail here and in at least one other session type.
+            #  I have a feeling I'll eventually refactor Guardian enough to hit v4.
+
+            packet_filter = Whitelist(ips=ip_set)
+            try:
+                packet_filter.start()
+                while True:
+                    time.sleep(10)  # this is still very terrible
+            except KeyboardInterrupt:
+                packet_filter.stop()
+                logger.info('Stopping locked session w/ whitelist override')
+                print_white('Stopped: "' +
+                            Fore.LIGHTCYAN_EX + 'Locked session w/ Whitelist override' +
                             Fore.LIGHTWHITE_EX + '"')
 
         elif option == 'lists':
