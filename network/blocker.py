@@ -186,6 +186,12 @@ class Blacklist(object):
             pass
 
 
+#class Locked(object):
+    """
+    Packet filter to block any new requests to join the session.
+    """
+
+
 class IPSyncer(object):
     """
     Looper thread to update user ip to the cloud and domain based list items ips
