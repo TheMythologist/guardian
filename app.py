@@ -35,7 +35,7 @@ STD_OUTPUT_HANDLE = -11
 ipv4 = re.compile(r"((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}")
 domain = re.compile(r"^[a-z]+([a-z0-9-]*[a-z0-9]+)?(\.([a-z]+([a-z0-9-]*[\[a-z0-9]+)?)+)*$")
 
-version = '3.1.0b1'
+version = '3.1.0a1'
 
 style = Style([
     ('qmark', 'fg:#00FFFF bold'),  # token in front of the question
@@ -184,7 +184,7 @@ def main():
             'qmark': '@',
             'choices': [
                 {
-                    'name': 'Solo session               [Untested]',
+                    'name': 'Solo session               [Experimental]',
                     'value': 'solo'
                 },
                 {
@@ -196,7 +196,7 @@ def main():
                     'value': 'blacklist',
                 },
                 {
-                    'name': 'Auto whitelisted session   [Untested]',
+                    'name': 'Auto whitelisted session   [Not working]',
                     'value': 'auto_whitelist',
                 },
                 {
@@ -353,6 +353,7 @@ def main():
             collector.stop()
             ip_set = set(collector.ips)
             logger.info('Collected {} IPs'.format(len(ip_set)))
+            print("IPs: " + str(ip_set))
             local_ip = get_private_ip()
             ip_set.add(local_ip)
             public_ip = get_public_ip()
@@ -487,6 +488,8 @@ def main():
                                     item['enabled'] = item.get('name') in answer['option']
                                 config.save()
 
+                        # TODO: Prevent users from accidentally adding R* / T2 IPs to the whitelist.
+                        #  Perhaps this could be done by updating the validator?
                         elif answer['option'] == 'add':
                             os.system('cls')
                             options = [

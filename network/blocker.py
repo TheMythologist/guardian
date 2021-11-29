@@ -115,8 +115,7 @@ class Whitelist(object):
 
     def run(self):
 
-        # FIXME: Find out how prompt does HTML and make the URL a hyperlink instead of unselectable text.
-        #print("ips: " + str(self.ips))
+        print("ips: " + str(self.ips))
         if not pydivert.WinDivert.is_registered():
             pydivert.WinDivert.register()
         try:
@@ -131,10 +130,10 @@ class Whitelist(object):
                     """
                     if (ip in self.ips) or (size in heartbeat_sizes) or (size in matchmaking_sizes):
                         w.send(packet)
-                        #print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
+                        print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
 
                     else:
-                        #print("DROPPING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
+                        print("DROPPING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
                         pass    # drop the packet because it didn't match our filter.
 
         except KeyboardInterrupt:
