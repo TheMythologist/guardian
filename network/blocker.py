@@ -185,11 +185,90 @@ class Blacklist(object):
         except KeyboardInterrupt:
             pass
 
+# TODO: These whitelist and blacklist classes could really do with some abstraction and inheritance. There's so much
+#  unnecessarily duplicate code here.
 
-#class Locked(object):
+
+class Locked(object):
     """
     Packet filter to block any new requests to join the session.
     """
+
+    def __init__(self):
+        # Locked sessions don't have a list of IPs.
+
+        self.process = multiprocessing.Process(target=self.run, args=())
+        self.process.daemon = True
+
+    def start(self):
+        self.process.start()
+        logger.info('Dispatched locker blocker process')
+
+    def stop(self):
+        self.process.terminate()
+        logger.info('Terminated locker blocker process')
+
+    def run(self):
+        if not pydivert.WinDivert.is_registered():
+            pydivert.WinDivert.register()
+        try:
+            with pydivert.WinDivert(packetfilter) as w:
+                for packet in w:
+                    size = len(packet.payload)  # the size of the payload. used to guess packet's behaviour / "intent"
+
+                    """ No new matchmaking requests allowed.
+                        Seems a bit overkill (and perhaps reckless) to always block these payload sizes but my packet
+                        captures show that these payload sizes don't occur in any regular game traffic so...    
+                    """
+                    if size in matchmaking_sizes:
+                        pass  # probably someone trying to join the session?
+                    else:
+                        w.send(packet)
+        except KeyboardInterrupt:
+            pass
+
+
+class LockedWhitelist(object):
+    """
+    Alternative packet filter to block any new requests to join the session,
+    but friends can still be forcefully whitelisted in case they keep losing connection for some reason.
+    """
+
+    def __init__(self, ips):
+
+        self.ips = ips
+        self.process = multiprocessing.Process(target=self.run, args=())
+        self.process.daemon = True
+
+    def start(self):
+        self.process.start()
+        logger.info('Dispatched locker blocker process')
+
+    def stop(self):
+        self.process.terminate()
+        logger.info('Terminated locker blocker process')
+
+    def run(self):
+        if not pydivert.WinDivert.is_registered():
+            pydivert.WinDivert.register()
+        try:
+            with pydivert.WinDivert(packetfilter) as w:
+                for packet in w:
+                    ip = packet.ip.src_addr
+                    size = len(packet.payload)  # the size of the payload. used to guess packet's behaviour / "intent"
+
+                    """ No new matchmaking requests allowed.
+                        This rule will be ignored if the packet came from a whitelisted IP.
+                        This *does not allow friends to join* (because the matchmaker still won't get responses),
+                        but this might prevent them from getting disconnected from the session if one of their packets
+                        just happened to have the same size as a matchmaking request.
+                    """
+                    if size in matchmaking_sizes and (ip not in self.ips):
+                        pass  # probably someone trying to join the session?
+                    else:
+                        w.send(packet)
+        except KeyboardInterrupt:
+            pass
 
 
 class IPSyncer(object):
