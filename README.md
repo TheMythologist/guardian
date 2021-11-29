@@ -12,17 +12,17 @@ To increase the chance of a successful session, it is recommended that you follo
 1. Run `Guardian.exe` as Administrator.
 2. Load into Single Player.
 3. Start a **Solo Session** with Guardian.
-4. Load into GTA Online. 
-   1. If you want access to Public Session Freemode activites, make sure you choose `Go` to attempt to join a Public Session.
-5. Once you've loaded into Online, you should now be in a Freemode Session by yourself.
-   1. If you want to let your friends in and have added their IP addresses `Lists -> Custom`, stop the **Solo Session** and start a **Whitelisted Session**.
+4. Load into GTA Online.  
+\- If you want access to Public Session Freemode activites, make sure you choose `Go` to attempt to join a Public Session.
+5. Once you've loaded into Online, you should now be in a Freemode Session by yourself.  
+\- If you want to let your friends in and have added their IP addresses `Lists -> Custom`, stop the **Solo Session** and start a **Whitelisted Session**.
    Your session should now be secure, and your friends can join you.
    
 
-6. If you don't know your friends' IPs, you'll have to stop the **Solo Session** and tell them to join as quick as possible. 
-   1. Note that the session is vulnerable to randoms during this time.
-7. Once your friends are loading into your session (they've confirmed they want to join your session and are now in the clouds), start a **Locked Session**. 
-   1. While a session is Locked, no one will be able to join the session, but those already connecting / connected should remain.
+6. If you don't know your friends' IPs, you'll have to stop the **Solo Session** and tell them to join as quick as possible.  
+\- Note that the session is vulnerable to randoms during this time.
+7. Once your friends are loading into your session (they've confirmed they want to join your session and are now in the clouds), start a **Locked Session**.  
+\- While a session is Locked, no one will be able to join the session, but those already connecting / connected should remain.
    
 Guardian _may_ work in other circumstances / setups, but are also less likely to produce secured sessions.
 
