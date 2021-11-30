@@ -461,7 +461,7 @@ def main():
             # TODO: There's a formatting fail here and in at least one other session type.
             #  I have a feeling I'll eventually refactor Guardian enough to hit v4.
 
-            packet_filter = Whitelist(ips=ip_set)
+            packet_filter = LockedWhitelist(ips=ip_set)
             try:
                 packet_filter.start()
                 while True:
