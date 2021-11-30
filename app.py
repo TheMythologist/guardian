@@ -35,7 +35,7 @@ STD_OUTPUT_HANDLE = -11
 ipv4 = re.compile(r"((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}")
 domain = re.compile(r"^[a-z]+([a-z0-9-]*[a-z0-9]+)?(\.([a-z]+([a-z0-9-]*[\[a-z0-9]+)?)+)*$")
 
-version = '3.1.0b2'
+version = '3.1.0b3'
 
 style = Style([
     ('qmark', 'fg:#00FFFF bold'),  # token in front of the question
@@ -461,7 +461,7 @@ def main():
             # TODO: There's a formatting fail here and in at least one other session type.
             #  I have a feeling I'll eventually refactor Guardian enough to hit v4.
 
-            packet_filter = Whitelist(ips=ip_set)
+            packet_filter = LockedWhitelist(ips=ip_set)
             try:
                 packet_filter.start()
                 while True:
