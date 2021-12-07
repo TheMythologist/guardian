@@ -35,7 +35,7 @@ STD_OUTPUT_HANDLE = -11
 ipv4 = re.compile(r"((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}")
 domain = re.compile(r"^[a-z]+([a-z0-9-]*[a-z0-9]+)?(\.([a-z]+([a-z0-9-]*[\[a-z0-9]+)?)+)*$")
 
-version = '3.1.0b3'
+version = '3.1.0a3'
 
 style = Style([
     ('qmark', 'fg:#00FFFF bold'),  # token in front of the question
@@ -304,15 +304,17 @@ def main():
                         Fore.LIGHTCYAN_EX + 'CTRL + C' +
                         Fore.LIGHTWHITE_EX + '" to stop.')
 
+            session_info = sessioninfo.SessionInfo(ip_tags)  # Exposes session information, diagnostics and behaviour.
+
             """ Set up packet_filter outside the try-catch so it can be safely referenced inside KeyboardInterrupt."""
-            packet_filter = Whitelist(ips=ip_set)
-            session_info = sessioninfo.SessionInfo(ip_tags)
+            packet_filter = Whitelist(ips=ip_set, session_info=session_info)
 
             print("Experimental support for Online 1.54+ developed by Speyedr.\n",
                   "Not working? Found a bug?", "https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues",
                   "(Pressing ENTER will open the link in your web browser.)", sep="\n")
 
             try:
+                session_info.start()
                 packet_filter.start()
                 while True:
                     """
@@ -324,12 +326,15 @@ def main():
                     save that file for investigation later.
                     """
                     #time.sleep(10)  # this is still very terrible but might be good enough for now?
-                    input()
+                    #input()
                     # if we reach here then the user pressed ENTER
-                    webbrowser.open("https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues")
-                    time.sleep(1)      # prevents the user from opening the page a ludicrous amount of times?
+                    #webbrowser.open("https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues")
+                    #time.sleep(1)      # prevents the user from opening the page a ludicrous amount of times?
+                    os.system('cls')     # refresh console
+                    print(session_info)  # display session diagnostics (there's no way this works first time lol)
             except KeyboardInterrupt:
                 packet_filter.stop()
+                session_info.stop()
                 logger.info('Stopped whitelisted session')
                 print_white('Stopped: "' +
                             Fore.LIGHTCYAN_EX + 'Whitelisted session' +
