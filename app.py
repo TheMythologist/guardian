@@ -307,6 +307,14 @@ def main():
             try:
                 packet_filter.start()
                 while True:
+                    """
+                    Here is *probably* where the PacketLogger and SessionInfo classes should be managed.
+                    Every [x] milliseconds the SessionInfo class will .update() with packet info (and a new print),
+                    and the PacketLogger instance will be passed down to Whitelist() when initialized so the filter
+                    loop can add packets to the capture. Once the session has stopped, the PacketLogger will add all
+                    packets in its' memory queue to disk (or perhaps it should be sequentially writing to a file) and
+                    save that file for investigation later.
+                    """
                     #time.sleep(10)  # this is still very terrible but might be good enough for now?
                     input()
                     # if we reach here then the user pressed ENTER
