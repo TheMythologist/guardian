@@ -37,7 +37,7 @@ class SessionInfo:
         """
         self.packet_queue = Queue()
 
-        self.processing_thread = Process(target=self.process_queue, args=())
+        self.processing_thread = Process(target=self.run, args=())
         self.processing_thread.daemon = True    # Terminate this thread if the parent gets terminated.
 
     def start(self):
@@ -59,12 +59,12 @@ class SessionInfo:
         """
         self.packet_queue.put((packet, allowed), block=False)
 
-    def process_queue(self, block=True):
+    def run(self):
         """
         Continually (and indefinitely) process the packet queue. Obviously this should be run in its' own thread.
         """
         while True:
-            self.process_item(block)
+            self.process_item()
             # Might be a good idea to add some sort of sleep here?
 
     def process_item(self, block=True):

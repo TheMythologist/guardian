@@ -116,6 +116,8 @@ class Whitelist(object):
 
     def run(self):
 
+        self.session_info.start()
+
         print("ips: " + str(self.ips))
         if not pydivert.WinDivert.is_registered():
             pydivert.WinDivert.register()
@@ -131,18 +133,19 @@ class Whitelist(object):
                     """
                     if (ip in self.ips) or (size in heartbeat_sizes) or (size in matchmaking_sizes):
                         w.send(packet)
-                        #if self.session_info is not None:
-                            #self.session_info.add_packet(packet, allowed=True)
+                        if self.session_info is not None:
+                            self.session_info.add_packet(packet, allowed=True)
                         #print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
 
                     else:
                         #print("DROPPING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
                         pass    # drop the packet because it didn't match our filter.
-                        #if self.session_info is not None:
-                            #self.session_info.add_packet(packet, allowed=False)
+                        if self.session_info is not None:
+                            self.session_info.add_packet(packet, allowed=False)
 
         except KeyboardInterrupt:
             """ This never hits, but the override is still necessary to stop the program from quitting on CTRL + C. """
+            self.session_info.stop()
             pass
 
 

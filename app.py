@@ -336,7 +336,7 @@ def main():
                     print(session_info)  # display session diagnostics (there's no way this works first time lol)
             except KeyboardInterrupt:
                 packet_filter.stop()
-                session_info.stop()
+                #session_info.stop()
                 logger.info('Stopped whitelisted session')
                 print_white('Stopped: "' +
                             Fore.LIGHTCYAN_EX + 'Whitelisted session' +
