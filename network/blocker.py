@@ -104,7 +104,7 @@ class Whitelist(object):
         self.ips = ips
         self.process = multiprocessing.Process(target=self.run, args=())
         self.process.daemon = True
-        self.session_info = session_info  # If no session info object was passed then it won't be used.
+        self.session_info = None  # If no session info object was passed then it won't be used.
 
     def start(self):
         self.process.start()
