@@ -123,7 +123,7 @@ class SessionInfo:
             str_gen.append("IP: ")
             str_gen.append(info['ip'])
             str_gen.append(" | Packets Received: ")
-            str_gen.append(info['packet_count'])
+            str_gen.append(str(info['packet_count']))
             str_gen.append(" | Tag: ")
             str_gen.append(info['tag'])
             str_gen.append("\n")
