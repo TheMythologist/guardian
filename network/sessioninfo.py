@@ -21,6 +21,7 @@ class SessionInfo:
         self.connection_stats = []
 
         for ip_tag in initial_ips:
+            print("ip_tag: " + str(ip_tag))
             self.add_con_stat_from_ip_tag(ip_tag)
         # Connection stats and known IPs are now initialised.
 

@@ -305,6 +305,8 @@ def main():
                         Fore.LIGHTWHITE_EX + '" to stop.')
 
             session_info = sessioninfo.SessionInfo(ip_tags)  # Exposes session information, diagnostics and behaviour.
+            logger.info("ip_tags: " + str(ip_tags))
+            logger.info("session_info: " + str(session_info))
 
             """ Set up packet_filter outside the try-catch so it can be safely referenced inside KeyboardInterrupt."""
             packet_filter = Whitelist(ips=ip_set, session_info=session_info)
