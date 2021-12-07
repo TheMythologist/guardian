@@ -1,3 +1,5 @@
+import queue
+
 
 class SessionInfo:
 
@@ -20,8 +22,19 @@ class SessionInfo:
 
         for ip_tag in initial_ips:
             self.add_con_stat_from_ip_tag(ip_tag)
-
         # Connection stats and known IPs are now initialised.
+
+        """
+        This is a queue of packets pending processing. I wanted to make adding packets to SessionInfo objects as light
+        as possible because packets will come from the filtering thread and if not designed properly, would "block" the
+        entire filter for as long as it took for SessionInfo to process that packet. This could lead to in-game
+        latency at best, and possibly a program crash at worst (because the filter cannot process packets quickly
+        enough and lead to memory exhaustion).
+        
+        So, "adding" a packet actually only puts it in this queue, and a different thread will do the depletion (and 
+        of course, processing) of packets in this queue.
+        """
+        self.packet_queue = queue.Queue()
 
     """
     A packet was received by the filter and is now being shared with SessionInfo.
@@ -30,7 +43,32 @@ class SessionInfo:
     allowed: Whether the packet was allowed (true) or dropped (false).
     """
     def add_packet(self, packet, allowed):
+        """
+        We cannot waste any time waiting for a spot in the queue. This function is called in the context of the
+        filtering thread and so processing will happen later (and almost certainly on a different thread).
+        """
+        self.packet_queue.put((packet, allowed), block=False)
 
+    def process_queue(self, block=True):
+        """
+        Continually (and indefinitely) process the packet queue. Obviously this should be run in its' own thread.
+        """
+        while True:
+            self.process_item(block)
+            # Might be a good idea to add some sort of sleep here?
+
+    def process_item(self, block=True):
+        """
+        Depletes the queue of a single packet that has been added from the filtering thread.
+        Note that by default, whatever thread calls this method *will be blocked* until there is an item in the queue.
+        If you don't want your thread blocked, you will need to handle Empty exceptions because the queue *will* be
+        empty at some points during processing.
+        """
+        (packet, allowed) = self.packet_queue.get(block)  # If there is a packet in the queue, get it (or wait for one)
+        self.process_packet(packet, allowed)              # Actually process the packet.
+        return  # If you want to process another packet, you'll need to call this function again.
+
+    def process_packet(self, packet, allowed):
         # We're only going to monitor inbound packets.
         if packet.is_inbound:
             ip = packet.ip.src_addr
