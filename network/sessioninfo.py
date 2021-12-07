@@ -101,7 +101,7 @@ class SessionInfo:
             return    # If this IP has already been added, don't do it again.
 
         self.known_ips[this_ip] = len(self.connection_stats)    # Add this_ip to dictionary with value of index into
-        self.connection_stats.append(ConnectionStats(this_ip))  # self.connection_stats.
+        self.connection_stats.append(ConnectionStats(ip_tag))   # bruh.
 
     """
     Returns the connection stat object associated with this IP.
