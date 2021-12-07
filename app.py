@@ -9,7 +9,7 @@ import pydivert
 import sys
 from multiprocessing import freeze_support
 import ipaddress
-from network import networkmanager
+from network import networkmanager, sessioninfo
 from distutils.version import StrictVersion
 import webbrowser
 import socket
@@ -271,9 +271,11 @@ def main():
         elif option == 'whitelist':
             local_ip = get_private_ip()
             ip_set = {local_ip}
+            ip_tags = [sessioninfo.IPTag(local_ip, "LOCAL IP")]
             public_ip = get_public_ip()
             if public_ip:
                 ip_set.add(public_ip)
+                ip_tags.append(sessioninfo.IPTag(public_ip, "PUBLIC IP"))
             else:
                 print_white('Failed to get Public IP. Running without.')
 
@@ -282,6 +284,7 @@ def main():
                     try:
                         ip_calc = IPValidator.validate_get(ip)
                         ip_set.add(ip_calc)
+                        ip_tags.append(sessioninfo.IPTag(ip_calc, friend.get('name') + " [WHITELIST]"))
                     except ValidationError:
                         logger.warning('Not valid IP or URL: {}'.format(ip))
                         print_white('Not valid IP or URL: "' +
@@ -292,6 +295,7 @@ def main():
             for ip, friend in friends:
                 if friend.get('enabled'):
                     ip_set.add(ip)
+                    ip_tags.append(sessioninfo.IPTag(ip, friend.get('name') + " [CLOUD]"))
 
             logger.info('Starting whitelisted session with {} IPs'.format(len(ip_set)))
             print_white('Running: "' +
@@ -302,6 +306,7 @@ def main():
 
             """ Set up packet_filter outside the try-catch so it can be safely referenced inside KeyboardInterrupt."""
             packet_filter = Whitelist(ips=ip_set)
+            session_info = sessioninfo.SessionInfo(ip_tags)
 
             print("Experimental support for Online 1.54+ developed by Speyedr.\n",
                   "Not working? Found a bug?", "https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues",
