@@ -68,7 +68,20 @@ class SessionInfo:
     """
     def __str__(self):
         str_gen = []  # A partially generated string. Concatenating strings in python using '+' is sub-optimal; O(n^2)
+        for con_stat in self.connection_stats:
+            info = con_stat.get_info()
+            # TODO: Would an implementation of list that returns itself (to allow recursive .append() calls)
+            #  instead of None (which is why we have so many lines) be useful?
+            str_gen.append("IP: ")
+            str_gen.append(info['ip'])
+            str_gen.append(" | Packets Received: ")
+            str_gen.append(info['packet_count'])
+            str_gen.append(" | Tag: ")
+            str_gen.append(info['tag'])
+            str_gen.append("\n")
 
+        # Once this loop is complete, the *actual* string object can be built.
+        return "".join(str_gen)
 
 
 class IPTag:
@@ -104,7 +117,7 @@ class ConnectionStats:
         self.packets.append(packet)  # For now, I'm just going to add it to the array. Actual stats can be added later.
 
     """
-    Returns an x-tuple of information about this connection.
+    Returns an anonymous dictionary of information about this connection.
     """
     def get_info(self):
-        return len(self.packets)
+        return {'ip': self.ip, 'tag': self.tag, 'packet_count': len(self.packets)}
