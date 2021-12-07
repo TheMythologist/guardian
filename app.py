@@ -245,6 +245,9 @@ def main():
         os.system('cls')
         option = answer['option']
 
+        # TODO: There's actually some fairly large optimisation available here. Concatenating strings with the '+'
+        #  operator in Python is quadratic in complexity ( O(n^2) ) instead of the expected linear ( O(n) ) complexity.
+        #  Appending all parts of the string as elements of a list and then using .join() is linear and i.e. faster.
         if option == 'solo':
             logger.info('Starting solo session')
             print_white('Running: "' +
