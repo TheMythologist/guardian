@@ -327,12 +327,12 @@ def main():
                     packets in its' memory queue to disk (or perhaps it should be sequentially writing to a file) and
                     save that file for investigation later.
                     """
-                    #time.sleep(10)  # this is still very terrible but might be good enough for now?
+                    time.sleep(10)  # this is still very terrible but might be good enough for now?
                     #input()
                     # if we reach here then the user pressed ENTER
                     #webbrowser.open("https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues")
                     #time.sleep(1)      # prevents the user from opening the page a ludicrous amount of times?
-                    os.system('cls')     # refresh console
+                    #os.system('cls')     # refresh console
                     print(session_info)  # display session diagnostics (there's no way this works first time lol)
             except KeyboardInterrupt:
                 packet_filter.stop()

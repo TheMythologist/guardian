@@ -1,5 +1,5 @@
 from multiprocessing import Process, Queue
-
+import os
 
 class SessionInfo:
 
@@ -65,6 +65,8 @@ class SessionInfo:
         """
         while True:
             self.process_item()
+            #os.system('cls')  # clear the console for new print
+            #print(self)  # When new packet received, update display.
             # Might be a good idea to add some sort of sleep here?
 
     def process_item(self, block=True):
