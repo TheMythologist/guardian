@@ -1,4 +1,4 @@
-import queue
+from multiprocessing import Process, Queue
 
 
 class SessionInfo:
@@ -31,10 +31,19 @@ class SessionInfo:
         latency at best, and possibly a program crash at worst (because the filter cannot process packets quickly
         enough and lead to memory exhaustion).
         
-        So, "adding" a packet actually only puts it in this queue, and a different thread will do the depletion (and 
+        So, "adding" a packet actually only puts it in this queue, and a different process will do the depletion (and 
         of course, processing) of packets in this queue.
         """
-        self.packet_queue = queue.Queue()
+        self.packet_queue = Queue()
+
+        self.processing_thread = Process(target=self.process_queue, args=())
+        self.processing_thread.daemon = True    # Terminate this thread if the parent gets terminated.
+
+    def start(self):
+        self.processing_thread.start()
+
+    def stop(self):
+        self.processing_thread.terminate()
 
     """
     A packet was received by the filter and is now being shared with SessionInfo.
