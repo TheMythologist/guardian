@@ -316,7 +316,7 @@ def main():
                   "(Pressing ENTER will open the link in your web browser.)", sep="\n")
 
             try:
-                session_info.start()
+                #session_info.start()
                 packet_filter.start()
                 while True:
                     """

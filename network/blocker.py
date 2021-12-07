@@ -104,7 +104,7 @@ class Whitelist(object):
         self.ips = ips
         self.process = multiprocessing.Process(target=self.run, args=())
         self.process.daemon = True
-        self.session_info = None  # If no session info object was passed then it won't be used.
+        self.session_info = session_info  # If no session info object was passed then it won't be used.
 
     def start(self):
         self.process.start()
@@ -131,15 +131,15 @@ class Whitelist(object):
                     """
                     if (ip in self.ips) or (size in heartbeat_sizes) or (size in matchmaking_sizes):
                         w.send(packet)
-                        if self.session_info is not None:
-                            self.session_info.add_packet(packet, allowed=True)
+                        #if self.session_info is not None:
+                            #self.session_info.add_packet(packet, allowed=True)
                         #print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
 
                     else:
                         #print("DROPPING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
                         pass    # drop the packet because it didn't match our filter.
-                        if self.session_info is not None:
-                            self.session_info.add_packet(packet, allowed=False)
+                        #if self.session_info is not None:
+                            #self.session_info.add_packet(packet, allowed=False)
 
         except KeyboardInterrupt:
             """ This never hits, but the override is still necessary to stop the program from quitting on CTRL + C. """
