@@ -2,10 +2,40 @@ from multiprocessing import Manager, Process
 import os
 
 
+def generate_stats(connection_stats):
+    """
+Given a list containing connection statistics, generates a human-readable representation of those statistics.
+ This function was originally the override for __str__ (so you could just call print(session_info)) but it appears a lot
+ of my assumptions about programming design need to go out the window when writing multi-processing programs.
+    """
+    print("connection_stats: ", connection_stats)
+    str_gen = []  # A partially generated string. Concatenating strings in python using '+' is sub-optimal; O(n^2)
+    #get = self.connection_stats
+    for con_stat in connection_stats:
+        info = con_stat.get_info()
+        # TODO: Would an implementation of list that returns itself (to allow recursive .append() calls)
+        #  instead of None (which is why we have so many lines) be useful?
+        str_gen.append("IP: ")
+        str_gen.append(info['ip'])
+        str_gen.append(" | Packets Received: ")
+        str_gen.append(str(info['packet_count']))
+        str_gen.append(" | Tag: ")
+        str_gen.append(info['tag'])
+        str_gen.append("\n")
+
+    # Once this loop is complete, the *actual* string object can be built.
+    return "".join(str_gen)
+
+
 class SessionInfo:
 
     """
     Returns human-readable strings that expose session information to the user after being supplied captured packets.
+
+    proxy_dict: A proxy to a dictionary (for known_ips)
+    proxy_list: A proxy to a list (for connection_stats)
+    proxy_queue: A proxy to a Queue (for packet_queue)
+    Proxies must be passed down from the parent (and will also be shared elsewhere so they can be modified).
 
     initial_ips: Array of IPTag that should be known before any traffic is received from those IPs.
 
@@ -13,18 +43,33 @@ class SessionInfo:
         Value stored is the index into an array of ConnectionStats.
     connection_stats: Array of ConnectionStats, which contain the calculations and statistics of connections. (duh)
     """
-    def __init__(self, initial_ips=None):
+    def __init__(self, proxy_dict, proxy_list, proxy_queue, initial_ips=None):
         if initial_ips is None:
             initial_ips = []
 
-        self.known_ips = Manager().dict()
+        self.known_ips = proxy_dict
         # self.connection_stats = [ConnectionStats(IPTag("1.1.1.1", "test"))]
-        self.connection_stats = Manager().list()
+        self.connection_stats = proxy_list
 
         for ip_tag in initial_ips:
             print("ip_tag: " + str(ip_tag))
             self.add_con_stat_from_ip_tag(ip_tag)
         # Connection stats and known IPs are now initialised.
+
+        print(self.known_ips)
+        print(self.connection_stats)
+
+        i = 0
+        while i < len(self.connection_stats):
+            print("ATTEMPTING TO ACCESS connection_stats[" + str(i) + "]")
+            con_stat = self.connection_stats[i]
+            print("ACCESS SUCCESSFUL")
+            print(con_stat)
+            i += 1
+
+        #print("ATTEMPTING FOR LOOP")
+        #for con_stat in self.connection_stats:
+            #print(con_stat)
 
         """
         This is a queue of packets pending processing. I wanted to make adding packets to SessionInfo objects as light
@@ -36,16 +81,16 @@ class SessionInfo:
         So, "adding" a packet actually only puts it in this queue, and a different process will do the depletion (and 
         of course, processing) of packets in this queue.
         """
-        self.packet_queue = Manager().Queue()
+        self.packet_queue = proxy_queue
 
-        self.processing_thread = Process(target=self.run, args=())
-        self.processing_thread.daemon = True    # Terminate this thread if the parent gets terminated.
+        #self.processing_thread = Process(target=self.run, args=())
+        #self.processing_thread.daemon = True    # Terminate this thread if the parent gets terminated.
 
-    def start(self):
-        self.processing_thread.start()
+    #def start(self):
+        #self.processing_thread.start()
 
-    def stop(self):
-        self.processing_thread.terminate()
+    #def stop(self):
+        #self.processing_thread.terminate()
 
     """
     A packet was received by the filter and is now being shared with SessionInfo.
@@ -60,12 +105,12 @@ class SessionInfo:
         """
         self.packet_queue.put((packet, allowed), block=False)
 
-    def run(self):
+    #def run(self):
         """
         Continually (and indefinitely) process the packet queue. Obviously this should be run in its' own thread.
         """
-        while True:
-            self.process_item()
+        #while True:
+            #self.process_item()
             #os.system('cls')  # clear the console for new print
             #print(self)  # When new packet received, update display.
             # Might be a good idea to add some sort of sleep here?
@@ -117,22 +162,6 @@ class SessionInfo:
     """
     Returns the human-readable representation of the current session.
     """
-    def __str__(self):
-        str_gen = []  # A partially generated string. Concatenating strings in python using '+' is sub-optimal; O(n^2)
-        for con_stat in self.connection_stats:
-            info = con_stat.get_info()
-            # TODO: Would an implementation of list that returns itself (to allow recursive .append() calls)
-            #  instead of None (which is why we have so many lines) be useful?
-            str_gen.append("IP: ")
-            str_gen.append(info['ip'])
-            str_gen.append(" | Packets Received: ")
-            str_gen.append(str(info['packet_count']))
-            str_gen.append(" | Tag: ")
-            str_gen.append(info['tag'])
-            str_gen.append("\n")
-
-        # Once this loop is complete, the *actual* string object can be built.
-        return "".join(str_gen)
 
 
 class IPTag:

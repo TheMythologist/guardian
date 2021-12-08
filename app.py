@@ -7,7 +7,7 @@ from colorama import Fore
 from network.blocker import *
 import pydivert
 import sys
-from multiprocessing import freeze_support
+from multiprocessing import freeze_support, Manager
 import ipaddress
 from network import networkmanager, sessioninfo
 from distutils.version import StrictVersion
@@ -304,9 +304,12 @@ def main():
                         Fore.LIGHTCYAN_EX + 'CTRL + C' +
                         Fore.LIGHTWHITE_EX + '" to stop.')
 
-            session_info = sessioninfo.SessionInfo(ip_tags)  # Exposes session information, diagnostics and behaviour.
+            # Exposes session information, diagnostics and behaviour.
+            connection_stats = Manager().list()
+            session_info = sessioninfo.SessionInfo(Manager().dict(), connection_stats, Manager().Queue(), ip_tags)
+
             logger.info("ip_tags: " + str(ip_tags))
-            logger.info("session_info: " + str(session_info))
+            #logger.info("session_info: " + str(session_info))
 
             """ Set up packet_filter outside the try-catch so it can be safely referenced inside KeyboardInterrupt."""
             packet_filter = Whitelist(ips=ip_set, session_info=session_info)
@@ -316,7 +319,7 @@ def main():
                   "(Pressing ENTER will open the link in your web browser.)", sep="\n")
 
             try:
-                session_info.start()
+                #session_info.start()
                 packet_filter.start()
                 while True:
                     """
@@ -327,16 +330,19 @@ def main():
                     packets in its' memory queue to disk (or perhaps it should be sequentially writing to a file) and
                     save that file for investigation later.
                     """
-                    time.sleep(10)  # this is still very terrible but might be good enough for now?
+                    #time.sleep(10)  # this is still very terrible but might be good enough for now?
                     #input()
                     # if we reach here then the user pressed ENTER
                     #webbrowser.open("https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues")
                     #time.sleep(1)      # prevents the user from opening the page a ludicrous amount of times?
                     #os.system('cls')     # refresh console
-                    print(session_info)  # display session diagnostics
+                    time.sleep(1)
+                    #print(session_info)  # display session diagnostics
+                    print(sessioninfo.generate_stats(connection_stats))
+                    #session_info.process_item()
             except KeyboardInterrupt:
                 packet_filter.stop()
-                session_info.stop()
+                #session_info.stop()
                 logger.info('Stopped whitelisted session')
                 print_white('Stopped: "' +
                             Fore.LIGHTCYAN_EX + 'Whitelisted session' +
