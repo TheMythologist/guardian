@@ -316,7 +316,7 @@ def main():
                   "(Pressing ENTER will open the link in your web browser.)", sep="\n")
 
             try:
-                #session_info.start()
+                session_info.start()
                 packet_filter.start()
                 while True:
                     """
@@ -333,10 +333,10 @@ def main():
                     #webbrowser.open("https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues")
                     #time.sleep(1)      # prevents the user from opening the page a ludicrous amount of times?
                     #os.system('cls')     # refresh console
-                    print(session_info)  # display session diagnostics (there's no way this works first time lol)
+                    print(session_info)  # display session diagnostics
             except KeyboardInterrupt:
                 packet_filter.stop()
-                #session_info.stop()
+                session_info.stop()
                 logger.info('Stopped whitelisted session')
                 print_white('Stopped: "' +
                             Fore.LIGHTCYAN_EX + 'Whitelisted session' +

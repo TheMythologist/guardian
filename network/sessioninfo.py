@@ -1,5 +1,6 @@
-from multiprocessing import Process, Queue
+from multiprocessing import Manager, Process
 import os
+
 
 class SessionInfo:
 
@@ -16,9 +17,9 @@ class SessionInfo:
         if initial_ips is None:
             initial_ips = []
 
-        self.known_ips = {}
+        self.known_ips = Manager().dict()
         # self.connection_stats = [ConnectionStats(IPTag("1.1.1.1", "test"))]
-        self.connection_stats = []
+        self.connection_stats = Manager().list()
 
         for ip_tag in initial_ips:
             print("ip_tag: " + str(ip_tag))
@@ -35,7 +36,7 @@ class SessionInfo:
         So, "adding" a packet actually only puts it in this queue, and a different process will do the depletion (and 
         of course, processing) of packets in this queue.
         """
-        self.packet_queue = Queue()
+        self.packet_queue = Manager().Queue()
 
         self.processing_thread = Process(target=self.run, args=())
         self.processing_thread.daemon = True    # Terminate this thread if the parent gets terminated.
@@ -158,7 +159,7 @@ class ConnectionStats:
     def __init__(self, ip_tag):
         self.ip = ip_tag.get_ip()
         self.tag = ip_tag.get_tag()
-        self.packets = []
+        self.packets = Manager().list()
 
     """
     Give a packet to this connection statistic so the relevant information can be stored.

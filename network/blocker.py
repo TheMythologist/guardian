@@ -116,7 +116,7 @@ class Whitelist(object):
 
     def run(self):
 
-        self.session_info.start()
+        #self.session_info.start()
 
         print("ips: " + str(self.ips))
         if not pydivert.WinDivert.is_registered():
@@ -145,7 +145,7 @@ class Whitelist(object):
 
         except KeyboardInterrupt:
             """ This never hits, but the override is still necessary to stop the program from quitting on CTRL + C. """
-            self.session_info.stop()
+            #self.session_info.stop()
             pass
 
 
