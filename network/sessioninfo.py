@@ -17,8 +17,8 @@ Given a list containing connection statistics, generates a human-readable repres
         #  instead of None (which is why we have so many lines) be useful?
         str_gen.append("IP: ")
         str_gen.append(info['ip'])
-        str_gen.append(" | Packets Received: ")
-        str_gen.append(str(info['packet_count']))
+        #str_gen.append(" | Packets Received: ")
+        #str_gen.append(str(info['packet_count']))
         str_gen.append(" | Tag: ")
         str_gen.append(info['tag'])
         str_gen.append("\n")
@@ -151,6 +151,13 @@ class SessionInfo:
         self.known_ips[this_ip] = len(self.connection_stats)    # Add this_ip to dictionary with value of index into
         self.connection_stats.append(ConnectionStats(ip_tag))   # bruh.
 
+        print("idk: ", self.connection_stats)
+        i = 0
+        while i < len(self.connection_stats):
+            print("trying to print ", i)
+            print(self.connection_stats[i])
+            i += 1
+
     """
     Returns the connection stat object associated with this IP.
     
@@ -188,16 +195,16 @@ class ConnectionStats:
     def __init__(self, ip_tag):
         self.ip = ip_tag.get_ip()
         self.tag = ip_tag.get_tag()
-        self.packets = Manager().list()
+        #self.packets = Manager().list()    # REALLY? THIS IS WHAT WAS BREAKING IT!!!???
 
     """
     Give a packet to this connection statistic so the relevant information can be stored.
     """
-    def add_packet(self, packet):
-        self.packets.append(packet)  # For now, I'm just going to add it to the array. Actual stats can be added later.
+    #def add_packet(self, packet):
+        #self.packets.append(packet)  # For now, I'm just going to add it to the array. Actual stats can be added later.
 
     """
     Returns an anonymous dictionary of information about this connection.
     """
     def get_info(self):
-        return {'ip': self.ip, 'tag': self.tag, 'packet_count': len(self.packets)}
+        return {'ip': self.ip, 'tag': self.tag}#, 'packet_count': len(self.packets)}

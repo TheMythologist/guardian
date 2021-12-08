@@ -305,8 +305,9 @@ def main():
                         Fore.LIGHTWHITE_EX + '" to stop.')
 
             # Exposes session information, diagnostics and behaviour.
-            connection_stats = Manager().list()
-            session_info = sessioninfo.SessionInfo(Manager().dict(), connection_stats, Manager().Queue(), ip_tags)
+            manager = Manager()
+            connection_stats = manager.list()
+            session_info = sessioninfo.SessionInfo(manager.dict(), connection_stats, manager.Queue(), ip_tags)
 
             logger.info("ip_tags: " + str(ip_tags))
             #logger.info("session_info: " + str(session_info))
