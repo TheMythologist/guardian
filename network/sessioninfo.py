@@ -1,6 +1,15 @@
 from multiprocessing import Manager, Process
 import os
 
+def safe_pickle_packet(packet):
+    """
+    Returns a variant of a PyDivert packet that:
+    a) can be pickled (typical PyDivert packets use MemoryView which cannot be pickled)
+    b) has had certain untrusted, external information redacted (code execution can occur when unpickling, i.e.
+       certain externally-controllable characteristics like packet content should be removed)
+    """
+    pass
+
 
 def generate_stats(connection_stats):
     """

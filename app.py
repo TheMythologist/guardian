@@ -208,11 +208,11 @@ def main():
                     'value': 'lock_whitelist',
                 },
                 {
-                    'name': 'Kick unknowns              [Untested]',
+                    'name': 'Kick unknowns              [Unstable]',
                     'value': 'kick'
                 },
                 {
-                    'name': 'New session                [Untested]',
+                    'name': 'New session                [Experimental]',
                     'value': 'new'
                 },
                 {
@@ -220,7 +220,7 @@ def main():
                     'value': 'lists'
                 },
                 {
-                    'name': 'Kick by IP                 [Untested]',
+                    'name': 'Kick by IP                 [Unstable]',
                     'value': 'kick_by_ip'
                 },
                 {
