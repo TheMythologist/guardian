@@ -1,6 +1,23 @@
 from multiprocessing import Manager, Process
 import os
 
+class MinimalPacket:
+
+    def __init__(self, packet):
+        #self.ip = packet.ip
+        #self.ip.src_addr = packet.ip.src_addr
+
+        #self.ip.raw.release()
+        #self.ip.raw = bytes(self.ip.raw)
+        #self.payload = bytes(packet.raw)
+        self.src_addr = packet.src_addr
+        self.src_port = packet.src_port
+        self.dst_addr = packet.dst_addr
+        self.dst_port = packet.dst_port
+        self.is_inbound = packet.is_inbound
+        self.is_outbound = packet.is_outbound
+        self.direction = packet.direction
+
 def safe_pickle_packet(packet):
     """
     Returns a variant of a PyDivert packet that:
@@ -8,7 +25,26 @@ def safe_pickle_packet(packet):
     b) has had certain untrusted, external information redacted (code execution can occur when unpickling, i.e.
        certain externally-controllable characteristics like packet content should be removed)
     """
-    pass
+    """
+    Delete the raw payload content. We don't need it (it's encrypted anyways) and modded clients can send raw bytes
+    to other clients, including us, which could allow arbitrary code execution to occur when unpickling packet objects.
+    (See https://docs.python.org/3/library/pickle.html)
+    
+    TODO: Investigate performance of serialization with JSON instead of pickling to improve program security.
+    """
+    #packet.raw.release()
+    #packet.raw = None
+    #packet.raw = packet.raw.tobytes()  # convert to finite array
+
+    # packet.ipv4.raw and packet.udp.raw reference the *exact* same buffer as packet.raw so they also get "released".
+    #packet.ipv4.raw.release()
+    #packet.udp.raw.release()
+
+    min_packet = MinimalPacket(packet)
+
+    print(min_packet)
+
+    return min_packet
 
 
 def generate_stats(connection_stats):
@@ -112,6 +148,7 @@ class SessionInfo:
         We cannot waste any time waiting for a spot in the queue. This function is called in the context of the
         filtering thread and so processing will happen later (and almost certainly on a different thread).
         """
+        print(packet)
         self.packet_queue.put((packet, allowed), block=False)
 
     #def run(self):
@@ -138,7 +175,7 @@ class SessionInfo:
     def process_packet(self, packet, allowed):
         # We're only going to monitor inbound packets.
         if packet.is_inbound:
-            ip = packet.ip.src_addr
+            ip = packet.src_addr
 
             # If we're not aware of this destination, a new ConnectionStat (and conseq. IPTag) is required.
             if ip not in self.known_ips:
@@ -205,12 +242,13 @@ class ConnectionStats:
         self.ip = ip_tag.get_ip()
         self.tag = ip_tag.get_tag()
         #self.packets = Manager().list()    # REALLY? THIS IS WHAT WAS BREAKING IT!!!???
+        self.packets = []
 
     """
     Give a packet to this connection statistic so the relevant information can be stored.
     """
-    #def add_packet(self, packet):
-        #self.packets.append(packet)  # For now, I'm just going to add it to the array. Actual stats can be added later.
+    def add_packet(self, packet):
+        self.packets.append(packet)  # For now, I'm just going to add it to the array. Actual stats can be added later.
 
     """
     Returns an anonymous dictionary of information about this connection.

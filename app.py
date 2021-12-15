@@ -340,7 +340,7 @@ def main():
                     time.sleep(1)
                     #print(session_info)  # display session diagnostics
                     print(sessioninfo.generate_stats(connection_stats))
-                    #session_info.process_item()
+                    session_info.process_item()
             except KeyboardInterrupt:
                 packet_filter.stop()
                 #session_info.stop()
