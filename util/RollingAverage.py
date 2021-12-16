@@ -9,7 +9,7 @@ class RollingAverage:
         """
         max_dp: The most amount of data points that will be used for the rolling average.
         """
-        if max_dp < 1:
+        if not max_dp > 0:
             raise ValueError("Cannot create a rolling average of " + str(max_dp) + " data points"
                                                                                    " (must be greater than 0).")
 
@@ -42,12 +42,16 @@ class RollingAverage:
 
         return nxt
 
+    def __str__(self):
+        return str(self.result)
+
 
 if __name__ == "__main__":
     rl = RollingAverage(100)
     print(rl.add_value(50))     # 50.0
     print(rl.add_value(50))     # 50.0
     print(rl.add_value(0))      # 33.3333... (because 100 / 3)
+    print(rl)                   # 33.3333... (should still be the same)
 
     one = RollingAverage(1)
     print(one.add_value(999))   # 999.0
