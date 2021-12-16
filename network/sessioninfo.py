@@ -1,6 +1,59 @@
 from multiprocessing import Manager, Process
 import os
 
+"""
+Ok so now that we've finally figured out most of the bugs / problems with pickling packets we can now actually start
+to curate information from packets (and perhaps even other metrics) that can be displayed. I have a couple ideas:
+
+Filter Processing Time: The amount of time it took to process the previous packet.
+Average Filter Processing Time: A cycling queue of 50 or 100 numbers, all containing the amount of time in seconds it
+    took to filter each packet. Would give a good idea on the additional latency introduced by the filter.
+    
+Last IPC Overhead: The amount of time it took to pickle / pipe information across to the diagnostic process.
+Average IPC Overhead: Cycling queue of 50 or 100 numbers, same ideology as Average Filter Processing Time.
+
+Current Filter Load: The amount of "off-time" between filtering two different packets. I believe the calculation would
+    be (filter_processing_time) / (filter_processing_time + filter_off_time). If filter_off_time is big, the filter is
+    not under load and the resulting value is small. If filter_off_time is small, the filter is loaded and the resulting
+    value will be much closer to 1 (or 100%).
+Average Filter Load: Same as Current Filter Load, but the last 50 or 100 calculations.
+
+Per IP:
+    Packets Received:               Pretty obvious.
+    Bytes Received:                 Pretty obvious.
+    Packets Received per second:    Pretty obvious. Could this metric be used as a last line of defence on client tunnels?
+    Bytes Received per second:      Pretty obvious.
+    Last Seen / Last Packet Recv'd: Pretty obvious.
+    Packets Dropped:                Pretty obvious.
+    Packets Allowed:                Pretty obvious.
+
+Tags:   Miscellaneous information about an IP. All in text format.
+    VPN / Residential / TOR:    What "kind" of IP this is.
+    R* OFFICIAL / R* SERVICES:  If this is used by R* for their services.
+    APPROXIMATE LOCATION:       Nothing too descriptive, just the continent / nation. We don't want dox'ing.
+    MODDER / STALKER / SCRAPER: There's a chance that we can tag stalkers based on network behaviour. When modders try
+                                to see if you're online, there's no attempt to join. Just 205s and 45s on the game port.
+    WHITELISTED [TAG]:          This IP is whitelisted.
+    BLACKLISTED [TAG]:          This IP is blacklisted.
+    FRIEND [TAG]:               This IP belongs to a cloud-based friend.
+    UNKNOWN:                    This IP has been seen but it's behaviour is unknown.
+    CONNECTED / IN SESSION:     This IP is currently in the session.
+    
+Overall:
+    Packets Received:
+    Packets Dropped:
+    Packets Allowed:
+    Bytes Received:
+    Bytes Dropped:
+    Bytes Allowed:    
+
+Meta:   Relating to the processing of Diagnostics.
+    Diagnostics Queue Size:     How many packets are pending processing.
+    Average Processing Time:    Average of how long it took to process the last 50 / 100 packets.
+    Print Overhead:             How long it's taking to display content on the screen.
+    Average Print Overhead:     Same logic as all the other averaging methods.
+"""
+
 class MinimalPacket:
 
     def __init__(self, packet):
