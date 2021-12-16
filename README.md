@@ -56,7 +56,7 @@ I never quite liked the idea of firewalled sessions, however modders were target
   - If python cannot be found, you will need to provide the full location of `python.exe` instead. Your command prompt will still need to be in the same directory as `setup.py` though.
 
 ## Miscellaneous
-- Producing this fork took approximately 2 months of casual research and testing to complete.
+- This fork's initial release took about 2 months of casual research and testing to complete.
 - No reverse engineering of any R*-owned Intellectual Property was undertaken to produce this fork.
 - No decryption (nor any similar attack on encryption used to secure GTA Online) was performed to investigate packets.
 
