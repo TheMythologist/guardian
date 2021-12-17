@@ -28,10 +28,10 @@ class RollingAverage:
             self.result += (value - self.result) / (self.next_idx + 1)
 
         self.storage[self.next_idx] = value  # Store this value on the buffer.
-        self.next_idx = self.get_next_idx()                 # Calculate the index for next time.
-        return self.result                   # Return the new average.
+        self.next_idx = self.__get_next_idx()                 # Calculate the index for next time.
+        return self.get_avg()                   # Return the new average.
 
-    def get_next_idx(self):
+    def __get_next_idx(self):
         """
         Calculates the next index into self.storage.
         """
@@ -42,8 +42,11 @@ class RollingAverage:
 
         return nxt
 
+    def get_avg(self):
+        return self.result
+
     def __str__(self):
-        return str(self.result)
+        return str(self.get_avg())
 
 
 if __name__ == "__main__":
@@ -52,6 +55,8 @@ if __name__ == "__main__":
     print(rl.add_value(50))     # 50.0
     print(rl.add_value(0))      # 33.3333... (because 100 / 3)
     print(rl)                   # 33.3333... (should still be the same)
+    rl.add_value(0)
+    print(rl.get_avg())         # should be 25.0, but is actually 24.99999999... due to floating point error.
 
     one = RollingAverage(1)
     print(one.add_value(999))   # 999.0
