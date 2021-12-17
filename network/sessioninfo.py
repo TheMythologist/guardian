@@ -63,6 +63,7 @@ class MinimalPacket:
         #self.ip.raw.release()
         #self.ip.raw = bytes(self.ip.raw)
         #self.payload = bytes(packet.raw)
+        self.payload_size = len(packet.payload)
         self.src_addr = packet.src_addr
         self.src_port = packet.src_port
         self.dst_addr = packet.dst_addr
@@ -115,8 +116,8 @@ Given a list containing connection statistics, generates a human-readable repres
         #  instead of None (which is why we have so many lines) be useful?
         str_gen.append("IP: ")
         str_gen.append(info['ip'])
-        #str_gen.append(" | Packets Received: ")
-        #str_gen.append(str(info['packet_count']))
+        str_gen.append(" | Packets Received: ")
+        str_gen.append(str(info['packet_count']))
         str_gen.append(" | Tag: ")
         str_gen.append(info['tag'])
         str_gen.append("\n")
@@ -150,19 +151,19 @@ class SessionInfo:
         self.connection_stats = proxy_list
 
         for ip_tag in initial_ips:
-            print("ip_tag: " + str(ip_tag))
+            #print("ip_tag: " + str(ip_tag))
             self.add_con_stat_from_ip_tag(ip_tag)
         # Connection stats and known IPs are now initialised.
 
-        print(self.known_ips)
-        print(self.connection_stats)
+        #print(self.known_ips)
+        #print(self.connection_stats)
 
         i = 0
         while i < len(self.connection_stats):
-            print("ATTEMPTING TO ACCESS connection_stats[" + str(i) + "]")
+            #print("ATTEMPTING TO ACCESS connection_stats[" + str(i) + "]")
             con_stat = self.connection_stats[i]
-            print("ACCESS SUCCESSFUL")
-            print(con_stat)
+            #print("ACCESS SUCCESSFUL")
+            #print(con_stat)
             i += 1
 
         #print("ATTEMPTING FOR LOOP")
@@ -248,13 +249,13 @@ class SessionInfo:
             return    # If this IP has already been added, don't do it again.
 
         self.known_ips[this_ip] = len(self.connection_stats)    # Add this_ip to dictionary with value of index into
-        self.connection_stats.append(ConnectionStats(ip_tag))   # bruh.
+        self.connection_stats.append(ConnectionStats(ip_tag))
 
-        print("idk: ", self.connection_stats)
+        #print("idk: ", self.connection_stats)
         i = 0
         while i < len(self.connection_stats):
-            print("trying to print ", i)
-            print(self.connection_stats[i])
+            #print("trying to print ", i)
+            #print(self.connection_stats[i])
             i += 1
 
     """
@@ -307,4 +308,4 @@ class ConnectionStats:
     Returns an anonymous dictionary of information about this connection.
     """
     def get_info(self):
-        return {'ip': self.ip, 'tag': self.tag}#, 'packet_count': len(self.packets)}
+        return {'ip': self.ip, 'tag': self.tag, 'packet_count': len(self.packets)}

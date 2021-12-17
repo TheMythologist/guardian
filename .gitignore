@@ -5,3 +5,4 @@ __pycache__
 build
 venv
 /network/secret.py
+/debugger.log

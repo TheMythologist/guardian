@@ -35,7 +35,7 @@ STD_OUTPUT_HANDLE = -11
 ipv4 = re.compile(r"((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}")
 domain = re.compile(r"^[a-z]+([a-z0-9-]*[a-z0-9]+)?(\.([a-z]+([a-z0-9-]*[\[a-z0-9]+)?)+)*$")
 
-version = '3.1.0a3'
+version = '3.1.0a4'
 
 style = Style([
     ('qmark', 'fg:#00FFFF bold'),  # token in front of the question
@@ -316,8 +316,8 @@ def main():
             packet_filter = Whitelist(ips=ip_set, session_info=session_info)
 
             print("Experimental support for Online 1.54+ developed by Speyedr.\n",
-                  "Not working? Found a bug?", "https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues",
-                  "(Pressing ENTER will open the link in your web browser.)", sep="\n")
+                  "Not working? Found a bug?", "https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues")#,
+                  #"(Pressing ENTER will open the link in your web browser.)", sep="\n")
 
             try:
                 #session_info.start()
@@ -336,11 +336,12 @@ def main():
                     # if we reach here then the user pressed ENTER
                     #webbrowser.open("https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues")
                     #time.sleep(1)      # prevents the user from opening the page a ludicrous amount of times?
-                    #os.system('cls')     # refresh console
-                    time.sleep(1)
+
+                    #time.sleep(0.01)
                     #print(session_info)  # display session diagnostics
                     print(sessioninfo.generate_stats(connection_stats))
                     session_info.process_item()
+                    #os.system('cls')  # refresh console
             except KeyboardInterrupt:
                 packet_filter.stop()
                 #session_info.stop()
