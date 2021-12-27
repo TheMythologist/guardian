@@ -108,6 +108,7 @@ Given a list containing connection statistics, generates a human-readable repres
  of my assumptions about programming design need to go out the window when writing multi-processing programs.
     """
     print("connection_stats: ", connection_stats)
+    print("len(connection_stats): ", len(connection_stats))
     str_gen = []  # A partially generated string. Concatenating strings in python using '+' is sub-optimal; O(n^2)
     #get = self.connection_stats
     for con_stat in connection_stats:
@@ -230,6 +231,7 @@ class SessionInfo:
         # We're only going to monitor inbound packets.
         if packet.is_inbound:
             ip = packet.src_addr
+            print("KNOWN IPS (process_packet): ", self.known_ips)
 
             # If we're not aware of this destination, a new ConnectionStat (and conseq. IPTag) is required.
             if ip not in self.known_ips:
@@ -238,12 +240,20 @@ class SessionInfo:
 
             con_stat = self.get_con_stat_from_ip(ip)
             con_stat.add_packet(packet)  # Pass the packet down to ConnectionStat where metrics will be calculated
+            """ Was I really updating a *copy* of the object, and not saving it back when necessary??? """
+            self.connection_stats[self.known_ips[ip]] = con_stat
+            """ Sigh. I thought that con_stat would be a shallow copy, but considering 
+                connection_stats is a proxy list (doesn't exist in this process), then *of course* 
+                updating con_stat here without saving / 'writing' the new state back into the proxy list wouldn't
+                actually change the data in connection_stats. """
+
 
     """
     Adds an IP (with tag) to connection stats.
     """
     def add_con_stat_from_ip_tag(self, ip_tag):
         this_ip = ip_tag.get_ip()
+        print("KNOWN IPS: ", self.known_ips)
 
         if this_ip in self.known_ips:
             return    # If this IP has already been added, don't do it again.
@@ -251,11 +261,13 @@ class SessionInfo:
         self.known_ips[this_ip] = len(self.connection_stats)    # Add this_ip to dictionary with value of index into
         self.connection_stats.append(ConnectionStats(ip_tag))
 
+        print("KNOWN IPS: ", self.known_ips)
+
         #print("idk: ", self.connection_stats)
         i = 0
         while i < len(self.connection_stats):
-            #print("trying to print ", i)
-            #print(self.connection_stats[i])
+            print("trying to print ", i)
+            print(self.connection_stats[i])
             i += 1
 
     """
@@ -297,12 +309,18 @@ class ConnectionStats:
         self.tag = ip_tag.get_tag()
         #self.packets = Manager().list()    # REALLY? THIS IS WHAT WAS BREAKING IT!!!???
         self.packets = []
+        print("__init__(): self.packets.__repr__():", self.packets.__repr__())
 
     """
     Give a packet to this connection statistic so the relevant information can be stored.
     """
     def add_packet(self, packet):
-        self.packets.append(packet)  # For now, I'm just going to add it to the array. Actual stats can be added later.
+        print("add_packet(): self.packets.__repr__():", self.packets.__repr__())
+        print("ADDING PACKET TO LIST")
+        #self.packets.append(packet)  # For now, I'm just going to add it to the array. Actual stats can be added later.
+        self.packets.append(len(self.packets))
+        print("packet count: " + str(len(self.packets)))
+        print("add_packet(): self.packets.__repr__():", self.packets.__repr__())
 
     """
     Returns an anonymous dictionary of information about this connection.

@@ -126,7 +126,7 @@ class Whitelist(object):
                 for packet in w:
                     ip = packet.ip.src_addr
                     size = len(packet.payload)  # the size of the payload. used to guess packet's behaviour / "intent"
-                    print(packet)
+                    #print(packet)
 
                     """
                     The "special sauce" for the new filtering logic. We're using payload sizes to guess if the packet
