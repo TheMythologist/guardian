@@ -31,8 +31,7 @@ Tags:   Miscellaneous information about an IP. All in text format.
     VPN / Residential / TOR:    What "kind" of IP this is.
     R* OFFICIAL / R* SERVICES:  If this is used by R* for their services.
     APPROXIMATE LOCATION:       Nothing too descriptive, just the continent / nation. We don't want dox'ing.
-    MODDER / STALKER / SCRAPER: There's a chance that we can tag stalkers based on network behaviour. When modders try
-                                to see if you're online, there's no attempt to join. Just 205s and 45s on the game port.
+    MODDER / STALKER / SCRAPER: There's a chance that we can tag stalkers based on network behaviour.
     WHITELISTED [TAG]:          This IP is whitelisted.
     BLACKLISTED [TAG]:          This IP is blacklisted.
     FRIEND [TAG]:               This IP belongs to a cloud-based friend.
@@ -52,7 +51,40 @@ Meta:   Relating to the processing of Diagnostics.
     Average Processing Time:    Average of how long it took to process the last 50 / 100 packets.
     Print Overhead:             How long it's taking to display content on the screen.
     Average Print Overhead:     Same logic as all the other averaging methods.
-"""
+    
+ ================================ 
+        IP       | Packets IN | Packets IN/s | Bytes IN | Bytes IN/s | Packets OUT | Packets OUT/s | Bytes OUT | Bytes OUT/s | Last Seen | # Pckts Allowed | # Pckts Dropped | Tags and Info
+ 192.168.0.235   |      0     |      0.0     |     0    |     0.0    |      0      |      0.0      |     0     |     0.0     |   NEVER   |        0        |        0        |    LOCAL IP
+ 172.68.2.143    |      0     |      0.0     |     0    |     0.0    |      0      |      0.0      |     0     |     0.0     |   NEVER   |        0        |        0        |    PUBLIC IP
+ 255.255.255.255 |     24     |      0.0     |     0    |     0.0    |      0      |      0.0      |     0     |     0.0     |    10s    |       24        |        0        |   R* SERVICES
+ 85.42.1.15      |                                                                                                                                                           |     UNKNOWN       (CRP, IT)
+ 101.172.93.149  |                                                                                                                                                           |     UNKNOWN       (RES, AU)
+ 66.176.75.199   |                                                                                                                                                           |   1x JOIN REQ.    (RES, US)
+                 |                                                                                                                                                           | 1x REQ. 1x CNFM.  
+                 |                                                                                                                                                           |   2x JOIN CNFM.
+                 |                                                                                                                                                           |    CONNECTED      [TessioMT]
+                 |                                                                                                                                                           |   WHITELISTED     [RDS128]
+                 |                                                                                                                                                           |   BLACKLISTED     [Example]
+      TOTAL      |                                                                                                                                                           |  RUNNING FOR: 12 MINUTES
+      
+ Avg. Filter Load: 23%      Avg. FPT: 0.39 ms      Avg. IPC: 2.31 ms      Print Time: 23 ms
+ Cur. Filter Load: <1%      Last FPT: 0.12 ms      Last IPC: 22.9 ms      Queue Size: 2
+ ================================
+
+Tag Priotity:   This is the order of precedence for the info tags. Lower is more important.
+ UNKNOWN
+ WHITELISTED
+ BLACKLISTED
+ xx JOIN REQ.
+ xx REQ. xx CNFM.
+ CONNECTED
+ R* SERVICES
+ LOCAL IP
+ PUBLIC IP
+ 
+Can we also add coloured rows to the list? Would be pretty pog to see rows turn green when a packet was accepted, red when a packet was rejected, etc.
+      
+ """
 
 class MinimalPacket:
 

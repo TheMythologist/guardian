@@ -421,6 +421,10 @@ class IPCollector(object):
         logger.info('Terminated ipcollector process')
         logger.info('Collected a total of {} IPs'.format(len(self.ips)))
 
+    # TODO: Ignore packets that are heartbeats or matchmaking requests from the filter.
+    #  Removing IPs that are in Microsoft Azure IP ranges should also be done, but that will be done later.
+    #  This is because if an IP is collected here, then someone is actively connected from that IP.
+
     def run(self):
         with pydivert.WinDivert(packetfilter) as w:
             for packet in w:

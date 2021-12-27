@@ -35,7 +35,7 @@ STD_OUTPUT_HANDLE = -11
 ipv4 = re.compile(r"((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}")
 domain = re.compile(r"^[a-z]+([a-z0-9-]*[a-z0-9]+)?(\.([a-z]+([a-z0-9-]*[\[a-z0-9]+)?)+)*$")
 
-version = '3.1.0a4'
+version = '3.1.0a5'
 
 style = Style([
     ('qmark', 'fg:#00FFFF bold'),  # token in front of the question
@@ -100,6 +100,8 @@ class IPValidator(Validator):
                 raise error
         except (ipaddress.AddressValueError, socket.gaierror):
             raise error
+
+    # TODO: Add an extra validator to check if an IP could be used by R* services (i.e. it's part of Microsoft Azure)
 
     @staticmethod
     def validate_get(text):
@@ -197,7 +199,7 @@ def main():
                 },
                 {
                     'name': 'Auto whitelisted session   [Not working]',
-                    'value': 'auto_whitelist',
+                    'value': 'auto_whitelist',  # TODO: Get Microsoft Azure IP ranges and remove them from the auto-whitelist.
                 },
                 {
                     'name': 'Locked session             [Experimental]',
@@ -206,6 +208,10 @@ def main():
                 {
                     'name': 'Lock session w/ Whitelist  [Experimental]',
                     'value': 'lock_whitelist',
+                },
+                {
+                    'name': 'Diagnostics Only           [Experimental]',
+                    'value': 'diagnostic',  # TODO: Actually add a diagnostic-only mode. Selecting this now would crash.
                 },
                 {
                     'name': 'Kick unknowns              [Unstable]',
