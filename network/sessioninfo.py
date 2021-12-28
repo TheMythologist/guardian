@@ -397,16 +397,16 @@ class ConnectionStats:
         if self.last_seen is None:
             return False
         else:
-            return ((time.time() - self.last_seen) / 1000) <= threshold
+            return (time.time() - self.last_seen) <= threshold
 
     def get_last_seen_str(self):
         if self.last_seen is None:
             return "Never"
         else:
-            return "".join([str(time.time() - self.last_seen), " ms ago"])
+            return "".join([str(round((time.time() - self.last_seen) * 1000)), " ms ago"])
 
     """
-    Sometimes, a tag (or part of it) may be temporarily overriden.
+    Sometimes, a tag (or part of it) may be temporarily overridden.
     Tags are either a string, or an array of strings.
     Tag overrides affect the first part of a string.
     Tag overrides should not affect the default / original tag for an IP.
