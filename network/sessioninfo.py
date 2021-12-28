@@ -158,7 +158,7 @@ Given a list containing connection statistics, generates a human-readable repres
         str_gen.append("\t | Last Seen: ")
         str_gen.append(str(info['last_seen']))
         str_gen.append("\t | # Allowed: ")
-        str_gen.extend([str(info['packets_allowed']), " ms ago"])
+        str_gen.append(str(info['packets_allowed']))
         str_gen.append("\t | # Dropped: ")
         str_gen.append(str(info['packets_dropped']))
         str_gen.append("\t | Tag: ")
@@ -392,7 +392,16 @@ class ConnectionStats:
     If we haven't seen any activity from this source in the last 'threshold' seconds, then we're not connected.
     """
     def is_connected(self, threshold=5):
-        return ((time.time() - self.last_seen) / 1000) <= threshold
+        if self.last_seen is None:
+            return False
+        else:
+            return ((time.time() - self.last_seen) / 1000) <= threshold
+
+    def get_last_seen_str(self):
+        if self.last_seen is None:
+            return "Never"
+        else:
+            "".join([str(time.time() - self.last_seen), " ms ago"])
 
     """
     Sometimes, a tag (or part of it) may be temporarily overriden.
@@ -430,6 +439,6 @@ class ConnectionStats:
     """
     def get_info(self):
         return {'ip': self.ip_tag.get_ip(), 'tag': self.get_tag_override(), 'packet_count': len(self.packets),
-                'is_connected': self.is_connected(3), 'last_seen': time.time() - self.last_seen,
+                'is_connected': self.is_connected(3), 'last_seen': self.get_last_seen_str(),
                 'packets_in': self.packets_in, 'packets_out': self.packets_out, 'packets_allowed': self.packets_allowed,
                 'packets_dropped': self.packets_dropped}
