@@ -61,6 +61,7 @@ Meta:   Relating to the processing of Diagnostics.
  255.255.255.255 |     24     |      0.0     |     0    |     0.0    |      0      |      0.0      |     0     |     0.0     |    10s    |       24        |        0        |   R* SERVICES
  85.42.1.15      |                                                                                                                                                           |     UNKNOWN       (CRP, IT)
  101.172.93.149  |                                                                                                                                                           |     UNKNOWN       (RES, AU)
+ 1.145.210.255   |                                                                                                                                                           |     UNKNOWN       (MBL, AU)
  66.176.75.199   |                                                                                                                                                           |   1x JOIN REQ.    (RES, US)
                  |                                                                                                                                                           | 1x REQ. 1x CNFM.  
                  |                                                                                                                                                           |   2x JOIN CNFM.
@@ -376,6 +377,7 @@ class ConnectionStats:
         print("packet count: " + str(len(self.packets)))
         print("add_packet(): self.packets.__repr__():", self.packets.__repr__())
         self.last_seen = time.time()
+        print("last seen: " + str(self.last_seen))
 
         # Generic counters
         if packet.is_inbound:
@@ -401,7 +403,7 @@ class ConnectionStats:
         if self.last_seen is None:
             return "Never"
         else:
-            "".join([str(time.time() - self.last_seen), " ms ago"])
+            return "".join([str(time.time() - self.last_seen), " ms ago"])
 
     """
     Sometimes, a tag (or part of it) may be temporarily overriden.
