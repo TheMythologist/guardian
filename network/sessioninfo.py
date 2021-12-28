@@ -98,7 +98,7 @@ class MinimalPacket:
         #self.ip.raw.release()
         #self.ip.raw = bytes(self.ip.raw)
         #self.payload = bytes(packet.raw)
-        self.payload_size = len(packet.payload)
+        self.payload_length = len(packet.payload)
         self.src_addr = packet.src_addr
         self.src_port = packet.src_port
         self.dst_addr = packet.dst_addr
@@ -142,8 +142,8 @@ Given a list containing connection statistics, generates a human-readable repres
  This function was originally the override for __str__ (so you could just call print(session_info)) but it appears a lot
  of my assumptions about programming design need to go out the window when writing multi-processing programs.
     """
-    print("connection_stats: ", connection_stats)
-    print("len(connection_stats): ", len(connection_stats))
+    #print("connection_stats: ", connection_stats)
+    #print("len(connection_stats): ", len(connection_stats))
     str_gen = []  # A partially generated string. Concatenating strings in python using '+' is sub-optimal; O(n^2)
     #get = self.connection_stats
     for con_stat in connection_stats:
@@ -246,7 +246,7 @@ class SessionInfo:
         We cannot waste any time waiting for a spot in the queue. This function is called in the context of the
         filtering thread and so processing will happen later (and almost certainly on a different thread).
         """
-        print(packet)
+        #print(packet)
         self.packet_queue.put((packet, allowed), block=False)
 
     #def run(self):
@@ -272,7 +272,7 @@ class SessionInfo:
 
     def process_packet(self, packet, allowed):
         ip = packet.src_addr if packet.is_inbound else packet.dst_addr
-        print("KNOWN IPS (process_packet): ", self.known_ips)
+        #print("KNOWN IPS (process_packet): ", self.known_ips)
 
         # If we're not aware of this destination, a new ConnectionStat (and conseq. IPTag) is required.
         if ip not in self.known_ips:
@@ -293,7 +293,7 @@ class SessionInfo:
     """
     def add_con_stat_from_ip_tag(self, ip_tag):
         this_ip = ip_tag.get_ip()
-        print("KNOWN IPS: ", self.known_ips)
+        #print("KNOWN IPS: ", self.known_ips)
 
         if this_ip in self.known_ips:
             return    # If this IP has already been added, don't do it again.
@@ -301,13 +301,13 @@ class SessionInfo:
         self.known_ips[this_ip] = len(self.connection_stats)    # Add this_ip to dictionary with value of index into
         self.connection_stats.append(ConnectionStats(ip_tag))
 
-        print("KNOWN IPS: ", self.known_ips)
+        #print("KNOWN IPS: ", self.known_ips)
 
         #print("idk: ", self.connection_stats)
         i = 0
         while i < len(self.connection_stats):
-            print("trying to print ", i)
-            print(self.connection_stats[i])
+            #print("trying to print ", i)
+            #print(self.connection_stats[i])
             i += 1
 
     """
@@ -357,7 +357,7 @@ class ConnectionStats:
         self.ip_tag = ip_tag
         #self.packets = Manager().list()    # REALLY? THIS IS WHAT WAS BREAKING IT!!!???
         self.packets = []
-        print("__init__(): self.packets.__repr__():", self.packets.__repr__())
+        #print("__init__(): self.packets.__repr__():", self.packets.__repr__())
         self.last_seen = None       # has not been seen yet
         self.packets_in = 0
         self.packets_out = 0
@@ -369,15 +369,15 @@ class ConnectionStats:
     Give a packet to this connection statistic so the relevant information can be stored.
     """
     def add_packet(self, packet, allowed):
-        print("add_packet(): self.packets.__repr__():", self.packets.__repr__())
-        print("ADDING PACKET TO LIST")
+        #print("add_packet(): self.packets.__repr__():", self.packets.__repr__())
+        #print("ADDING PACKET TO LIST")
         self.packets.append(packet)  # For now, I'm just going to add it to the array. Actual stats can be added later.
         if packet.is_outbound and packet.payload_length == 125 and not self.is_connected(3):
             self.session_requests += 1
-        print("packet count: " + str(len(self.packets)))
-        print("add_packet(): self.packets.__repr__():", self.packets.__repr__())
+        #print("packet count: " + str(len(self.packets)))
+        #print("add_packet(): self.packets.__repr__():", self.packets.__repr__())
         self.last_seen = time.time()
-        print("last seen: " + str(self.last_seen))
+        #print("last seen: " + str(self.last_seen))
 
         # Generic counters
         if packet.is_inbound:
