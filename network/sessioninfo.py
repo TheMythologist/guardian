@@ -1,5 +1,7 @@
 from multiprocessing import Manager, Process
 import os
+import time
+
 
 """
 Ok so now that we've finally figured out most of the bugs / problems with pickling packets we can now actually start
@@ -128,7 +130,7 @@ def safe_pickle_packet(packet):
 
     min_packet = MinimalPacket(packet)
 
-    print(min_packet)
+    #print(min_packet)
 
     return min_packet
 
@@ -149,9 +151,17 @@ Given a list containing connection statistics, generates a human-readable repres
         #  instead of None (which is why we have so many lines) be useful?
         str_gen.append("IP: ")
         str_gen.append(info['ip'])
-        str_gen.append(" | Packets Received: ")
-        str_gen.append(str(info['packet_count']))
-        str_gen.append(" | Tag: ")
+        str_gen.append("\t | Packets IN: ")
+        str_gen.append(str(info['packets_in']))
+        str_gen.append("\t | Packets OUT: ")
+        str_gen.append(str(info['packets_out']))
+        str_gen.append("\t | Last Seen: ")
+        str_gen.append(str(info['last_seen']))
+        str_gen.append("\t | # Allowed: ")
+        str_gen.extend([str(info['packets_allowed']), " ms ago"])
+        str_gen.append("\t | # Dropped: ")
+        str_gen.append(str(info['packets_dropped']))
+        str_gen.append("\t | Tag: ")
         str_gen.append(info['tag'])
         str_gen.append("\n")
 
@@ -260,25 +270,22 @@ class SessionInfo:
         return  # If you want to process another packet, you'll need to call this function again.
 
     def process_packet(self, packet, allowed):
-        # We're only going to monitor inbound packets.
-        if packet.is_inbound:
-            ip = packet.src_addr
-            print("KNOWN IPS (process_packet): ", self.known_ips)
+        ip = packet.src_addr if packet.is_inbound else packet.dst_addr
+        print("KNOWN IPS (process_packet): ", self.known_ips)
 
-            # If we're not aware of this destination, a new ConnectionStat (and conseq. IPTag) is required.
-            if ip not in self.known_ips:
-                # TODO: We might be able to use IP ranges to give IPs custom tags. (e.g. ROCKSTAR, UNKNOWN (USA), etc.)
-                self.add_con_stat_from_ip_tag(IPTag(ip, "UNKNOWN"))  # Now that the ConnectionStat exists, we can get it
+        # If we're not aware of this destination, a new ConnectionStat (and conseq. IPTag) is required.
+        if ip not in self.known_ips:
+            # TODO: We might be able to use IP ranges to give IPs custom tags. (e.g. ROCKSTAR, UNKNOWN (USA), etc.)
+            self.add_con_stat_from_ip_tag(IPTag(ip, "UNKNOWN"))  # Now that the ConnectionStat exists, we can get it
 
-            con_stat = self.get_con_stat_from_ip(ip)
-            con_stat.add_packet(packet)  # Pass the packet down to ConnectionStat where metrics will be calculated
-            """ Was I really updating a *copy* of the object, and not saving it back when necessary??? """
-            self.connection_stats[self.known_ips[ip]] = con_stat
-            """ Sigh. I thought that con_stat would be a shallow copy, but considering 
-                connection_stats is a proxy list (doesn't exist in this process), then *of course* 
-                updating con_stat here without saving / 'writing' the new state back into the proxy list wouldn't
-                actually change the data in connection_stats. """
-
+        con_stat = self.get_con_stat_from_ip(ip)
+        con_stat.add_packet(packet, allowed)  # Pass the packet down to ConnectionStat where metrics will be calculated
+        """ Was I really updating a *copy* of the object, and not saving it back when necessary??? """
+        self.connection_stats[self.known_ips[ip]] = con_stat
+        """ Sigh. I thought that con_stat would be a shallow copy, but considering 
+            connection_stats is a proxy list (doesn't exist in this process), then *of course* 
+            updating con_stat here without saving / 'writing' the new state back into the proxy list wouldn't
+            actually change the data in connection_stats. """
 
     """
     Adds an IP (with tag) to connection stats.
@@ -328,7 +335,16 @@ class IPTag:
         return self.ip
 
     def get_tag(self):
+        if isinstance(self.tag, list):
+            return "".join(self.tag)
+
         return self.tag
+
+    def get_tag_raw(self):
+        return self.tag
+
+    def set_tag(self, tag):
+        self.tag = tag
 
 
 class ConnectionStats:
@@ -337,25 +353,83 @@ class ConnectionStats:
     Stores the actual relevant information for a connection.
     """
     def __init__(self, ip_tag):
-        self.ip = ip_tag.get_ip()
-        self.tag = ip_tag.get_tag()
+        self.ip_tag = ip_tag
         #self.packets = Manager().list()    # REALLY? THIS IS WHAT WAS BREAKING IT!!!???
         self.packets = []
         print("__init__(): self.packets.__repr__():", self.packets.__repr__())
+        self.last_seen = None       # has not been seen yet
+        self.packets_in = 0
+        self.packets_out = 0
+        self.packets_allowed = 0
+        self.packets_dropped = 0
+        self.session_requests = 0
 
     """
     Give a packet to this connection statistic so the relevant information can be stored.
     """
-    def add_packet(self, packet):
+    def add_packet(self, packet, allowed):
         print("add_packet(): self.packets.__repr__():", self.packets.__repr__())
         print("ADDING PACKET TO LIST")
-        #self.packets.append(packet)  # For now, I'm just going to add it to the array. Actual stats can be added later.
-        self.packets.append(len(self.packets))
+        self.packets.append(packet)  # For now, I'm just going to add it to the array. Actual stats can be added later.
+        if packet.is_outbound and packet.payload_length == 125 and not self.is_connected(3):
+            self.session_requests += 1
         print("packet count: " + str(len(self.packets)))
         print("add_packet(): self.packets.__repr__():", self.packets.__repr__())
+        self.last_seen = time.time()
+
+        # Generic counters
+        if packet.is_inbound:
+            self.packets_in += 1
+        elif packet.is_outbound:
+            self.packets_out += 1
+
+        if allowed:
+            self.packets_allowed += 1
+        else:
+            self.packets_dropped += 1
+
+    """
+    If we haven't seen any activity from this source in the last 'threshold' seconds, then we're not connected.
+    """
+    def is_connected(self, threshold=5):
+        return ((time.time() - self.last_seen) / 1000) <= threshold
+
+    """
+    Sometimes, a tag (or part of it) may be temporarily overriden.
+    Tags are either a string, or an array of strings.
+    Tag overrides affect the first part of a string.
+    Tag overrides should not affect the default / original tag for an IP.
+    """
+    def get_tag_override(self):
+        tag = self.ip_tag.get_tag_raw()
+        override = tag
+
+        if isinstance(tag, list):
+            tag = list(tag)    # shallow copy (this is fine because all the elements are immutable strings)
+            override = tag[0]  # the thing we might be overriding
+        if override == "LOCAL IP" or override == "PUBLIC IP":  # Local / Public IP tags take precedence.
+            # TODO: Check if R* SERVICE
+            return self.ip_tag.get_tag()
+        if self.is_connected():
+            override = "CONNECTED"
+        elif self.session_requests > 0:
+            override = "".join([str(self.session_requests), "x JOIN REQ."])
+
+        # If the original tag was a string then is probably overwritten. Otherwise, we replace only the first element.
+        if isinstance(tag, str):
+            tag = override
+        else:
+            tag[0] = override
+
+        return tag
+        #return override if isinstance(tag, str) else tag[1::].insert(0, override)
+
 
     """
     Returns an anonymous dictionary of information about this connection.
     """
     def get_info(self):
-        return {'ip': self.ip, 'tag': self.tag, 'packet_count': len(self.packets)}
+        return {'ip': self.ip_tag.get_ip(), 'tag': self.get_tag_override(), 'packet_count': len(self.packets),
+                'is_connected': self.is_connected(3), 'last_seen': time.time() - self.last_seen,
+                'packets_in': self.packets_in, 'packets_out': self.packets_out, 'packets_allowed': self.packets_allowed,
+                'packets_dropped': self.packets_dropped}
