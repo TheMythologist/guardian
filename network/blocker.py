@@ -449,13 +449,16 @@ class IPCollector(object):
         logger.info('Collected a total of {} IPs'.format(len(self.ips)))
 
     def run(self):
+        # TODO: Can you run PyDivert in sniff mode, instead of having to run a filter?
         with pydivert.WinDivert(packetfilter) as w:
             for packet in w:
-                dst = packet.ip.dst_addr
+                #dst = packet.ip.dst_addr
                 src = packet.ip.src_addr
+                size = len(packet.payload)
 
-                if packet.is_inbound:
+                if packet.is_inbound and (size not in heartbeat_sizes) and (size not in matchmaking_sizes):
                     self.ips.append(src)
-                else:
-                    self.ips.append(dst)
+                #else:
+                    #self.ips.append(dst)
+
                 w.send(packet)
