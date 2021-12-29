@@ -393,6 +393,42 @@ class Debugger(object):
                 w.send(packet)
 
 
+"""
+Okay, so there's a couple of changes that need to be done to fix auto-whitelisting.
+
+The main flaw is that this IPCollector has a chance of collecting IPs that are responsible for R* Services
+(and can i.e. be used for tunnelling).
+When you're in a session, a R* Service will "ping" your session / check for a "heartbeat". If your session is pinged
+while the IPCollector is running, the IPCollector will add the source of that ping to the whitelist.
+
+This wasn't a problem before Online 1.54 because these services weren't used for tunneling connections. But, now, if
+a player joining the session cannot connect to you directly, these IPs can be used for R* Services *can* be used for
+tunnelled session traffic. As the IPCollector has added these R* Service IPs to the whitelist, tunnelled connections are
+now also whitelisted, which obviously breaks session security.
+
+The first fix is to adjust the rules / "reasons" the IPCollector may add an IP to the auto-whitelist.
+Because the new filters only filter inbound traffic, I have decided to only add an IP to the auto-whitelist if:
+ - the packet is inbound
+ - the packet does not contain a payload size equal to a heartbeat
+ - the packet does not contain a payload size equal to a matchmaking request
+
+There is one more check we need to perform, which will be done *after* the IP collector has run, mainly due to the extra
+complexity required to perform it.
+My research indicates that R* uses Microsoft Azure Cloud for most of their R* Services. Microsoft frequently publishes
+their IP ranges used for cloud activity. As a last safe-guarding step, we should acquire these IP ranges and ensure that
+collected IPs do not correspond to any cloud traffic.
+
+If the new version of the IPCollector has saved an IP address used by Azure, this almost certainly guarantees that
+someone is already being tunnelled through a R* Service (as using Azure for VPNs is incredibly rare), and we will need
+to display a warning that these players must be dropped from the session for security to remain.
+
+There are some extra heuristics we could also add to the IPCollector, such as actually noting any IPs that might be
+R* Services by checking their payload sizes, running the auto-whitelist service for a whole 60 seconds (!), and also
+only adding IPs which have sent a certain threshold of packets during the IP collection phase. (When in a session, you
+send a *significant* amount of packets between clients, compared to only a handful of packets for other misc. activity.) 
+"""
+
+
 class IPCollector(object):
     """
     Thread to store all the ip addresses matching the packet filter
