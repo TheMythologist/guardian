@@ -1,6 +1,7 @@
-import ipaddress  # woah, this is a default module? neat.
-import requests  # to get the microsoft azure ip ranges
-import re  # to search through the html to find the file (because there's currently no API to automate getting ranges)
+import ipaddress    # woah, this is a default module? neat.
+import requests     # to get the microsoft azure ip ranges
+import re    # to search through the html to find the file (because there's currently no API to automate getting ranges)
+import json         # to parse the file once it's been downloaded
 
 """
 This file contains classes and methods to manage acquiring, parsing, and updating a possibly dynamic list of IP ranges
@@ -47,23 +48,36 @@ def get_azure_ip_ranges_download(page_to_search=AZURE_GET_PUBLIC_CLOUD_URL):
     """
 
     # Get the actual page.
-    response = requests.get(page_to_search)
     try:
-        if response.status_code != 200:
-            raise ScrapeError("URL to scrape returned " + str(response.status_code) + " instead of 200.", response)
+        response = requests.get(page_to_search)
+        response.raise_for_status()  # If there was an error code, raise it.
+        #if response.status_code != 200:
+        #    raise ScrapeError("URL to scrape returned " + str(response.status_code) + " instead of 200.", response)
 
-        # Search through the HTML.
-        files = re.findall(MICROSOFT_DOWNLOAD_REGEX, str(response.content))  # Find all download.microsoft.com files.
+        # Search through the HTML for all download.microsoft.com JSON files.
+        files = re.findall(MICROSOFT_DOWNLOAD_REGEX, str(response.content))
         if files is None:
             raise ScrapeError("Did not find any valid download URLs while searching the page.", response)
 
         files = list(set(files))  # Removes any duplicate finds.
         return files
 
-    except ScrapeError as e:
-        """ For whatever reason, we couldn't find a file to download. We can attempt to generate it manually. """
+    except (ScrapeError, requests.exceptions.RequestException) as e:
+        """ For whatever reason, we couldn't find a file to download. We can attempt to generate the URL manually. """
         # TODO: Figure out what times (and timezones) Microsoft publish their IP ranges at.
         raise e
+
+
+def parse_azure_ip_ranges(url_to_json_file):
+    """
+    Given a Microsoft Azure IP .JSON file, parses the file and returns an array of strings of CIDR ranges
+    that may be used by R* Services.
+    """
+    response = requests.get(url_to_json_file)
+    response.raise_for_status()  # Can't handle anything here. If we can't download the file, it's game over.
+    # TODO: Using reverse_search_ip_in_azure() indicates that R* Services use the generic 'AzureCloud' category.
+    #  A bit boring but to be expected and hey, at least they're actually in the file.
+    #  So, need to get the address ranges (they're CIDR) from that category and return a set of IPs to compare against.
 
 
 def get_all_ips_from_cidr(ip_in_cidr_notation):
@@ -81,6 +95,23 @@ def get_all_ips_from_cidr_array(array_of_ip_in_cidr_notation):
         ips = ips.union(get_all_ips_from_cidr(ip_range))
 
     return ips
+
+
+# Tries to find places where an IP occurs in the azure info.
+def reverse_search_ip_in_azure(ip, azure_info_json):
+    search = []  # where categories will be added
+    categories = azure_info_json['values']
+    # categories is a list of dictionaries
+    for cat in categories:
+        ranges = cat['properties']['addressPrefixes']
+        for str_cidr in ranges:
+            try:
+                cidr = ipaddress.IPv4Network(str_cidr)
+                if ipaddress.IPv4Address(ip) in cidr:
+                    search.append(cat)
+            except ipaddress.AddressValueError:
+                pass  # not an IPv4 CIDR range. couldn't find an "is IPv4" / "is CIDR" function
+    return search
 
 
 if __name__ == "__main__":
