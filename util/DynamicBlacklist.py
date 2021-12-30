@@ -2,6 +2,8 @@ import ipaddress    # woah, this is a default module? neat.
 import requests     # to get the microsoft azure ip ranges
 import re    # to search through the html to find the file (because there's currently no API to automate getting ranges)
 import json         # to parse the file once it's been downloaded
+from sys import getsizeof  # for debug testing to determine the size of certain things
+import time         # timing
 
 """
 This file contains classes and methods to manage acquiring, parsing, and updating a possibly dynamic list of IP ranges
@@ -78,12 +80,25 @@ def parse_azure_ip_ranges(url_to_json_file):
     # TODO: Using reverse_search_ip_in_azure() indicates that R* Services use the generic 'AzureCloud' category.
     #  A bit boring but to be expected and hey, at least they're actually in the file.
     #  So, need to get the address ranges (they're CIDR) from that category and return a set of IPs to compare against.
+    azure_cloud_json = json.loads(response.content)
+    categories = azure_cloud_json['values']
+    arr_ranges = None
+    for cat in categories:
+        if cat['name'] == 'AzureCloud':
+            arr_ranges = cat['properties']['addressPrefixes']
+            break
+    if arr_ranges is None:
+        raise ValueError("Could not find AzureCloud category in values array.")
+    ips = get_all_ips_from_cidr_array(arr_ranges)
+    return ips
 
 
 def get_all_ips_from_cidr(ip_in_cidr_notation):
     ips = set()
+    print("generating IPs")
     ip_range = ipaddress.IPv4Network(ip_in_cidr_notation)
     for ip in ip_range:
+        #print("adding " + str(ip))
         ips.add(str(ip))
 
     return ips
@@ -92,7 +107,10 @@ def get_all_ips_from_cidr(ip_in_cidr_notation):
 def get_all_ips_from_cidr_array(array_of_ip_in_cidr_notation):
     ips = set()
     for ip_range in array_of_ip_in_cidr_notation:
-        ips = ips.union(get_all_ips_from_cidr(ip_range))
+        try:
+            ips = ips.union(get_all_ips_from_cidr(ip_range))
+        except ipaddress.AddressValueError:
+            pass  # element ignored because it wasn't valid IPv4
 
     return ips
 
@@ -114,7 +132,25 @@ def reverse_search_ip_in_azure(ip, azure_info_json):
     return search
 
 
+def get_cidr_suffixes(array_of_cidr):
+    cidrs = set()
+    for entry in array_of_cidr:
+        try:
+            ipaddress.IPv4Network(entry)  # lazy way of seeing if it's a valid ipv4
+            cidrs.add(entry[-2:])
+        except ipaddress.AddressValueError:  # not ipv4
+            pass
+
+    return cidrs
+
 if __name__ == "__main__":
-    print(get_all_ips_from_cidr("185.56.64.0/24"))
-    print(len(get_all_ips_from_cidr_array(["185.56.64.0/24", "185.56.64.0/22"])))
-    print(get_azure_ip_ranges_download())
+    #print(get_all_ips_from_cidr("185.56.64.0/24"))
+    #print(len(get_all_ips_from_cidr_array(["185.56.64.0/24", "185.56.64.0/22"])))
+    dl = get_azure_ip_ranges_download()
+    print(dl)
+    start = time.perf_counter()
+    ips_test = parse_azure_ip_ranges(dl[0])
+    finish = time.perf_counter()
+    print("size:", getsizeof(ips_test), "len:", len(ips_test), "seconds:", (finish - start) / 1000)
+    # size: 1073742040 len: 21838185, time: like 90 minutes or something, shouldn't have used perf counter here I guess
+
