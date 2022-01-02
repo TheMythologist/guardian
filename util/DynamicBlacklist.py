@@ -70,6 +70,36 @@ def get_azure_ip_ranges_download(page_to_search=AZURE_GET_PUBLIC_CLOUD_URL):
         raise e
 
 
+def construct_all_cidr_masks():
+    all_ones = 4294967295  # 0b11111111111111111111111111111111
+    masks = [all_ones]
+    for _ in range(32):
+        masks.append((masks[len(masks) - 1] << 1) & all_ones)
+    masks.reverse()
+    return masks
+
+
+CIDR_MASKS = construct_all_cidr_masks()
+
+# TODO: Convert all CIDR notation into integers (by chopping off the subnet mask part). Then, store all these integers
+#  in a set. Then, to see if an IP is within a CIDR range, we will need to construct all CIDR blocks containing that IP.
+#  This can be done by converting the IP to an integer and then apply each mask with bitwise AND.
+
+"""
+To generate all CIDR blocks containing a certain IP, we must zero the right-most bit, append /32, then zero the next
+right-most bit (move one bit left), append /31, and so on.
+Probably best manipulated using ipaddress.packed attribute?
+"""
+
+
+def generate_all_cidr_containing_ip(ip, min_cidr=1):
+    ip_num = int(ipaddress.IPv4Address(ip))  # convert to number
+    ips = []
+    for index in range(min_cidr, 32):  # index into CIDR_MASKS
+        ips.append(ip_num & CIDR_MASKS[index])
+    return ips
+
+
 def parse_azure_ip_ranges(url_to_json_file):
     """
     Given a Microsoft Azure IP .JSON file, parses the file and returns an array of strings of CIDR ranges
@@ -89,17 +119,75 @@ def parse_azure_ip_ranges(url_to_json_file):
             break
     if arr_ranges is None:
         raise ValueError("Could not find AzureCloud category in values array.")
-    ips = get_all_ips_from_cidr_array(arr_ranges)
-    return ips
+    #ips = get_all_ips_from_cidr_array(arr_ranges)
+    #return ips
+    return arr_ranges
+
+
+def cidr_to_tuple(ip_in_cidr):
+    """
+    Converts a string representing an IP in CIDR notation to two integers,
+    the first integer represents the lowest IP in the CIDR block,
+    and the second integer represents the mask (just the suffix)
+
+    NOTE: Does *not* check for the validity of a CIDR block. Example, 255.255.255.255/1 would be accepted, but is not
+    a valid CIDR block.
+    """
+    """
+    Calculating the suffix seems weird, but it's best explained with an example. Let's say you have the CIDR block
+    111.22.3.44/9. Here, the suffix is only 1 digit (i.e. 1 character in the string), and we can determine this by
+    seeing if the second-last character was the slash. If the second-last character isn't a slash, it must be a number,
+    in which case the IP address is something like 111.22.3.44/29. We then take either those one or two digits, and
+    convert it to an integer.
+    """
+    is_one_digit_suffix = ip_in_cidr[-2] == "/"
+    suffix_int = int(ip_in_cidr[-1:]) if is_one_digit_suffix else int(ip_in_cidr[-2:])
+    ip_str = ip_in_cidr[:-2] if is_one_digit_suffix else ip_in_cidr[:-3]
+    ip_int = int(ipaddress.IPv4Address(ip_str))
+
+    return ip_int, suffix_int
+
+
+def construct_cidr_block_set(ips_in_cidr):
+    """
+    Construct a set of IPs in CIDR notation. This set is specifically optimised to only work with the
+    ip_in_cidr_block_set() function.
+
+    Ignores any element which is not valid IPv4 CIDR notation (as long as it was still a string).
+    """
+    ip_set = set()
+    for ip_cidr in ips_in_cidr:
+        try:
+            ip_tuple = cidr_to_tuple(ip_cidr)  # [0] is IP as integer, [1] is subnet mask in /xy notation (only xy)
+            ip_set.add(ip_tuple)
+        except (IndexError, ValueError, ipaddress.AddressValueError):
+            """ IndexError if string too short, ValueError if int() conversion failed, AddressValueError if not IPv4.
+                In any case, just ignore the element. """
+            pass
+
+    return ip_set
+
+
+def ip_in_cidr_block_set(ip, cidr_block_set, min_cidr_suffix=0):
+    """
+    Essentially a reverse-search for all possible entries in cidr_block_set that would contain ip.
+    """
+    ip_int = int(ipaddress.IPv4Address(ip))
+    for suffix in range(min_cidr_suffix, 32):
+        # try each subnet mask
+        if (ip_int & CIDR_MASKS[suffix], suffix) in cidr_block_set:
+            return True
+
+    return False  # "brute-force" searched against all possible subnet masks, didn't find a match
 
 
 def get_all_ips_from_cidr(ip_in_cidr_notation):
-    ips = set()
+    ips = list()
     print("generating IPs")
     ip_range = ipaddress.IPv4Network(ip_in_cidr_notation)
     for ip in ip_range:
         #print("adding " + str(ip))
-        ips.add(str(ip))
+        ips.append(str(ip))
 
     return ips
 
@@ -150,7 +238,7 @@ if __name__ == "__main__":
     print(dl)
     start = time.perf_counter()
     ips_test = parse_azure_ip_ranges(dl[0])
-    finish = time.perf_counter()
-    print("size:", getsizeof(ips_test), "len:", len(ips_test), "seconds:", (finish - start) / 1000)
+    #finish = time.perf_counter()
+    #print("size:", getsizeof(ips_test), "len:", len(ips_test), "seconds:", (finish - start) / 1000)
     # size: 1073742040 len: 21838185, time: like 90 minutes or something, shouldn't have used perf counter here I guess
 
