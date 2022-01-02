@@ -450,6 +450,9 @@ class IPCollector(object):
 
     def run(self):
         # TODO: Can you run PyDivert in sniff mode, instead of having to run a filter?
+
+        # TODO: Only save an IP if you see more than 'x' amount of packets from it.
+        #  This should hopefully prevent even more false-positives.
         with pydivert.WinDivert(packetfilter) as w:
             for packet in w:
                 #dst = packet.ip.dst_addr
