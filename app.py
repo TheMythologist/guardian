@@ -426,10 +426,13 @@ def main():
                 if friend.get('enabled'):
                     ip_set.add(ip)
 
+            time.sleep(5)   # to see debug prints
+
             os.system('cls')
             logger.info('Starting whitelisted session with {} IPs'.format(len(ip_set)))
             print_white('Running: "' +
                         Fore.LIGHTCYAN_EX + 'Whitelisted session' +
+                        Fore.LIGHTWHITE_EX + '" Press "' +
                         Fore.LIGHTCYAN_EX + 'CTRL + C' +
                         Fore.LIGHTWHITE_EX + '" to stop.')
 
