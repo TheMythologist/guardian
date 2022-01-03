@@ -95,7 +95,7 @@ Probably best manipulated using ipaddress.packed attribute?
 def generate_all_cidr_containing_ip(ip, min_cidr=0):
     ip_num = int(ipaddress.IPv4Address(ip))  # convert to number
     ips = []
-    for index in range(min_cidr, 32):  # index into CIDR_MASKS
+    for index in range(min_cidr, len(CIDR_MASKS)):  # index into CIDR_MASKS
         ips.append(ip_num & CIDR_MASKS[index])
     return ips
 
@@ -181,7 +181,7 @@ def ip_in_cidr_block_set(ip, cidr_block_set, min_cidr_suffix=0):
     Essentially a reverse-search for all possible entries in cidr_block_set that would contain ip.
     """
     ip_int = int(ipaddress.IPv4Address(ip))
-    for suffix in range(min_cidr_suffix, len(CIDR_MASKS)+1):
+    for suffix in range(min_cidr_suffix, len(CIDR_MASKS)):
         # try each subnet mask
         if (ip_int & CIDR_MASKS[suffix], suffix) in cidr_block_set:
             return True
