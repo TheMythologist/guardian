@@ -301,18 +301,18 @@ def main():
             """ Set up packet_filter outside the try-catch so it can be safely referenced inside KeyboardInterrupt."""
             packet_filter = Whitelist(ips=ip_set)
 
-            print("Experimental support for Online 1.54+ developed by Speyedr.\n",
-                  "Not working? Found a bug?", "https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues",
-                  "(Pressing ENTER will open the link in your web browser.)", sep="\n")
+            print("Experimental support for Online 1.54+ developed by Speyedr.\n")
+                  #"Not working? Found a bug?", "https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues",
+                  #"(Pressing ENTER will open the link in your web browser.)", sep="\n")
 
             try:
                 packet_filter.start()
                 while True:
-                    #time.sleep(10)  # this is still very terrible but might be good enough for now?
-                    input()
+                    time.sleep(10)  # this is still very terrible but might be good enough for now?
+                    #input()
                     # if we reach here then the user pressed ENTER
-                    webbrowser.open("https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues")
-                    time.sleep(1)      # prevents the user from opening the page a ludicrous amount of times?
+                    #webbrowser.open("https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues")
+                    #time.sleep(1)      # prevents the user from opening the page a ludicrous amount of times?
             except KeyboardInterrupt:
                 packet_filter.stop()
                 logger.info('Stopped whitelisted session')
