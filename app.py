@@ -18,6 +18,7 @@ import zipfile
 import json
 import time
 import logging
+import util.DynamicBlacklist    # new Azure-blocking functionality
 
 logger = logging.getLogger('guardian')
 logger.propagate = False
@@ -184,7 +185,7 @@ def main():
             'qmark': '@',
             'choices': [
                 {
-                    'name': 'Solo session               [Experimental]',
+                    'name': 'Solo session               [Working]',
                     'value': 'solo'
                 },
                 {
@@ -196,7 +197,7 @@ def main():
                     'value': 'blacklist',
                 },
                 {
-                    'name': 'Auto whitelisted session   [Not working]',
+                    'name': 'Auto whitelisted session   [Experimental]',
                     'value': 'auto_whitelist',
                 },
                 {
@@ -212,7 +213,7 @@ def main():
                     'value': 'kick'
                 },
                 {
-                    'name': 'New session                [Untested]',
+                    'name': 'New session                [Working]',
                     'value': 'new'
                 },
                 {
@@ -1309,6 +1310,8 @@ if __name__ == '__main__':
     ctypes.windll.kernel32.SetConsoleTitleW('Guardian {}'.format(version))
     cloud = networkmanager.Cloud()
     ipsyncer = IPSyncer(None)
+    print_white('Building dynamic blacklist...')
+    dynamic_blacklist = util.DynamicBlacklist.get_dynamic_blacklist()
     print_white('Checking connections.')
     if cloud.check_connection():
         version = cloud.version()

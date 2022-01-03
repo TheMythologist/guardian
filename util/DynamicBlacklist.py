@@ -167,6 +167,14 @@ def construct_cidr_block_set(ips_in_cidr):
 
     return ip_set
 
+def get_dynamic_blacklist():
+    download_link = get_azure_ip_ranges_download()
+    ranges = parse_azure_ip_ranges(download_link)
+    ranges.extend(T2_EU)    # add R* EU ranges
+    ranges.extend(T2_US)    # add R* US ranges
+    dynamic_blacklist = construct_cidr_block_set(ranges)
+    return dynamic_blacklist
+
 
 def ip_in_cidr_block_set(ip, cidr_block_set, min_cidr_suffix=0):
     """
