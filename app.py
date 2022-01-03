@@ -358,7 +358,7 @@ def main():
             logger.info('Starting to collect IPs')
             collector.start()
             for _ in tqdm(range(10), ascii=True, desc='Collecting session'):
-                time.sleep(1)
+                time.sleep(0.5)
             collector.stop()
             ip_set = set(collector.ips)
             logger.info('Collected {} IPs'.format(len(ip_set)))
