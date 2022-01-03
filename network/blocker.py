@@ -473,16 +473,21 @@ class IPCollector(object):
         # TODO: Can you run PyDivert in sniff mode, instead of having to run a filter?
 
         # TODO: We could also actually check to see *when* the last packet was seen from that IP.
-        with pydivert.WinDivert(packetfilter) as w:
-            for packet in w:
-                #dst = packet.ip.dst_addr
-                src = packet.ip.src_addr
-                size = len(packet.payload)
+        if not pydivert.WinDivert.is_registered():
+            pydivert.WinDivert.register()
+        try:
+            with pydivert.WinDivert(packetfilter) as w:
+                for packet in w:
+                    #dst = packet.ip.dst_addr
+                    src = packet.ip.src_addr
+                    size = len(packet.payload)
 
-                if packet.is_inbound and (size not in heartbeat_sizes) and (size not in matchmaking_sizes):
-                    #self.ips.append(src)
-                    self.add_seen_ip(src)
-                #else:
-                    #self.ips.append(dst)
+                    if packet.is_inbound and (size not in heartbeat_sizes) and (size not in matchmaking_sizes):
+                        #self.ips.append(src)
+                        self.add_seen_ip(src)
+                    #else:
+                        #self.ips.append(dst)
 
-                w.send(packet)
+                    w.send(packet)
+        except KeyboardInterrupt:
+            pass
