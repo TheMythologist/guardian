@@ -465,6 +465,7 @@ class IPCollector(object):
     def stop(self):
         self.process.terminate()
         logger.info('Terminated ipcollector process')
+        print("ips seen: " + self.seen_ips)
         self.save_ips()
         logger.info('Collected a total of {} IPs'.format(len(self.ips)))
 

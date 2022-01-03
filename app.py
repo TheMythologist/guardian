@@ -160,7 +160,7 @@ class ValidateToken(Validator):
 
 
 def main():
-    global cloud, config, custom_ips, blacklist, friends
+    global cloud, config, custom_ips, blacklist, friends, dynamic_blacklist
     while True:
         token = config.get('token')
         if token:
@@ -354,7 +354,7 @@ def main():
 
         elif option == 'auto_whitelist':
             logger.info('Starting auto whitelisted session')
-            collector = IPCollector()
+            collector = IPCollector(packet_count_min_threshold=20)
             logger.info('Starting to collect IPs')
             collector.start()
             for _ in tqdm(range(10), ascii=True, desc='Collecting session'):
@@ -363,6 +363,45 @@ def main():
             ip_set = set(collector.ips)
             logger.info('Collected {} IPs'.format(len(ip_set)))
             print("IPs: " + str(ip_set))
+            print("Checking for potential tunnels in collected IPs...")
+            potential_tunnels = set()
+            for ip in ip_set:
+                if util.DynamicBlacklist.ip_in_cidr_block_set(ip, dynamic_blacklist, min_cidr_suffix=0):
+                    if ip not in custom_ips:    # Ignore if user has this IP in custom whitelist.
+                        potential_tunnels.add(ip)
+            if len(potential_tunnels) > 0:
+                c = [{
+                    'name': ip,
+                    'checked': False
+                } for ip in potential_tunnels]
+                options = {
+                    'type': 'checkbox',
+                    'name': 'option',
+                    'qmark': '@',
+                    'message': 'WARNING! Guardian has detected ' + str(len(potential_tunnels)) + ' IP' +
+                        "" if len(potential_tunnels) == 0 else "s" + " in your current session that may be used for " +
+                        "connection tunnelling, and may break session security if added to the whitelist.\nUnless " +
+                        "you know what you're doing, " +
+                        "it is HIGHLY RECOMMENDED that you DO NOT allow these IPs to be added to the whitelist.\n" +
+                        "Please note that excluding an IP from this list will likely result in players connected " +
+                        "through that IP to be dropped from the session.\nIf this happens, then you may have to " +
+                        "check both you and your friend's Windows Firewall settings to see why they can't directly " +
+                        "connect to you.\nIf this is a false-positive and you are sure this IP is a direct connection, " +
+                        "you can prevent this message from appearing by manually adding them to the Custom whitelist.\n\n" +
+                        "Select the potentially session security breaking IPs you wish to keep whitelisted, if any.",
+                    'choices': c
+                }
+                answer = prompt(options, style=style)
+                print(answer)
+                if not answer:
+                    pass
+                else:
+                    for ip in answer:
+                        if not answer[ip]:  # the result (True or False?
+                            ip_set.remove(ip)   # If the user has not checked this IP, it will be removed
+
+            else:
+                print("No tunnels found!")
             local_ip = get_private_ip()
             ip_set.add(local_ip)
             public_ip = get_public_ip()
