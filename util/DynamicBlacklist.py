@@ -169,7 +169,7 @@ def construct_cidr_block_set(ips_in_cidr):
 
 def get_dynamic_blacklist():
     download_link = get_azure_ip_ranges_download()
-    ranges = parse_azure_ip_ranges(download_link)
+    ranges = parse_azure_ip_ranges(download_link[0])  # TODO: Handle multiple download files!
     ranges.extend(T2_EU)    # add R* EU ranges
     ranges.extend(T2_US)    # add R* US ranges
     dynamic_blacklist = construct_cidr_block_set(ranges)
