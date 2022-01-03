@@ -434,10 +434,29 @@ class IPCollector(object):
     Thread to store all the ip addresses matching the packet filter
     """
 
-    def __init__(self):
+    def __init__(self, packet_count_min_threshold=1):
         self.process = multiprocessing.Process(target=self.run, args=())
         self.process.daemon = True
         self.ips = multiprocessing.Manager().list()
+        self.seen_ips = dict()  # key is IP address, value is packets seen
+        self.min_packets = packet_count_min_threshold  # minimum amount of packets required to be seen to be added
+
+    def add_seen_ip(self, ip):
+        """
+        Keeps a "counter" of how many packets have been seen from this IP.
+        """
+        try:
+            self.seen_ips[ip] += 1  # increment the packet count by 1
+        except KeyError:
+            self.seen_ips[ip] = 1   # hasn't been seen before, add to dictionary, also we've seen 1 packet now
+
+    def save_ips(self):
+        """
+        Saves any IP that has been seen at least self.min_packets times.
+        """
+        for ip in self.seen_ips:
+            if self.seen_ips[ip] >= self.min_packets:
+                self.ips.append(ip)
 
     def start(self):
         self.process.start()
@@ -446,13 +465,13 @@ class IPCollector(object):
     def stop(self):
         self.process.terminate()
         logger.info('Terminated ipcollector process')
+        self.save_ips()
         logger.info('Collected a total of {} IPs'.format(len(self.ips)))
 
     def run(self):
         # TODO: Can you run PyDivert in sniff mode, instead of having to run a filter?
 
-        # TODO: Only save an IP if you see more than 'x' amount of packets from it.
-        #  This should hopefully prevent even more false-positives.
+        # TODO: We could also actually check to see *when* the last packet was seen from that IP.
         with pydivert.WinDivert(packetfilter) as w:
             for packet in w:
                 #dst = packet.ip.dst_addr
@@ -460,7 +479,8 @@ class IPCollector(object):
                 size = len(packet.payload)
 
                 if packet.is_inbound and (size not in heartbeat_sizes) and (size not in matchmaking_sizes):
-                    self.ips.append(src)
+                    #self.ips.append(src)
+                    self.add_seen_ip(src)
                 #else:
                     #self.ips.append(dst)
 
