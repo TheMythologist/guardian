@@ -19,6 +19,7 @@ import json
 import time
 import logging
 import util.DynamicBlacklist    # new Azure-blocking functionality
+from requests import RequestException
 
 logger = logging.getLogger('guardian')
 logger.propagate = False
@@ -197,7 +198,7 @@ def main():
                     'value': 'blacklist',
                 },
                 {
-                    'name': 'Auto whitelisted session   [Experimental]',
+                    'name': 'Auto whitelisted session   [' + 'Experimental' if len(dynamic_blacklist) > 0 else 'Not working' + ']',
                     'value': 'auto_whitelist',
                 },
                 {
@@ -1353,7 +1354,13 @@ if __name__ == '__main__':
     cloud = networkmanager.Cloud()
     ipsyncer = IPSyncer(None)
     print_white('Building dynamic blacklist...')
-    dynamic_blacklist = util.DynamicBlacklist.get_dynamic_blacklist()
+    dynamic_blacklist = set()
+    try:
+        dynamic_blacklist = util.DynamicBlacklist.get_dynamic_blacklist()
+    except (util.DynamicBlacklist.ScrapeError, RequestException, json.decoder.JSONDecodeError, IndexError, ValueError, TypeError, KeyError) as e:
+        print_white('ERROR: Could not construct dynamic blacklist: ' + str(e) +
+                    '\nAuto-Whitelist will not work correctly.')
+        time.sleep(3)
     print_white('Checking connections.')
     if cloud.check_connection():
         version = cloud.version()
