@@ -393,15 +393,73 @@ class Debugger(object):
                 w.send(packet)
 
 
+"""
+Okay, so there's a couple of changes that need to be done to fix auto-whitelisting.
+
+The main flaw is that this IPCollector has a chance of collecting IPs that are responsible for R* Services
+(and can i.e. be used for tunnelling).
+When you're in a session, a R* Service will "ping" your session / check for a "heartbeat". If your session is pinged
+while the IPCollector is running, the IPCollector will add the source of that ping to the whitelist.
+
+This wasn't a problem before Online 1.54 because these services weren't used for tunneling connections. But, now, if
+a player joining the session cannot connect to you directly, these IPs can be used for R* Services *can* be used for
+tunnelled session traffic. As the IPCollector has added these R* Service IPs to the whitelist, tunnelled connections are
+now also whitelisted, which obviously breaks session security.
+
+The first fix is to adjust the rules / "reasons" the IPCollector may add an IP to the auto-whitelist.
+Because the new filters only filter inbound traffic, I have decided to only add an IP to the auto-whitelist if:
+ - the packet is inbound
+ - the packet does not contain a payload size equal to a heartbeat
+ - the packet does not contain a payload size equal to a matchmaking request
+
+There is one more check we need to perform, which will be done *after* the IP collector has run, mainly due to the extra
+complexity required to perform it.
+My research indicates that R* uses Microsoft Azure Cloud for most of their R* Services. Microsoft frequently publishes
+their IP ranges used for cloud activity. As a last safe-guarding step, we should acquire these IP ranges and ensure that
+collected IPs do not correspond to any cloud traffic.
+
+If the new version of the IPCollector has saved an IP address used by Azure, this almost certainly guarantees that
+someone is already being tunnelled through a R* Service (as using Azure for VPNs is incredibly rare), and we will need
+to display a warning that these players must be dropped from the session for security to remain.
+
+There are some extra heuristics we could also add to the IPCollector, such as actually noting any IPs that might be
+R* Services by checking their payload sizes, running the auto-whitelist service for a whole 60 seconds (!), and also
+only adding IPs which have sent a certain threshold of packets during the IP collection phase. (When in a session, you
+send a *significant* amount of packets between clients, compared to only a handful of packets for other misc. activity.) 
+"""
+
+
 class IPCollector(object):
     """
     Thread to store all the ip addresses matching the packet filter
     """
 
-    def __init__(self):
+    def __init__(self, packet_count_min_threshold=1):
         self.process = multiprocessing.Process(target=self.run, args=())
         self.process.daemon = True
         self.ips = multiprocessing.Manager().list()
+        self.seen_ips = multiprocessing.Manager().dict()  # key is IP address, value is packets seen
+        self.min_packets = packet_count_min_threshold  # minimum amount of packets required to be seen to be added
+
+        #self.ips.append("20.40.183.2")      # DEBUG, forcing an Azure IP to be included
+        #self.ips.append("192.81.240.99")    # DEBUG, forcing a T2 US IP to be included
+
+    def add_seen_ip(self, ip):
+        """
+        Keeps a "counter" of how many packets have been seen from this IP.
+        """
+        try:
+            self.seen_ips[ip] += 1  # increment the packet count by 1
+        except KeyError:
+            self.seen_ips[ip] = 1   # hasn't been seen before, add to dictionary, also we've seen 1 packet now
+
+    def save_ips(self):
+        """
+        Saves any IP that has been seen at least self.min_packets times.
+        """
+        for ip in self.seen_ips:
+            if self.seen_ips[ip] >= self.min_packets:
+                self.ips.append(ip)
 
     def start(self):
         self.process.start()
@@ -410,16 +468,29 @@ class IPCollector(object):
     def stop(self):
         self.process.terminate()
         logger.info('Terminated ipcollector process')
+        #print("ips seen: ", self.seen_ips)
+        self.save_ips()
         logger.info('Collected a total of {} IPs'.format(len(self.ips)))
 
     def run(self):
-        with pydivert.WinDivert(packetfilter) as w:
-            for packet in w:
-                dst = packet.ip.dst_addr
-                src = packet.ip.src_addr
+        # TODO: Can you run PyDivert in sniff mode, instead of having to run a filter?
 
-                if packet.is_inbound:
-                    self.ips.append(src)
-                else:
-                    self.ips.append(dst)
-                w.send(packet)
+        # TODO: We could also actually check to see *when* the last packet was seen from that IP.
+        if not pydivert.WinDivert.is_registered():
+            pydivert.WinDivert.register()
+        try:
+            with pydivert.WinDivert(packetfilter) as w:
+                for packet in w:
+                    #dst = packet.ip.dst_addr
+                    src = packet.ip.src_addr
+                    size = len(packet.payload)
+
+                    if packet.is_inbound and (size not in heartbeat_sizes) and (size not in matchmaking_sizes):
+                        #self.ips.append(src)
+                        self.add_seen_ip(src)
+                    #else:
+                        #self.ips.append(dst)
+
+                    w.send(packet)
+        except KeyboardInterrupt:
+            pass

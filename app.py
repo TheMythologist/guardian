@@ -18,6 +18,8 @@ import zipfile
 import json
 import time
 import logging
+import util.DynamicBlacklist    # new Azure-blocking functionality
+from requests import RequestException
 
 logger = logging.getLogger('guardian')
 logger.propagate = False
@@ -35,7 +37,7 @@ STD_OUTPUT_HANDLE = -11
 ipv4 = re.compile(r"((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}")
 domain = re.compile(r"^[a-z]+([a-z0-9-]*[a-z0-9]+)?(\.([a-z]+([a-z0-9-]*[\[a-z0-9]+)?)+)*$")
 
-version = '3.1.0b3'
+version = '3.1.0b4'
 
 style = Style([
     ('qmark', 'fg:#00FFFF bold'),  # token in front of the question
@@ -159,7 +161,7 @@ class ValidateToken(Validator):
 
 
 def main():
-    global cloud, config, custom_ips, blacklist, friends
+    global cloud, config, custom_ips, blacklist, friends, dynamic_blacklist
     while True:
         token = config.get('token')
         if token:
@@ -184,7 +186,7 @@ def main():
             'qmark': '@',
             'choices': [
                 {
-                    'name': 'Solo session               [Experimental]',
+                    'name': 'Solo session               [Working]',
                     'value': 'solo'
                 },
                 {
@@ -196,7 +198,7 @@ def main():
                     'value': 'blacklist',
                 },
                 {
-                    'name': 'Auto whitelisted session   [Not working]',
+                    'name': 'Auto whitelisted session   [' + ('Experimental' if len(dynamic_blacklist) > 0 else 'Not working') + ']',
                     'value': 'auto_whitelist',
                 },
                 {
@@ -212,7 +214,7 @@ def main():
                     'value': 'kick'
                 },
                 {
-                    'name': 'New session                [Untested]',
+                    'name': 'New session                [Working]',
                     'value': 'new'
                 },
                 {
@@ -300,18 +302,18 @@ def main():
             """ Set up packet_filter outside the try-catch so it can be safely referenced inside KeyboardInterrupt."""
             packet_filter = Whitelist(ips=ip_set)
 
-            print("Experimental support for Online 1.54+ developed by Speyedr.\n",
-                  "Not working? Found a bug?", "https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues",
-                  "(Pressing ENTER will open the link in your web browser.)", sep="\n")
+            print("Experimental support for Online 1.54+ developed by Speyedr.\n")
+                  #"Not working? Found a bug?", "https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues",
+                  #"(Pressing ENTER will open the link in your web browser.)", sep="\n")
 
             try:
                 packet_filter.start()
                 while True:
-                    #time.sleep(10)  # this is still very terrible but might be good enough for now?
-                    input()
+                    time.sleep(10)  # this is still very terrible but might be good enough for now?
+                    #input()
                     # if we reach here then the user pressed ENTER
-                    webbrowser.open("https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues")
-                    time.sleep(1)      # prevents the user from opening the page a ludicrous amount of times?
+                    #webbrowser.open("https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues")
+                    #time.sleep(1)      # prevents the user from opening the page a ludicrous amount of times?
             except KeyboardInterrupt:
                 packet_filter.stop()
                 logger.info('Stopped whitelisted session')
@@ -353,15 +355,61 @@ def main():
 
         elif option == 'auto_whitelist':
             logger.info('Starting auto whitelisted session')
-            collector = IPCollector()
+            collector = IPCollector(packet_count_min_threshold=15)
             logger.info('Starting to collect IPs')
             collector.start()
             for _ in tqdm(range(10), ascii=True, desc='Collecting session'):
-                time.sleep(1)
+                time.sleep(0.5)
             collector.stop()
             ip_set = set(collector.ips)
             logger.info('Collected {} IPs'.format(len(ip_set)))
-            print("IPs: " + str(ip_set))
+            #print("IPs: " + str(ip_set))
+            print("Checking for potential tunnels in collected IPs...\n")
+            potential_tunnels = set()
+            for ip in ip_set:
+                if util.DynamicBlacklist.ip_in_cidr_block_set(ip, dynamic_blacklist, min_cidr_suffix=0):
+                    if ip not in custom_ips:    # Ignore if user has this IP in custom whitelist.
+                        potential_tunnels.add(ip)
+            #print("potential tunnels: ", potential_tunnels)
+            if len(potential_tunnels) > 0:
+                c = [{
+                    'name': ip,
+                    'checked': False
+                } for ip in potential_tunnels]
+                options = {
+                    'type': 'checkbox',
+                    'name': 'option',
+                    'qmark': '@',
+                    'message': "", 'WARNING! Guardian has detected ' + str(len(potential_tunnels)) + ' IP' +
+                        ("" if len(potential_tunnels) == 1 else "s") + " in your current session that may be used for " +
+                        "connection tunnelling, and may break session security if added to the whitelist.\nUnless " +
+                        "you know what you're doing, " +
+                        "it is HIGHLY RECOMMENDED that you DO NOT allow these IPs to be added to the whitelist.\n" +
+                        "Please note that excluding an IP from this list will likely result in players connected " +
+                        "through that IP to be dropped from the session.\nIf this happens, then you may have to " +
+                        "check both you and your friend's Windows Firewall settings to see why they can't directly " +
+                        "connect to you.\nIf this is a false-positive and you are sure an IP is a direct connection, " +
+                        "you can prevent this message from appearing by manually adding them to the Custom whitelist.\n\n" +
+                        "Select the potentially session security breaking IPs you wish to keep whitelisted, if any.\n"
+                    'choices': c
+                }
+                answer = prompt(options, style=style)
+                print(answer)
+                if answer is not None:
+                    try:
+                        for ip in answer['option']:
+                            potential_tunnels.remove(ip)  # Anything that has been checked will not be considered a tunnel.
+                    except KeyError:
+                        pass    # Probably the user pressing CTRL+C to cancel the selection, meaning no 'option' key.
+                #print("potential tunnels:", potential_tunnels)
+
+                for ip in potential_tunnels:
+                    ip_set.remove(ip)
+
+                #print("ip_set:", ip_set)
+
+            else:
+                print("No tunnels found!")
             local_ip = get_private_ip()
             ip_set.add(local_ip)
             public_ip = get_public_ip()
@@ -386,10 +434,13 @@ def main():
                 if friend.get('enabled'):
                     ip_set.add(ip)
 
+            time.sleep(5)   # to see debug prints
+
             os.system('cls')
             logger.info('Starting whitelisted session with {} IPs'.format(len(ip_set)))
             print_white('Running: "' +
                         Fore.LIGHTCYAN_EX + 'Whitelisted session' +
+                        Fore.LIGHTWHITE_EX + '" Press "' +
                         Fore.LIGHTCYAN_EX + 'CTRL + C' +
                         Fore.LIGHTWHITE_EX + '" to stop.')
 
@@ -1309,6 +1360,14 @@ if __name__ == '__main__':
     ctypes.windll.kernel32.SetConsoleTitleW('Guardian {}'.format(version))
     cloud = networkmanager.Cloud()
     ipsyncer = IPSyncer(None)
+    print_white('Building dynamic blacklist...')
+    dynamic_blacklist = set()
+    try:
+        dynamic_blacklist = util.DynamicBlacklist.get_dynamic_blacklist()
+    except (util.DynamicBlacklist.ScrapeError, RequestException, json.decoder.JSONDecodeError, IndexError, ValueError, TypeError, KeyError) as e:
+        print_white('ERROR: Could not construct dynamic blacklist: ' + str(e) +
+                    '\nAuto-Whitelist will not work correctly.')
+        time.sleep(3)
     print_white('Checking connections.')
     if cloud.check_connection():
         version = cloud.version()
