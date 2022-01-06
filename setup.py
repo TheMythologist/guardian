@@ -16,7 +16,7 @@ executables = [
     Executable('app.py', targetName='Guardian.exe', icon='logo.ico')
 ]
 
-version = '3.1.0a7-fastload-fix-dev-auto-whitelist-fix'
+version = '3.1.0b4-fastload-fix'
 
 build_path = 'build/exe.win-amd64-{}.{}'.format(sys.version_info.major, sys.version_info.minor)
 

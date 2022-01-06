@@ -191,7 +191,7 @@ def ip_in_cidr_block_set(ip, cidr_block_set, min_cidr_suffix=0):
 
 def get_all_ips_from_cidr(ip_in_cidr_notation):
     ips = list()
-    print("generating IPs")
+    #print("generating IPs")
     ip_range = ipaddress.IPv4Network(ip_in_cidr_notation)
     for ip in ip_range:
         #print("adding " + str(ip))
@@ -246,7 +246,7 @@ if __name__ == "__main__":
     print(dl)
     start = time.perf_counter()
     ips_test = parse_azure_ip_ranges(dl[0])
-    #finish = time.perf_counter()
-    #print("size:", getsizeof(ips_test), "len:", len(ips_test), "seconds:", (finish - start) / 1000)
+    finish = time.perf_counter()
+    print("size:", getsizeof(ips_test), "len:", len(ips_test), "seconds:", (finish - start) / 1000)
     # size: 1073742040 len: 21838185, time: like 90 minutes or something, shouldn't have used perf counter here I guess
 

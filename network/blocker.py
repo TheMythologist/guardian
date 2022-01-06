@@ -441,6 +441,9 @@ class IPCollector(object):
         self.seen_ips = multiprocessing.Manager().dict()  # key is IP address, value is packets seen
         self.min_packets = packet_count_min_threshold  # minimum amount of packets required to be seen to be added
 
+        #self.ips.append("20.40.183.2")      # DEBUG, forcing an Azure IP to be included
+        #self.ips.append("192.81.240.99")    # DEBUG, forcing a T2 US IP to be included
+
     def add_seen_ip(self, ip):
         """
         Keeps a "counter" of how many packets have been seen from this IP.
@@ -465,7 +468,7 @@ class IPCollector(object):
     def stop(self):
         self.process.terminate()
         logger.info('Terminated ipcollector process')
-        print("ips seen: ", self.seen_ips)
+        #print("ips seen: ", self.seen_ips)
         self.save_ips()
         logger.info('Collected a total of {} IPs'.format(len(self.ips)))
 
