@@ -111,6 +111,13 @@ def parse_azure_ip_ranges_from_url(url_to_json_file):
     return parse_azure_ip_ranges(response.content)  # Parse the response and return it to be saved.
 
 
+def get_azure_ip_file_from_url(url_to_json_file):
+    # TODO: Provide some sanity checks to see if the file contains the content we expect.
+    response = requests.get(url_to_json_file)
+    response.raise_for_status()
+    return response.content
+
+
 def save_azure_file(data_to_save, where_to_save="db.json"):
     file = open(where_to_save, mode="w")
     file.write(data_to_save)
@@ -135,7 +142,6 @@ def parse_azure_ip_ranges(azure_file):
 
 def parse_azure_ip_ranges_from_file(location_of_file):
     file = open(location_of_file, mode='r')
-
     return parse_azure_ip_ranges(file)
 
 
@@ -181,6 +187,7 @@ def construct_cidr_block_set(ips_in_cidr):
             pass
 
     return ip_set
+
 
 def get_dynamic_blacklist():
     download_link = get_azure_ip_ranges_download()
