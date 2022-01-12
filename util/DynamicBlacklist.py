@@ -100,17 +100,26 @@ def generate_all_cidr_containing_ip(ip, min_cidr=0):
     return ips
 
 
-def parse_azure_ip_ranges(url_to_json_file):
+def parse_azure_ip_ranges_from_url(url_to_json_file):
     """
     Given a Microsoft Azure IP .JSON file, parses the file and returns an array of strings of CIDR ranges
     that may be used by R* Services.
     """
     response = requests.get(url_to_json_file)
     response.raise_for_status()  # Can't handle anything here. If we can't download the file, it's game over.
-    # TODO: Using reverse_search_ip_in_azure() indicates that R* Services use the generic 'AzureCloud' category.
-    #  A bit boring but to be expected and hey, at least they're actually in the file.
-    #  So, need to get the address ranges (they're CIDR) from that category and return a set of IPs to compare against.
-    azure_cloud_json = json.loads(response.content)
+
+    return parse_azure_ip_ranges(response.content)  # Parse the response and return it to be saved.
+
+
+def save_azure_file(data_to_save, where_to_save="db.json"):
+    file = open(where_to_save, mode="w")
+    file.write(data_to_save)
+    file.close()
+    return
+
+
+def parse_azure_ip_ranges(azure_file):
+    azure_cloud_json = json.loads(azure_file)   # load the .json file into memory
     categories = azure_cloud_json['values']
     arr_ranges = None
     for cat in categories:
@@ -119,9 +128,15 @@ def parse_azure_ip_ranges(url_to_json_file):
             break
     if arr_ranges is None:
         raise ValueError("Could not find AzureCloud category in values array.")
-    #ips = get_all_ips_from_cidr_array(arr_ranges)
-    #return ips
+    # ips = get_all_ips_from_cidr_array(arr_ranges)
+    # return ips
     return arr_ranges
+
+
+def parse_azure_ip_ranges_from_file(location_of_file):
+    file = open(location_of_file, mode='r')
+
+    return parse_azure_ip_ranges(file)
 
 
 def cidr_to_tuple(ip_in_cidr):
@@ -169,7 +184,7 @@ def construct_cidr_block_set(ips_in_cidr):
 
 def get_dynamic_blacklist():
     download_link = get_azure_ip_ranges_download()
-    ranges = parse_azure_ip_ranges(download_link[0])  # TODO: Handle multiple download files!
+    ranges = parse_azure_ip_ranges_from_url(download_link[0])  # TODO: Handle multiple download files!
     ranges.extend(T2_EU)    # add R* EU ranges
     ranges.extend(T2_US)    # add R* US ranges
     dynamic_blacklist = construct_cidr_block_set(ranges)
@@ -245,7 +260,7 @@ if __name__ == "__main__":
     dl = get_azure_ip_ranges_download()
     print(dl)
     start = time.perf_counter()
-    ips_test = parse_azure_ip_ranges(dl[0])
+    ips_test = parse_azure_ip_ranges_from_url(dl[0])
     finish = time.perf_counter()
     print("size:", getsizeof(ips_test), "len:", len(ips_test), "seconds:", (finish - start) / 1000)
     # size: 1073742040 len: 21838185, time: like 90 minutes or something, shouldn't have used perf counter here I guess
