@@ -120,9 +120,9 @@ def get_azure_ip_file_from_url(url_to_json_file):
 
 def save_azure_file(data_to_save, where_to_save="db.json"):
     file = open(where_to_save, mode="w")
-    file.write(data_to_save)
+    bytes_written = file.write(data_to_save)
     file.close()
-    return
+    return bytes_written
 
 
 def parse_azure_ip_ranges(azure_file):
@@ -189,9 +189,19 @@ def construct_cidr_block_set(ips_in_cidr):
     return ip_set
 
 
-def get_dynamic_blacklist():
+def get_dynamic_blacklist(backup_file="db.json"):
+    # TODO: It seems like we can determine if a range has changed by looking at the 'changeNumber' attribute
+    #  for a given category, however, there unfortunately doesn't appear to be any sort of timestamp included
+    #  in the actual JSON file. We'll probably need to save the timestamp manually by adding it to the JSON?
+    #  TL;DR the problem is that we can tell if the file has been updated by checking `changeNumber`, but that requires
+    #  attempting to download the file anyways. Ideally, we want to be able to skip trying to download all together
+    #  because the method isn't entirely reliable, and also fallback to the previously saved version if the download
+    #  fails.
     download_link = get_azure_ip_ranges_download()
-    ranges = parse_azure_ip_ranges_from_url(download_link[0])  # TODO: Handle multiple download files!
+    content = get_azure_ip_file_from_url(download_link[0])      # TODO: Handle multiple download files!
+    ranges = parse_azure_ip_ranges(content)
+    # If we got here, then the ranges are *probably* okay.
+    save_azure_file(content, backup_file)
     ranges.extend(T2_EU)    # add R* EU ranges
     ranges.extend(T2_US)    # add R* US ranges
     dynamic_blacklist = construct_cidr_block_set(ranges)
