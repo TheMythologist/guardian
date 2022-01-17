@@ -119,10 +119,20 @@ def get_azure_ip_file_from_url(url_to_json_file):
 
 
 def save_azure_file(data_to_save, where_to_save="db.json"):
-    file = open(where_to_save, mode="w")
+    file = open(where_to_save, mode="wb")
     bytes_written = file.write(data_to_save)
     file.close()
     return bytes_written
+
+
+def azure_file_add_timestamp(azure_file, filename):
+    as_list = azure_file.splitlines(True)    # keep the line breaks
+    print(as_list)
+    now = str(time.time())
+    # add timestamp and filename (should be formatted the same as the actual file)
+    as_list.insert(1, b'  "acquiredFrom": "' + bytes(filename, 'utf-8') + b'",\n')
+    as_list.insert(1, b'  "acquiredWhen": '  + bytes(now, 'utf-8')      + b',\n')
+    return b''.join(as_list)# if type(azure_file) is bytes else "".join(as_list)
 
 
 def parse_azure_ip_ranges(azure_file):
@@ -199,9 +209,10 @@ def get_dynamic_blacklist(backup_file="db.json"):
     #  fails.
     download_link = get_azure_ip_ranges_download()
     content = get_azure_ip_file_from_url(download_link[0])      # TODO: Handle multiple download files!
+    #  TODO: If we get multiple files, we can try to find the one with the highest changeNumber.
     ranges = parse_azure_ip_ranges(content)
     # If we got here, then the ranges are *probably* okay.
-    save_azure_file(content, backup_file)
+    save_azure_file(azure_file_add_timestamp(content, download_link[0]), backup_file)
     ranges.extend(T2_EU)    # add R* EU ranges
     ranges.extend(T2_US)    # add R* US ranges
     dynamic_blacklist = construct_cidr_block_set(ranges)
@@ -274,11 +285,12 @@ def get_cidr_suffixes(array_of_cidr):
 if __name__ == "__main__":
     #print(get_all_ips_from_cidr("185.56.64.0/24"))
     #print(len(get_all_ips_from_cidr_array(["185.56.64.0/24", "185.56.64.0/22"])))
-    dl = get_azure_ip_ranges_download()
-    print(dl)
-    start = time.perf_counter()
-    ips_test = parse_azure_ip_ranges_from_url(dl[0])
-    finish = time.perf_counter()
-    print("size:", getsizeof(ips_test), "len:", len(ips_test), "seconds:", (finish - start) / 1000)
+    #dl = get_azure_ip_ranges_download()
+    #print(dl)
+    #start = time.perf_counter()
+    #ips_test = parse_azure_ip_ranges_from_url(dl[0])
+    #finish = time.perf_counter()
+    #print("size:", getsizeof(ips_test), "len:", len(ips_test), "seconds:", (finish - start) / 1000)
+    get_dynamic_blacklist("db_test.json")
     # size: 1073742040 len: 21838185, time: like 90 minutes or something, shouldn't have used perf counter here I guess
 
