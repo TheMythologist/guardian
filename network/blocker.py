@@ -186,21 +186,27 @@ class Blacklist(object):
                     """
                     if (ip in self.known_allowed) or (size in matchmaking_sizes) or (size in heartbeat_sizes):
                         w.send(packet)
-                        print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
+                        #print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
 
                     elif ip not in self.ips:
                         # If it's not directly blacklisted it might be in a blacklisted range
                         if ip_in_cidr_block_set(ip, self.ip_blocks):
                             self.ips.add(ip)    # It was in a blacklisted range, add this to the standard list
-                            print(
-                                "DROPPING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(
-                                    len(packet.payload)))
+                            #print(
+                                #"DROPPING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(
+                                    #len(packet.payload)))
                         else:
                             self.known_allowed.add(ip) # If not then it's definitely allowed, remember this for next time
                             w.send(packet)
-                            print(
-                                "ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(
-                                    len(packet.payload)))
+                            #print(
+                                #"ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(
+                                    #len(packet.payload)))
+
+                    else:
+                        pass    # was in the blacklist
+                        #print(
+                            #"DROPPING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(
+                                #len(packet.payload)))
 
         except KeyboardInterrupt:
             pass
