@@ -6,6 +6,7 @@ import data
 from network import networkmanager
 from app import IPValidator
 from questionary import ValidationError
+from ..util.DynamicBlacklist import ip_in_cidr_block_set
 
 debug_logger = logging.getLogger('debugger')
 debug_logger.setLevel(logging.DEBUG)
@@ -146,11 +147,16 @@ class Blacklist(object):
     Packet filter that will block packets from with source ip present on ips list
     """
 
-    def __init__(self, ips):
+    def __init__(self, ips, blocks=None):
         """
-        :param list ips:
+        :param set ips:
         """
+        if blocks is None:
+            blocks = set()
+
         self.ips = ips
+        self.ip_blocks = blocks  # set of CIDR blocks
+        self.known_allowed = set()  # IPs which are known to not be in blocks
         self.process = multiprocessing.Process(target=self.run, args=())
         self.process.daemon = True
 
@@ -178,10 +184,17 @@ class Blacklist(object):
                     NOTE: This probably isn't a complete list of R* tunnels. Ideally, ipfilter should contain all
                           possible ranges of inbound (and maybe even outbound?) tunnels.
                     """
-                    if (ip in self.ips or ipfilter.match(ip)) and not ((size in matchmaking_sizes) or size in heartbeat_sizes):
-                        pass    # drop the packet because it's not allowed.
-                    else:
+                    if (ip in self.known_allowed) or (size in matchmaking_sizes) or (size in heartbeat_sizes):
                         w.send(packet)
+
+                    elif ip not in self.ips:
+                        # If it's not directly blacklisted it might be in a blacklisted range
+                        if ip_in_cidr_block_set(ip, self.ip_blocks):
+                            self.ips.add(ip)    # If it was in a blacklisted range, add this to the standard list
+                        else:
+                            self.known_allowed.add(ip) # If not then it's definitely allowed, remember this for next time
+                            w.send(packet)
+
         except KeyboardInterrupt:
             pass
 

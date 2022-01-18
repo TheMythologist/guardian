@@ -194,7 +194,7 @@ def main():
                     'value': 'whitelist',
                 },
                 {
-                    'name': 'Blacklisted session        [Not working]',
+                    'name': 'Blacklisted session        [' + ('Experimental' if len(dynamic_blacklist) > 0 else 'Not working') + ']',
                     'value': 'blacklist',
                 },
                 {
@@ -341,7 +341,7 @@ def main():
                         Fore.LIGHTBLACK_EX + 'CTRL + C' +
                         Fore.LIGHTWHITE_EX + '" to stop.')
 
-            packet_filter = Whitelist(ips=ip_set)
+            packet_filter = Blacklist(ips=ip_set, blocks=dynamic_blacklist)
             try:
                 packet_filter.start()
                 while True:
