@@ -20,6 +20,7 @@ import time
 import logging
 import util.DynamicBlacklist    # new Azure-blocking functionality
 from requests import RequestException
+from pathlib import Path        # save local azure file copy
 
 logger = logging.getLogger('guardian')
 logger.propagate = False
@@ -1363,10 +1364,11 @@ if __name__ == '__main__':
     print_white('Building dynamic blacklist...')
     dynamic_blacklist = set()
     try:
-        dynamic_blacklist = util.DynamicBlacklist.get_dynamic_blacklist()
+        #  TODO: Guardian does not correctly locally save files when run from command prompt outside of Guardian folder.
+        dynamic_blacklist = util.DynamicBlacklist.get_dynamic_blacklist("db.json")
     except (util.DynamicBlacklist.ScrapeError, RequestException, json.decoder.JSONDecodeError, IndexError, ValueError, TypeError, KeyError, FileNotFoundError) as e:
         print_white('ERROR: Could not construct dynamic blacklist: ' + str(e) +
-                    '\nAuto-Whitelist will not work correctly.')
+                    '\nAuto-Whitelist and Blacklist will not work correctly.')
         time.sleep(3)
     print_white('Checking connections.')
     if cloud.check_connection():

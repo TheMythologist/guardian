@@ -6,7 +6,7 @@ import data
 from network import networkmanager
 from app import IPValidator
 from questionary import ValidationError
-from ..util.DynamicBlacklist import ip_in_cidr_block_set
+from util.DynamicBlacklist import ip_in_cidr_block_set
 
 debug_logger = logging.getLogger('debugger')
 debug_logger.setLevel(logging.DEBUG)

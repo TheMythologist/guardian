@@ -4,6 +4,7 @@ import re    # to search through the html to find the file (because there's curr
 import json         # to parse the file once it's been downloaded
 from sys import getsizeof  # for debug testing to determine the size of certain things
 import time         # timing
+from pathlib import Path
 
 """
 This file contains classes and methods to manage acquiring, parsing, and updating a possibly dynamic list of IP ranges
@@ -127,7 +128,7 @@ def save_azure_file(data_to_save, where_to_save="db.json"):
 
 def azure_file_add_timestamp(azure_file, filename):
     as_list = azure_file.splitlines(True)    # keep the line breaks
-    print(as_list)
+    #print(as_list)
     now = str(time.time())
     # add timestamp and filename (should be formatted the same as the actual file)
     as_list.insert(1, b'  "acquiredFrom": "' + bytes(filename, 'utf-8') + b'",\n')
