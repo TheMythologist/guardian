@@ -152,8 +152,8 @@ def parse_azure_ip_ranges(azure_file):
 
 
 def parse_azure_ip_ranges_from_file(location_of_file):
-    file = open(location_of_file, mode='r')
-    return parse_azure_ip_ranges(file)
+    file = open(location_of_file, mode='rb')
+    return parse_azure_ip_ranges(file.read())
 
 
 def cidr_to_tuple(ip_in_cidr):
