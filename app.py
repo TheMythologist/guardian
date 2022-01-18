@@ -327,7 +327,7 @@ def main():
             for ip, item in blacklist:
                 if item.get('enabled'):
                     try:
-                        ip = IPValidator.validate_get(item.get('ip'))
+                        ip = IPValidator.validate_get(ip)
                         ip_set.add(ip)
                     except ValidationError:
                         logger.warning('Not valid IP or URL: {}'.format(ip))
