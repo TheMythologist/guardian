@@ -207,12 +207,23 @@ def get_dynamic_blacklist(backup_file="db.json"):
     #  attempting to download the file anyways. Ideally, we want to be able to skip trying to download all together
     #  because the method isn't entirely reliable, and also fallback to the previously saved version if the download
     #  fails.
-    download_link = get_azure_ip_ranges_download()
-    content = get_azure_ip_file_from_url(download_link[0])      # TODO: Handle multiple download files!
-    #  TODO: If we get multiple files, we can try to find the one with the highest changeNumber.
-    ranges = parse_azure_ip_ranges(content)
-    # If we got here, then the ranges are *probably* okay.
-    save_azure_file(azure_file_add_timestamp(content, download_link[0]), backup_file)
+    #ranges = set()
+
+    try:
+        download_link = get_azure_ip_ranges_download()
+        content = get_azure_ip_file_from_url(download_link[0])      # TODO: Handle multiple download files!
+        ranges = parse_azure_ip_ranges(content)
+        #  TODO: If we get multiple files, we can try to find the one with the highest changeNumber.
+        # If we got here, then the ranges are *probably* okay.
+        save_azure_file(azure_file_add_timestamp(content, download_link[0]), backup_file)
+    except Exception as e:
+        print("ERROR: Could not parse Azure ranges from URL. Reason:", e)
+        try:
+            ranges = parse_azure_ip_ranges_from_file(backup_file)
+        except FileNotFoundError as e:
+            print("ERROR: Could not find backup file.")
+            raise e
+
     ranges.extend(T2_EU)    # add R* EU ranges
     ranges.extend(T2_US)    # add R* US ranges
     dynamic_blacklist = construct_cidr_block_set(ranges)

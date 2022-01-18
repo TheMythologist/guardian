@@ -1364,7 +1364,7 @@ if __name__ == '__main__':
     dynamic_blacklist = set()
     try:
         dynamic_blacklist = util.DynamicBlacklist.get_dynamic_blacklist()
-    except (util.DynamicBlacklist.ScrapeError, RequestException, json.decoder.JSONDecodeError, IndexError, ValueError, TypeError, KeyError) as e:
+    except (util.DynamicBlacklist.ScrapeError, RequestException, json.decoder.JSONDecodeError, IndexError, ValueError, TypeError, KeyError, FileNotFoundError) as e:
         print_white('ERROR: Could not construct dynamic blacklist: ' + str(e) +
                     '\nAuto-Whitelist will not work correctly.')
         time.sleep(3)
