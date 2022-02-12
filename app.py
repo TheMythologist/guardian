@@ -38,7 +38,7 @@ STD_OUTPUT_HANDLE = -11
 ipv4 = re.compile(r"((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}")
 domain = re.compile(r"^[a-z]+([a-z0-9-]*[a-z0-9]+)?(\.([a-z]+([a-z0-9-]*[\[a-z0-9]+)?)+)*$")
 
-version = '3.1.0a8'
+version = '3.1.0a9'
 
 style = Style([
     ('qmark', 'fg:#00FFFF bold'),  # token in front of the question
@@ -323,6 +323,30 @@ def main():
                             Fore.LIGHTWHITE_EX + '"')
 
         elif option == 'blacklist':
+            local_ip = get_private_ip()
+            allowed_ips = {local_ip}
+            public_ip = get_public_ip()
+            if public_ip:
+                allowed_ips.add(public_ip)
+            else:
+                print_white('Failed to get Public IP. Running without.')
+                
+            for ip, friend in custom_ips:
+                if friend.get('enabled'):
+                    try:
+                        ip_calc = IPValidator.validate_get(ip)
+                        allowed_ips.add(ip_calc)
+                    except ValidationError:
+                        logger.warning('Not valid IP or URL: {}'.format(ip))
+                        print_white('Not valid IP or URL: "' +
+                                    Fore.LIGHTCYAN_EX + '{}'.format(ip) +
+                                    Fore.LIGHTWHITE_EX + '"')
+                        continue
+
+            for ip, friend in friends:
+                if friend.get('enabled'):
+                    allowed_ips.add(ip)
+
             ip_set = set()
             for ip, item in blacklist:
                 if item.get('enabled'):
@@ -342,7 +366,7 @@ def main():
                         Fore.LIGHTBLACK_EX + 'CTRL + C' +
                         Fore.LIGHTWHITE_EX + '" to stop.')
 
-            packet_filter = Blacklist(ips=ip_set, blocks=dynamic_blacklist)
+            packet_filter = Blacklist(ips=ip_set, blocks=dynamic_blacklist, known_allowed=allowed_ips)
             try:
                 packet_filter.start()
                 while True:
@@ -1043,8 +1067,8 @@ def main():
                                     # My perms
                                     os.system('cls')
                                     while True:
-                                        allowed = cloud.get_allowed()
-                                        if len(allowed) <= 0:
+                                        allowed_ips = cloud.get_allowed()
+                                        if len(allowed_ips) <= 0:
                                             print_white('None')
                                             break
                                         options = {
@@ -1052,7 +1076,7 @@ def main():
                                             'name': 'option',
                                             'qmark': '@',
                                             'message': 'Who to revoke',
-                                            'choices': [f.get('name') for f in allowed]
+                                            'choices': [f.get('name') for f in allowed_ips]
                                         }
                                         answer = prompt(options, style=style)
                                         if not answer:

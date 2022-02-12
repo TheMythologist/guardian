@@ -147,16 +147,18 @@ class Blacklist(object):
     Packet filter that will block packets from with source ip present on ips list
     """
 
-    def __init__(self, ips, blocks=None):
+    def __init__(self, ips, blocks=None, known_allowed=None):
         """
         :param set ips:
         """
         if blocks is None:
             blocks = set()
+        if known_allowed is None:
+            known_allowed = set()
 
         self.ips = ips
         self.ip_blocks = blocks  # set of CIDR blocks
-        self.known_allowed = set()  # IPs which are known to not be in blocks
+        self.known_allowed = known_allowed  # IPs which are known to not be in blocks
         self.process = multiprocessing.Process(target=self.run, args=())
         self.process.daemon = True
 
@@ -186,27 +188,27 @@ class Blacklist(object):
                     """
                     if (ip in self.known_allowed) or (size in matchmaking_sizes) or (size in heartbeat_sizes):
                         w.send(packet)
-                        #print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
+                        print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
 
                     elif ip not in self.ips:
                         # If it's not directly blacklisted it might be in a blacklisted range
                         if ip_in_cidr_block_set(ip, self.ip_blocks):
                             self.ips.add(ip)    # It was in a blacklisted range, add this to the standard list
-                            #print(
-                                #"DROPPING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(
-                                    #len(packet.payload)))
+                            print(
+                                "DROPPING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(
+                                    len(packet.payload)))
                         else:
                             self.known_allowed.add(ip) # If not then it's definitely allowed, remember this for next time
                             w.send(packet)
-                            #print(
-                                #"ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(
-                                    #len(packet.payload)))
+                            print(
+                                "ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(
+                                    len(packet.payload)))
 
                     else:
                         pass    # was in the blacklist
-                        #print(
-                            #"DROPPING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(
-                                #len(packet.payload)))
+                        print(
+                            "DROPPING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(
+                                len(packet.payload)))
 
         except KeyboardInterrupt:
             pass
