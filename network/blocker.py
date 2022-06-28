@@ -199,6 +199,23 @@ class Blacklist(AbstractPacketFilter):
             return False
 
 
+class Locked(AbstractPacketFilter):
+
+    def __init__(self, session_info=None, debug=False):
+        super().__init__(set(), session_info, debug)
+
+    def is_packet_allowed(self, packet):
+        size = len(packet.payload)
+
+        """ No new matchmaking requests allowed.
+            Seems a bit overkill (and perhaps reckless) to always block these payload sizes but my packet
+            captures show that these payload sizes don't occur in any regular game traffic so... """
+        if size in matchmaking_sizes:
+            return False
+
+        return True
+
+
 class WhitelistOld(object):
     """
     Packet filter that will allow packets from with source ip present on ips list
@@ -614,10 +631,6 @@ class IPCollector(object):
         #print("ips seen: ", self.seen_ips)
         self.save_ips()
         logger.info('Collected a total of {} IPs'.format(len(self.ips)))
-
-    # TODO: Ignore packets that are heartbeats or matchmaking requests from the filter.
-    #  Removing IPs that are in Microsoft Azure IP ranges should also be done, but that will be done later.
-    #  This is because if an IP is collected here, then someone is actively connected from that IP.
 
     def run(self):
         # TODO: Can you run PyDivert in sniff mode, instead of having to run a filter?
