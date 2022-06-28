@@ -147,6 +147,9 @@ class AbstractPacketFilter:
 
 
 class Whitelist(AbstractPacketFilter):
+    """
+    Packet filter that will allow packets from with source ip present on ips list
+    """
 
     def __init__(self, ips, session_info=None, debug=False):
         super().__init__(ips, session_info, debug)
@@ -157,22 +160,46 @@ class Whitelist(AbstractPacketFilter):
 
         """ The "special sauce" for the new filtering logic. We're using payload sizes to guess if the packet
             has a behaviour we want to allow through. """
-        if (ip in self.ips) or (size in heartbeat_sizes) or (size in matchmaking_sizes):
+        if (ip in super().ips) or (size in heartbeat_sizes) or (size in matchmaking_sizes):
             return True
 
-# See how much cleaner this is?
 
 class Blacklist(AbstractPacketFilter):
 
-    def __init__(self, ips, session_info=None, debug=False):
+    def __init__(self, ips, blocks=None, known_allowed=None, session_info=None, debug=False):
         super().__init__(ips, session_info, debug)
+
+        if blocks is None:
+            blocks = set()
+        if known_allowed is None:
+            known_allowed = set()
+
+        self.ip_blocks = blocks  # set of CIDR blocks
+        self.known_allowed = known_allowed  # IPs which are known to not be in blocks
 
     def is_packet_allowed(self, packet):
         ip = packet.ip.src_addr
         size = len(packet.payload)
 
+        """ Somewhat ironically we still use whitelisting logic. """
+        if (ip in self.known_allowed) or (size in matchmaking_sizes) or (size in heartbeat_sizes):
+            return True
 
-class Whitelist(object):
+        elif ip not in super().ips:
+            # If it's not directly blacklisted it might be in a blacklisted range
+            if ip_in_cidr_block_set(ip, self.ip_blocks):
+                super().ips.add(ip)  # It was in a blacklisted range, add this to the standard list
+                return False
+
+            else:
+                self.known_allowed.add(ip)  # If not then it's definitely allowed, remember this for next time
+                return True
+
+        else:
+            return False
+
+
+class WhitelistOld(object):
     """
     Packet filter that will allow packets from with source ip present on ips list
     """
@@ -230,7 +257,7 @@ class Whitelist(object):
             pass
 
 
-class Blacklist(object):
+class BlacklistOld(object):
     """
     Packet filter that will block packets from with source ip present on ips list
     """
@@ -305,7 +332,7 @@ class Blacklist(object):
 #  unnecessarily duplicate code here.
 
 
-class Locked(object):
+class LockedOld(object):
     """
     Packet filter to block any new requests to join the session.
     """
