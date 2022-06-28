@@ -1,4 +1,6 @@
 import multiprocessing
+from abc import abstractmethod
+
 import pydivert
 import re
 import logging
@@ -90,6 +92,40 @@ After I wrote these comments it was discovered that Guardian wasn't filtering pa
 been fixed and hopefully will also mean these "client tunnels" are now no longer an issue. Leaving these notes in just
 in case they're useful later on.
 """
+
+
+class AbstractWhitelist:
+
+    def __init__(self, ips):
+        self.ips = ips
+        self.process = multiprocessing.Process(target=self.run, args=())
+        self.process.daemon = True
+
+    def start(self):
+        self.process.start()
+        logger.info('Dispatched ' + self.__class__.__name__ + ' blocker process')
+
+    def stop(self):
+        self.process.terminate()
+        logger.info('Terminated ' + self.__class__.__name__ + ' blocker process')
+
+    @abstractmethod
+    def is_packet_allowed(self, packet):
+        pass
+
+    def run(self):
+        print("ips: " + str(self.ips))
+        if not pydivert.WinDivert.is_registered():
+            pydivert.WinDivert.register()
+        try:
+            with pydivert.WinDivert(packetfilter) as w:
+                for packet in w:
+                    if self.is_packet_allowed(packet):
+                        w.send(packet)
+
+        except KeyboardInterrupt:
+            """ This never hits, but the override is still necessary to stop the program from quitting on CTRL + C. """
+            pass
 
 
 class Whitelist(object):
