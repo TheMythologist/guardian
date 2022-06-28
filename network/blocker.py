@@ -94,7 +94,7 @@ in case they're useful later on.
 """
 
 
-class AbstractWhitelist:
+class AbstractPacketFilter:
 
     def __init__(self, ips):
         self.ips = ips
@@ -126,6 +126,21 @@ class AbstractWhitelist:
         except KeyboardInterrupt:
             """ This never hits, but the override is still necessary to stop the program from quitting on CTRL + C. """
             pass
+
+
+class Whitelist(AbstractPacketFilter):
+
+    def __init__(self, ips):
+        super().__init__(ips)
+
+    def is_packet_allowed(self, packet):
+        ip = packet.ip.src_addr
+        size = len(packet.payload)
+
+        if (ip in self.ips) or (size in heartbeat_sizes) or (size in matchmaking_sizes):
+            return True
+
+# See how much cleaner this is?
 
 
 class Whitelist(object):
