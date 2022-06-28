@@ -96,10 +96,12 @@ in case they're useful later on.
 
 class AbstractPacketFilter:
 
-    def __init__(self, ips):
+    def __init__(self, ips, session_info=None, debug=False):
         self.ips = ips
         self.process = multiprocessing.Process(target=self.run, args=())
         self.process.daemon = True
+        self.session_info = session_info    # If no session info object was passed then it won't be used.
+        self.debug_print_decisions = debug
 
     def start(self):
         self.process.start()
@@ -115,32 +117,58 @@ class AbstractPacketFilter:
 
     def run(self):
         print("ips: " + str(self.ips))
+
         if not pydivert.WinDivert.is_registered():
             pydivert.WinDivert.register()
         try:
             with pydivert.WinDivert(packetfilter) as w:
                 for packet in w:
-                    if self.is_packet_allowed(packet):
+                    decision = self.is_packet_allowed(packet)
+                    if decision:
                         w.send(packet)
+
+                    if self.session_info is not None:
+                        self.session_info.add_packet(sessioninfo.safe_pickle_packet(packet), allowed=decision)
+
+                    if self.debug_print_decisions:
+                        print(self.construct_debug_packet_info(packet, decision))
 
         except KeyboardInterrupt:
             """ This never hits, but the override is still necessary to stop the program from quitting on CTRL + C. """
             pass
 
+    @staticmethod
+    def construct_debug_packet_info(packet, decision=None):
+        prefix = "" if decision is None else ("ALLOWING" if decision else "DROPPING")
+
+        return prefix + \
+            " PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload))
+
 
 class Whitelist(AbstractPacketFilter):
 
-    def __init__(self, ips):
-        super().__init__(ips)
+    def __init__(self, ips, session_info=None, debug=False):
+        super().__init__(ips, session_info, debug)
 
     def is_packet_allowed(self, packet):
         ip = packet.ip.src_addr
         size = len(packet.payload)
 
+        """ The "special sauce" for the new filtering logic. We're using payload sizes to guess if the packet
+            has a behaviour we want to allow through. """
         if (ip in self.ips) or (size in heartbeat_sizes) or (size in matchmaking_sizes):
             return True
 
 # See how much cleaner this is?
+
+class Blacklist(AbstractPacketFilter):
+
+    def __init__(self, ips, session_info=None, debug=False):
+        super().__init__(ips, session_info, debug)
+
+    def is_packet_allowed(self, packet):
+        ip = packet.ip.src_addr
+        size = len(packet.payload)
 
 
 class Whitelist(object):
@@ -179,10 +207,7 @@ class Whitelist(object):
                     size = len(packet.payload)  # the size of the payload. used to guess packet's behaviour / "intent"
                     #print(packet)
 
-                    """
-                    The "special sauce" for the new filtering logic. We're using payload sizes to guess if the packet
-                    has a behaviour we want to allow through.
-                    """
+
                     if (ip in self.ips) or (size in heartbeat_sizes) or (size in matchmaking_sizes):
                         w.send(packet)
                         if self.session_info is not None:
