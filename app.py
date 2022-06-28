@@ -20,6 +20,7 @@ import time
 import logging
 import util.DynamicBlacklist    # new Azure-blocking functionality
 from requests import RequestException
+from pathlib import Path        # save local azure file copy
 
 logger = logging.getLogger('guardian')
 logger.propagate = False
@@ -37,7 +38,7 @@ STD_OUTPUT_HANDLE = -11
 ipv4 = re.compile(r"((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}")
 domain = re.compile(r"^[a-z]+([a-z0-9-]*[a-z0-9]+)?(\.([a-z]+([a-z0-9-]*[\[a-z0-9]+)?)+)*$")
 
-version = '3.1.0b4'
+version = '3.1.0a9'
 
 style = Style([
     ('qmark', 'fg:#00FFFF bold'),  # token in front of the question
@@ -196,7 +197,7 @@ def main():
                     'value': 'whitelist',
                 },
                 {
-                    'name': 'Blacklisted session        [Not working]',
+                    'name': 'Blacklisted session        [' + ('Experimental' if len(dynamic_blacklist) > 0 else 'Not working') + ']',
                     'value': 'blacklist',
                 },
                 {
@@ -359,11 +360,35 @@ def main():
                             Fore.LIGHTWHITE_EX + '"')
 
         elif option == 'blacklist':
+            local_ip = get_private_ip()
+            allowed_ips = {local_ip}
+            public_ip = get_public_ip()
+            if public_ip:
+                allowed_ips.add(public_ip)
+            else:
+                print_white('Failed to get Public IP. Running without.')
+                
+            for ip, friend in custom_ips:
+                if friend.get('enabled'):
+                    try:
+                        ip_calc = IPValidator.validate_get(ip)
+                        allowed_ips.add(ip_calc)
+                    except ValidationError:
+                        logger.warning('Not valid IP or URL: {}'.format(ip))
+                        print_white('Not valid IP or URL: "' +
+                                    Fore.LIGHTCYAN_EX + '{}'.format(ip) +
+                                    Fore.LIGHTWHITE_EX + '"')
+                        continue
+
+            for ip, friend in friends:
+                if friend.get('enabled'):
+                    allowed_ips.add(ip)
+
             ip_set = set()
             for ip, item in blacklist:
                 if item.get('enabled'):
                     try:
-                        ip = IPValidator.validate_get(item.get('ip'))
+                        ip = IPValidator.validate_get(ip)
                         ip_set.add(ip)
                     except ValidationError:
                         logger.warning('Not valid IP or URL: {}'.format(ip))
@@ -378,7 +403,7 @@ def main():
                         Fore.LIGHTBLACK_EX + 'CTRL + C' +
                         Fore.LIGHTWHITE_EX + '" to stop.')
 
-            packet_filter = Whitelist(ips=ip_set)
+            packet_filter = Blacklist(ips=ip_set, blocks=dynamic_blacklist, known_allowed=allowed_ips)
             try:
                 packet_filter.start()
                 while True:
@@ -1079,8 +1104,8 @@ def main():
                                     # My perms
                                     os.system('cls')
                                     while True:
-                                        allowed = cloud.get_allowed()
-                                        if len(allowed) <= 0:
+                                        allowed_ips = cloud.get_allowed()
+                                        if len(allowed_ips) <= 0:
                                             print_white('None')
                                             break
                                         options = {
@@ -1088,7 +1113,7 @@ def main():
                                             'name': 'option',
                                             'qmark': '@',
                                             'message': 'Who to revoke',
-                                            'choices': [f.get('name') for f in allowed]
+                                            'choices': [f.get('name') for f in allowed_ips]
                                         }
                                         answer = prompt(options, style=style)
                                         if not answer:
@@ -1400,10 +1425,11 @@ if __name__ == '__main__':
     print_white('Building dynamic blacklist...')
     dynamic_blacklist = set()
     try:
-        dynamic_blacklist = util.DynamicBlacklist.get_dynamic_blacklist()
-    except (util.DynamicBlacklist.ScrapeError, RequestException, json.decoder.JSONDecodeError, IndexError, ValueError, TypeError, KeyError) as e:
+        #  TODO: Guardian does not correctly locally save files when run from command prompt outside of Guardian folder.
+        dynamic_blacklist = util.DynamicBlacklist.get_dynamic_blacklist("db.json")
+    except (util.DynamicBlacklist.ScrapeError, RequestException, json.decoder.JSONDecodeError, IndexError, ValueError, TypeError, KeyError, FileNotFoundError) as e:
         print_white('ERROR: Could not construct dynamic blacklist: ' + str(e) +
-                    '\nAuto-Whitelist will not work correctly.')
+                    '\nAuto-Whitelist and Blacklist will not work correctly.')
         time.sleep(3)
     print_white('Checking connections.')
     if cloud.check_connection():
