@@ -24,7 +24,7 @@ class Cloud:
             raise ConnectionError
 
         try:
-            resp_text = resp.json(encoding="utf-8")
+            resp_text = resp.json()
         except ValueError:
             resp_text = resp.text
 
