@@ -16,7 +16,9 @@ executables = [
     Executable('app.py', targetName='Guardian.exe', icon='logo.ico')
 ]
 
+
 version = '3.1.0b4-fastload-fix'
+version_number = '3.1.0.4'
 
 build_path = 'build/exe.win-amd64-{}.{}'.format(sys.version_info.major, sys.version_info.minor)
 
@@ -30,7 +32,7 @@ if os.path.isfile('build/exe/guardian-{}.zip'.format(version)):
     os.remove('build/exe/guardian-{}.zip'.format(version))
 
 setup(name='Guardian',
-      version=version,
+      version=version_number,
       description='Firewall',
       options=dict(build_exe=buildOptions),
       executables=executables)
