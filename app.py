@@ -209,10 +209,6 @@ def main():
                     'value': 'lock_session',
                 },
                 {
-                    'name': 'Lock session w/ Whitelist  [Experimental]',
-                    'value': 'lock_whitelist',
-                },
-                {
                     'name': 'Diagnostics Only           [Experimental]',
                     'value': 'diagnostic',  # TODO: Actually add a diagnostic-only mode. Selecting this now would crash.
                 },
