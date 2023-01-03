@@ -78,7 +78,9 @@ I never quite liked the idea of firewalled sessions, however modders were target
 
 ## Donations
 Supporting my projects financially is the best way to ensure long-term support.
-If you found this fork beneficial, consider throwing some coins my way:
+
+- PayPal or Card: [ko-fi.com/Speyedr](https://ko-fi.com/Speyedr)
+
 - BTC: `347M8sHnahA98c7MjHGmvsb5pVUJeUcMZ5`
 - LTC: `MBtuSCxeptJ6Lr1rDeWLyHKySbm7LdRA1Y`
 - ETH: `0xDBAa338137Fc53BA007D7Cf99DD94908e8Fdb6d8`
