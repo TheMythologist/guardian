@@ -571,8 +571,6 @@ def main():
                         Fore.LIGHTWHITE_EX + '" Press "' +
                         Fore.LIGHTCYAN_EX + 'CTRL + C' +
                         Fore.LIGHTWHITE_EX + '" to stop.')
-            # TODO: There's a formatting fail here and in at least one other session type.
-            #  I have a feeling I'll eventually refactor Guardian enough to hit v4.
 
             packet_filter = LockedWhitelist(ips=ip_set)
             try:
