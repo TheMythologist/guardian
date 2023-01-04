@@ -6,3 +6,4 @@ build
 venv
 /network/secret.py
 /debugger.log
+venv-3.8
