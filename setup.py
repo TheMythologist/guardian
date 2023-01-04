@@ -13,7 +13,7 @@ buildOptions = dict(packages=[], includes=['idna.idnadata', 'codecs', 'pydivert'
                     replace_paths=[("*", "")], optimize=2, zip_include_packages="*",
                     zip_exclude_packages=zip_exclude_packages, silent=True)
 executables = [
-    Executable('app.py', targetName='Guardian.exe', icon='logo.ico')
+    Executable('app.py', targetName='Guardian.exe', icon='logo.ico', uac_admin=True)
 ]
 
 
