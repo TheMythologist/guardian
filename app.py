@@ -21,6 +21,9 @@ import logging
 import util.DynamicBlacklist    # new Azure-blocking functionality
 from requests import RequestException
 from pathlib import Path        # save local azure file copy
+from util.WorkingDirectoryFix import wd_fix  # workaround for python's working directory jank
+
+wd_fix()    # Fix working directory before doing literally anything else
 
 logger = logging.getLogger('guardian')
 logger.propagate = False
