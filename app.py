@@ -1,9 +1,15 @@
 from __future__ import print_function, unicode_literals
+
+import random
+import string
+
 from questionary import Validator, ValidationError, prompt
 from prompt_toolkit.styles import Style
 import os
 import ctypes
 from colorama import Fore
+
+import data
 from network.blocker import *
 import pydivert
 import sys
@@ -41,7 +47,7 @@ STD_OUTPUT_HANDLE = -11
 ipv4 = re.compile(r"((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}")
 domain = re.compile(r"^[a-z]+([a-z0-9-]*[a-z0-9]+)?(\.([a-z]+([a-z0-9-]*[\[a-z0-9]+)?)+)*$")
 
-version = '3.1.0a10'
+version = '3.1.0a11'
 
 style = Style([
     ('qmark', 'fg:#00FFFF bold'),  # token in front of the question
@@ -1395,7 +1401,41 @@ def main():
 
 if __name__ == '__main__':
     freeze_support()
-    config = data.ConfigData(data.file_name)
+    success = False
+    while not success:
+        try:
+            config = data.ConfigData(data.file_name)
+            success = True  # if we reach here then config was parsed successfully
+        except Exception as e:
+            # config file could not be loaded. either file creation failed or data.json is corrupt.
+            if not os.path.isfile(data.file_name):
+                # could not create config. fatal error. MB_OK is 0x0, MB_ICON_ERROR is 0x10
+                ctypes.windll.user32.MessageBoxW(None, f"FATAL: Guardian could not create the config file {data.file_name}.\n\n"
+                                                       f"Press 'Ok' to close the program.",
+                                                 f"Fatal Error", 0x0 | 0x10)
+                raise e     # could call sys.exit instead but I think raising again is more sensible
+            else:
+                # MB_ABORTRETRYIGNORE is 0x2, MB_ICON_ERROR is 0x10
+                choice = ctypes.windll.user32.MessageBoxW(None, f"Guardian could not load the config file {data.file_name}.\n\n"
+                                                   f"The most common reason for this error is that the file is corrupt.\n\n"
+                                                   f"Press 'Abort' to close Guardian, press 'Retry' to load the config again, "
+                                                   f"or press 'Ignore' to \"Refresh\" Guardian by renaming the corrupt "
+                                                   f"config file and creating a new one.",
+                                                          f"Error", 0x2 | 0x10)
+                # ID_ABORT = 0x3, ID_RETRY = 0x4, ID_IGNORE = 0x5
+                if choice == 0x3:
+                    sys.exit(-2)
+                elif choice == 0x4:
+                    pass  # we'll hit the bottom of the loop and try again
+                else:
+                    char_set = string.ascii_lowercase + string.digits
+                    random_string = "".join(random.choice(char_set) for _ in range(8)) # generate 8 random chars
+                    separator = data.file_name.rindex('.')
+                    new_name = data.file_name[:separator] + '_' + random_string + data.file_name[separator:]
+                    os.rename(data.file_name, new_name)
+                    # file has been renamed, try again
+
+    # at this point the file has been parsed and is valid--any additional exceptions are explicit or programmer error
     try:
         blacklist = data.CustomList('blacklist')
         custom_ips = data.CustomList('custom_ips')
