@@ -44,7 +44,7 @@ STD_OUTPUT_HANDLE = -11
 ipv4 = re.compile(r"((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}")
 domain = re.compile(r"^[a-z]+([a-z0-9-]*[a-z0-9]+)?(\.([a-z]+([a-z0-9-]*[\[a-z0-9]+)?)+)*$")
 
-version = '3.1.0a11'
+version = '3.1.0a12'
 
 style = Style([
     ('qmark', 'fg:#00FFFF bold'),  # token in front of the question
@@ -277,331 +277,436 @@ def main():
         #  operator in Python is quadratic in complexity ( O(n^2) ) instead of the expected linear ( O(n) ) complexity.
         #  Appending all parts of the string as elements of a list and then using .join() is linear and i.e. faster.
         if option == 'solo':
-            logger.info('Starting solo session')
-            print_white('Running: "' +
-                        Fore.LIGHTCYAN_EX + 'Solo session' +
-                        Fore.LIGHTWHITE_EX + '" Press "' + Fore.LIGHTCYAN_EX + 'CTRL + C' +
-                        Fore.LIGHTWHITE_EX + '" to stop.')
+            print_white('Solo Session:')
+            print('No one can connect to your game session, but critical R* related services\n'
+                  'and anything SocialClub related will still be let through.\n'
+                  'If you are in a session with any other player, they will lose connection to you.\n')
 
-            packet_filter = Whitelist(ips=[])
-            try:
-                packet_filter.start()
-                while True:
-                    time.sleep(10)  # this is still very terrible
-            except KeyboardInterrupt:
-                packet_filter.stop()
-                logger.info('Stopped solo session')
-                print_white('Stopped: "' +
-                            Fore.LIGHTCYAN_EX + 'Solo session' +
-                            Fore.LIGHTWHITE_EX + '"')
-                continue
+            options = {
+                'type': 'list',
+                'name': 'option',
+                'message': 'Do you want to start this type of session?',
+                'qmark': '@',
+                'choices': [
+                    {
+                        'name': 'Yes, start',
+                        'value': 'start'
+                    },
+                    {
+                        'name': 'No, go back',
+                        'value': 'back'
+                    }
+                ]
+            }
+
+            answer = prompt(options, style=style, )
+            if answer:
+                os.system('cls')
+                option = answer['option']
+
+                if option == 'start':
+
+                    logger.info('Starting solo session')
+                    print_white('Running: "' +
+                                Fore.LIGHTCYAN_EX + 'Solo session' +
+                                Fore.LIGHTWHITE_EX + '" Press "' + Fore.LIGHTCYAN_EX + 'CTRL + C' +
+                                Fore.LIGHTWHITE_EX + '" to stop.')
+
+                    packet_filter = Whitelist(ips=[])
+                    try:
+                        packet_filter.start()
+                        while True:
+                            time.sleep(10)  # this is still very terrible
+                    except KeyboardInterrupt:
+                        packet_filter.stop()
+                        logger.info('Stopped solo session')
+                        print_white('Stopped: "' +
+                                    Fore.LIGHTCYAN_EX + 'Solo session' +
+                                    Fore.LIGHTWHITE_EX + '"')
+                        continue
 
         elif option == 'whitelist':
-            local_ip = get_private_ip()
-            ip_set = {local_ip}
-            ip_tags = [sessioninfo.IPTag(local_ip, "LOCAL IP")]
-            public_ip = get_public_ip()
-            if public_ip:
-                ip_set.add(public_ip)
-                ip_tags.append(sessioninfo.IPTag(public_ip, "PUBLIC IP"))
-            else:
-                print_white('Failed to get Public IP. Running without.')
+            print_white('Whitelisted Session:')
+            print('Only IP addresses in your Custom list will be allowed to connect to you.\n'
+                  'If you are the host of a session, anyone not on your Custom list will\n'
+                  'likely lose connection to the session.\n'
+                  'If you are non-host, you will lose connection to everyone else.\n')
 
-            for ip, friend in custom_ips:
-                if friend.get('enabled'):
+            options = {
+                'type': 'list',
+                'name': 'option',
+                'message': 'Do you want to start this type of session?',
+                'qmark': '@',
+                'choices': [
+                    {
+                        'name': 'Yes, start',
+                        'value': 'start'
+                    },
+                    {
+                        'name': 'No, go back',
+                        'value': 'back'
+                    }
+                ]
+            }
+
+            answer = prompt(options, style=style, )
+            if answer:
+                os.system('cls')
+                option = answer['option']
+
+                if option == 'start':
+
+                    local_ip = get_private_ip()
+                    ip_set = {local_ip}
+                    ip_tags = [sessioninfo.IPTag(local_ip, "LOCAL IP")]
+                    public_ip = get_public_ip()
+                    if public_ip:
+                        ip_set.add(public_ip)
+                        ip_tags.append(sessioninfo.IPTag(public_ip, "PUBLIC IP"))
+                    else:
+                        print_white('Failed to get Public IP. Running without.')
+
+                    for ip, friend in custom_ips:
+                        if friend.get('enabled'):
+                            try:
+                                ip_calc = IPValidator.validate_get(ip)
+                                ip_set.add(ip_calc)
+                                ip_tags.append(sessioninfo.IPTag(ip_calc, friend.get('name') + " [WHITELIST]"))
+                            except ValidationError:
+                                logger.warning('Not valid IP or URL: {}'.format(ip))
+                                print_white('Not valid IP or URL: "' +
+                                            Fore.LIGHTCYAN_EX + '{}'.format(ip) +
+                                            Fore.LIGHTWHITE_EX + '"')
+                                continue
+
+                    for ip, friend in friends:
+                        if friend.get('enabled'):
+                            ip_set.add(ip)
+                            ip_tags.append(sessioninfo.IPTag(ip, friend.get('name') + " [CLOUD]"))
+
+                    logger.info('Starting whitelisted session with {} IPs'.format(len(ip_set)))
+                    print_white('Running: "' +
+                                Fore.LIGHTCYAN_EX + 'Whitelisted session' +
+                                Fore.LIGHTWHITE_EX + '" Press "' +
+                                Fore.LIGHTCYAN_EX + 'CTRL + C' +
+                                Fore.LIGHTWHITE_EX + '" to stop.')
+
+                    # Exposes session information, diagnostics and behaviour.
+                    manager = Manager()
+                    connection_stats = manager.list()
+                    session_info = sessioninfo.SessionInfo(manager.dict(), connection_stats, manager.Queue(), ip_tags)
+
+                    logger.info("ip_tags: " + str(ip_tags))
+                    #logger.info("session_info: " + str(session_info))
+
+                    """ Set up packet_filter outside the try-catch so it can be safely referenced inside KeyboardInterrupt."""
+                    packet_filter = Whitelist(ips=ip_set, session_info=session_info)
+
+                    print("Experimental support for Online 1.54+ developed by Speyedr.\n")
+                          #"Not working? Found a bug?", "https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues",
+                          #"(Pressing ENTER will open the link in your web browser.)", sep="\n")
+
                     try:
-                        ip_calc = IPValidator.validate_get(ip)
-                        ip_set.add(ip_calc)
-                        ip_tags.append(sessioninfo.IPTag(ip_calc, friend.get('name') + " [WHITELIST]"))
-                    except ValidationError:
-                        logger.warning('Not valid IP or URL: {}'.format(ip))
-                        print_white('Not valid IP or URL: "' +
-                                    Fore.LIGHTCYAN_EX + '{}'.format(ip) +
+                        #session_info.start()
+                        packet_filter.start()
+                        while True:
+                            """
+                            Here is *probably* where the PacketLogger and SessionInfo classes should be managed.
+                            Every [x] milliseconds the SessionInfo class will .update() with packet info (and a new print),
+                            and the PacketLogger instance will be passed down to Whitelist() when initialized so the filter
+                            loop can add packets to the capture. Once the session has stopped, the PacketLogger will add all
+                            packets in its' memory queue to disk (or perhaps it should be sequentially writing to a file) and
+                            save that file for investigation later.
+                            """
+                            time.sleep(10)  # this is still very terrible but might be good enough for now?
+                            #input()
+                            # if we reach here then the user pressed ENTER
+                            #webbrowser.open("https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues")
+                            #time.sleep(1)      # prevents the user from opening the page a ludicrous amount of times?
+
+                            #time.sleep(0.01)
+                            #print(session_info)  # display session diagnostics
+                            print(sessioninfo.generate_stats(connection_stats))
+                            session_info.process_item()
+                            #os.system('cls')  # refresh console
+                    except KeyboardInterrupt:
+                        packet_filter.stop()
+                        #session_info.stop()
+                        logger.info('Stopped whitelisted session')
+                        print_white('Stopped: "' +
+                                    Fore.LIGHTCYAN_EX + 'Whitelisted session' +
                                     Fore.LIGHTWHITE_EX + '"')
-                        continue
-
-            for ip, friend in friends:
-                if friend.get('enabled'):
-                    ip_set.add(ip)
-                    ip_tags.append(sessioninfo.IPTag(ip, friend.get('name') + " [CLOUD]"))
-
-            logger.info('Starting whitelisted session with {} IPs'.format(len(ip_set)))
-            print_white('Running: "' +
-                        Fore.LIGHTCYAN_EX + 'Whitelisted session' +
-                        Fore.LIGHTWHITE_EX + '" Press "' +
-                        Fore.LIGHTCYAN_EX + 'CTRL + C' +
-                        Fore.LIGHTWHITE_EX + '" to stop.')
-
-            # Exposes session information, diagnostics and behaviour.
-            manager = Manager()
-            connection_stats = manager.list()
-            session_info = sessioninfo.SessionInfo(manager.dict(), connection_stats, manager.Queue(), ip_tags)
-
-            logger.info("ip_tags: " + str(ip_tags))
-            #logger.info("session_info: " + str(session_info))
-
-            """ Set up packet_filter outside the try-catch so it can be safely referenced inside KeyboardInterrupt."""
-            packet_filter = Whitelist(ips=ip_set, session_info=session_info)
-
-            print("Experimental support for Online 1.54+ developed by Speyedr.\n")
-                  #"Not working? Found a bug?", "https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues",
-                  #"(Pressing ENTER will open the link in your web browser.)", sep="\n")
-
-            try:
-                #session_info.start()
-                packet_filter.start()
-                while True:
-                    """
-                    Here is *probably* where the PacketLogger and SessionInfo classes should be managed.
-                    Every [x] milliseconds the SessionInfo class will .update() with packet info (and a new print),
-                    and the PacketLogger instance will be passed down to Whitelist() when initialized so the filter
-                    loop can add packets to the capture. Once the session has stopped, the PacketLogger will add all
-                    packets in its' memory queue to disk (or perhaps it should be sequentially writing to a file) and
-                    save that file for investigation later.
-                    """
-                    time.sleep(10)  # this is still very terrible but might be good enough for now?
-                    #input()
-                    # if we reach here then the user pressed ENTER
-                    #webbrowser.open("https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues")
-                    #time.sleep(1)      # prevents the user from opening the page a ludicrous amount of times?
-
-                    #time.sleep(0.01)
-                    #print(session_info)  # display session diagnostics
-                    print(sessioninfo.generate_stats(connection_stats))
-                    session_info.process_item()
-                    #os.system('cls')  # refresh console
-            except KeyboardInterrupt:
-                packet_filter.stop()
-                #session_info.stop()
-                logger.info('Stopped whitelisted session')
-                print_white('Stopped: "' +
-                            Fore.LIGHTCYAN_EX + 'Whitelisted session' +
-                            Fore.LIGHTWHITE_EX + '"')
 
         elif option == 'blacklist':
-            local_ip = get_private_ip()
-            allowed_ips = {local_ip}
-            public_ip = get_public_ip()
-            if public_ip:
-                allowed_ips.add(public_ip)
-            else:
-                print_white('Failed to get Public IP. Running without.')
-                
-            for ip, friend in custom_ips:
-                if friend.get('enabled'):
+            print_white('Blacklisted Session:')
+            print('IP addresses in your Blacklist list will not be allowed to connect to you.\n'
+                  'If a connection is routed through R* servers, that connection will\n'
+                  'also be blocked as a security measure. This mode is *not recommended*\n'
+                  'as GTA Online has custom routing if only a handful of IP addresses are blocked.\n')
+
+            options = {
+                'type': 'list',
+                'name': 'option',
+                'message': 'Do you want to start this type of session?',
+                'qmark': '@',
+                'choices': [
+                    {
+                        'name': 'Yes, start',
+                        'value': 'start'
+                    },
+                    {
+                        'name': 'No, go back',
+                        'value': 'back'
+                    }
+                ]
+            }
+
+            answer = prompt(options, style=style, )
+            if answer:
+                os.system('cls')
+                option = answer['option']
+
+                if option == 'start':
+
+                    local_ip = get_private_ip()
+                    allowed_ips = {local_ip}
+                    public_ip = get_public_ip()
+                    if public_ip:
+                        allowed_ips.add(public_ip)
+                    else:
+                        print_white('Failed to get Public IP. Running without.')
+
+                    for ip, friend in custom_ips:
+                        if friend.get('enabled'):
+                            try:
+                                ip_calc = IPValidator.validate_get(ip)
+                                allowed_ips.add(ip_calc)
+                            except ValidationError:
+                                logger.warning('Not valid IP or URL: {}'.format(ip))
+                                print_white('Not valid IP or URL: "' +
+                                            Fore.LIGHTCYAN_EX + '{}'.format(ip) +
+                                            Fore.LIGHTWHITE_EX + '"')
+                                continue
+
+                    for ip, friend in friends:
+                        if friend.get('enabled'):
+                            allowed_ips.add(ip)
+
+                    ip_set = set()
+                    for ip, item in blacklist:
+                        if item.get('enabled'):
+                            try:
+                                ip = IPValidator.validate_get(ip)
+                                ip_set.add(ip)
+                            except ValidationError:
+                                logger.warning('Not valid IP or URL: {}'.format(ip))
+                                print_white('Not valid IP or URL: "' +
+                                            Fore.LIGHTCYAN_EX + '{}'.format(ip) +
+                                            Fore.LIGHTWHITE_EX + '"')
+                                continue
+                    logger.info('Starting blacklisted session with {} IPs'.format(len(ip_set)))
+                    print_white('Running: "' +
+                                Fore.LIGHTBLACK_EX + 'Blacklist' +
+                                Fore.LIGHTWHITE_EX + '" Press "' +
+                                Fore.LIGHTBLACK_EX + 'CTRL + C' +
+                                Fore.LIGHTWHITE_EX + '" to stop.')
+
+                    packet_filter = Blacklist(ips=ip_set, blocks=dynamic_blacklist, known_allowed=allowed_ips)
                     try:
-                        ip_calc = IPValidator.validate_get(ip)
-                        allowed_ips.add(ip_calc)
-                    except ValidationError:
-                        logger.warning('Not valid IP or URL: {}'.format(ip))
-                        print_white('Not valid IP or URL: "' +
-                                    Fore.LIGHTCYAN_EX + '{}'.format(ip) +
+                        packet_filter.start()
+                        while True:
+                            time.sleep(10)  # this is still very terrible
+                    except KeyboardInterrupt:
+                        packet_filter.stop()
+                        logger.info('Stopped blacklisted session')
+                        print_white('Stopped: "' +
+                                    Fore.LIGHTBLACK_EX + 'Blacklist' +
                                     Fore.LIGHTWHITE_EX + '"')
-                        continue
-
-            for ip, friend in friends:
-                if friend.get('enabled'):
-                    allowed_ips.add(ip)
-
-            ip_set = set()
-            for ip, item in blacklist:
-                if item.get('enabled'):
-                    try:
-                        ip = IPValidator.validate_get(ip)
-                        ip_set.add(ip)
-                    except ValidationError:
-                        logger.warning('Not valid IP or URL: {}'.format(ip))
-                        print_white('Not valid IP or URL: "' +
-                                    Fore.LIGHTCYAN_EX + '{}'.format(ip) +
-                                    Fore.LIGHTWHITE_EX + '"')
-                        continue
-            logger.info('Starting blacklisted session with {} IPs'.format(len(ip_set)))
-            print_white('Running: "' +
-                        Fore.LIGHTBLACK_EX + 'Blacklist' +
-                        Fore.LIGHTWHITE_EX + '" Press "' +
-                        Fore.LIGHTBLACK_EX + 'CTRL + C' +
-                        Fore.LIGHTWHITE_EX + '" to stop.')
-
-            packet_filter = Blacklist(ips=ip_set, blocks=dynamic_blacklist, known_allowed=allowed_ips)
-            try:
-                packet_filter.start()
-                while True:
-                    time.sleep(10)  # this is still very terrible
-            except KeyboardInterrupt:
-                packet_filter.stop()
-                logger.info('Stopped blacklisted session')
-                print_white('Stopped: "' +
-                            Fore.LIGHTBLACK_EX + 'Blacklist' +
-                            Fore.LIGHTWHITE_EX + '"')
 
         elif option == 'auto_whitelist':
-            logger.info('Starting auto whitelisted session')
-            collector = IPCollector(packet_count_min_threshold=15)
-            logger.info('Starting to collect IPs')
-            collector.start()
-            for _ in tqdm(range(10), ascii=True, desc='Collecting session'):
-                time.sleep(0.5)
-            collector.stop()
-            ip_set = set(collector.ips)
-            logger.info('Collected {} IPs'.format(len(ip_set)))
-            #print("IPs: " + str(ip_set))
-            print("Checking for potential tunnels in collected IPs...\n")
-            potential_tunnels = set()
-            for ip in ip_set:
-                if util.DynamicBlacklist.ip_in_cidr_block_set(ip, dynamic_blacklist, min_cidr_suffix=0):
-                    if ip not in custom_ips:    # Ignore if user has this IP in custom whitelist.
-                        potential_tunnels.add(ip)
-            #print("potential tunnels: ", potential_tunnels)
-            if len(potential_tunnels) > 0:
-                c = [{
-                    'name': ip,
-                    'checked': False
-                } for ip in potential_tunnels]
-                options = {
-                    'type': 'checkbox',
-                    'name': 'option',
-                    'qmark': '@',
-                    'message': "", 'WARNING! Guardian has detected ' + str(len(potential_tunnels)) + ' IP' +
-                        ("" if len(potential_tunnels) == 1 else "s") + " in your current session that may be used for " +
-                        "connection tunnelling, and may break session security if added to the whitelist.\nUnless " +
-                        "you know what you're doing, " +
-                        "it is HIGHLY RECOMMENDED that you DO NOT allow these IPs to be added to the whitelist.\n" +
-                        "Please note that excluding an IP from this list will likely result in players connected " +
-                        "through that IP to be dropped from the session.\nIf this happens, then you may have to " +
-                        "check both you and your friend's Windows Firewall settings to see why they can't directly " +
-                        "connect to you.\nIf this is a false-positive and you are sure an IP is a direct connection, " +
-                        "you can prevent this message from appearing by manually adding them to the Custom whitelist.\n\n" +
-                        "Select the potentially session security breaking IPs you wish to keep whitelisted, if any.\n"
-                    'choices': c
-                }
-                answer = prompt(options, style=style)
-                print(answer)
-                if answer is not None:
+            print_white('Auto whitelisted session:')
+            print('Same as a Whitelisted session, except everybody currently in the session is\n'
+                  'temporarily added to the whitelist, which prevents them from being kicked.\n'
+                  'Any automatically collected IPs will be lost once the session ends.\n\n'
+                  'If Guardian detects that a player in your session is being routed through R* servers,\n'
+                  'you will be warned whether you wish to add this IP to the temporary whitelist.\n'
+                  'If you do decide to allow those IPs, your session may not properly protected.\n')
+
+            options = {
+                'type': 'list',
+                'name': 'option',
+                'message': 'Do you want to start this type of session?',
+                'qmark': '@',
+                'choices': [
+                    {
+                        'name': 'Yes, start',
+                        'value': 'start'
+                    },
+                    {
+                        'name': 'No, go back',
+                        'value': 'back'
+                    }
+                ]
+            }
+
+            answer = prompt(options, style=style, )
+            if answer:
+                os.system('cls')
+                option = answer['option']
+
+                if option == 'start':
+
+                    logger.info('Starting auto whitelisted session')
+                    collector = IPCollector(packet_count_min_threshold=15)
+                    logger.info('Starting to collect IPs')
+                    collector.start()
+                    for _ in tqdm(range(10), ascii=True, desc='Collecting session'):
+                        time.sleep(0.5)
+                    collector.stop()
+                    ip_set = set(collector.ips)
+                    logger.info('Collected {} IPs'.format(len(ip_set)))
+                    #print("IPs: " + str(ip_set))
+                    print("Checking for potential tunnels in collected IPs...\n")
+                    potential_tunnels = set()
+                    for ip in ip_set:
+                        if util.DynamicBlacklist.ip_in_cidr_block_set(ip, dynamic_blacklist, min_cidr_suffix=0):
+                            if ip not in custom_ips:    # Ignore if user has this IP in custom whitelist.
+                                potential_tunnels.add(ip)
+                    #print("potential tunnels: ", potential_tunnels)
+                    if len(potential_tunnels) > 0:
+                        c = [{
+                            'name': ip,
+                            'checked': False
+                        } for ip in potential_tunnels]
+                        options = {
+                            'type': 'checkbox',
+                            'name': 'option',
+                            'qmark': '@',
+                            'message': "", 'WARNING! Guardian has detected ' + str(len(potential_tunnels)) + ' IP' +
+                                ("" if len(potential_tunnels) == 1 else "s") + " in your current session that may be used for " +
+                                "connection tunnelling, and may break session security if added to the whitelist.\nUnless " +
+                                "you know what you're doing, " +
+                                "it is HIGHLY RECOMMENDED that you DO NOT allow these IPs to be added to the whitelist.\n" +
+                                "Please note that excluding an IP from this list will likely result in players connected " +
+                                "through that IP to be dropped from the session.\nIf this happens, then you may have to " +
+                                "check both you and your friend's Windows Firewall settings to see why they can't directly " +
+                                "connect to you.\nIf this is a false-positive and you are sure an IP is a direct connection, " +
+                                "you can prevent this message from appearing by manually adding them to the Custom whitelist.\n\n" +
+                                "Select the potentially session security breaking IPs you wish to keep whitelisted, if any.\n"
+                            'choices': c
+                        }
+                        answer = prompt(options, style=style)
+                        print(answer)
+                        if answer is not None:
+                            try:
+                                for ip in answer['option']:
+                                    potential_tunnels.remove(ip)  # Anything that has been checked will not be considered a tunnel.
+                            except KeyError:
+                                pass    # Probably the user pressing CTRL+C to cancel the selection, meaning no 'option' key.
+                        #print("potential tunnels:", potential_tunnels)
+
+                        for ip in potential_tunnels:
+                            ip_set.remove(ip)
+
+                        #print("ip_set:", ip_set)
+
+                    else:
+                        print("No tunnels found!")
+                    local_ip = get_private_ip()
+                    ip_set.add(local_ip)
+                    public_ip = get_public_ip()
+                    if public_ip:
+                        ip_set.add(public_ip)
+                    else:
+                        print_white('Failed to get Public IP. Running without.')
+
+                    for ip, friend in custom_ips:
+                        if friend.get('enabled'):
+                            try:
+                                ip_calc = IPValidator.validate_get(ip)
+                                ip_set.add(ip_calc)
+                            except ValidationError:
+                                logger.warning('Not valid IP or URL: {}'.format(ip))
+                                print_white('Not valid IP or URL: "' +
+                                            Fore.LIGHTCYAN_EX + '{}'.format(ip) +
+                                            Fore.LIGHTWHITE_EX + '"')
+                                continue
+
+                    for ip, friend in friends:
+                        if friend.get('enabled'):
+                            ip_set.add(ip)
+
+                    time.sleep(5)   # to see debug prints
+
+                    os.system('cls')
+                    logger.info('Starting whitelisted session with {} IPs'.format(len(ip_set)))
+                    print_white('Running: "' +
+                                Fore.LIGHTCYAN_EX + 'Whitelisted session' +
+                                Fore.LIGHTWHITE_EX + '" Press "' +
+                                Fore.LIGHTCYAN_EX + 'CTRL + C' +
+                                Fore.LIGHTWHITE_EX + '" to stop.')
+
+                    packet_filter = Whitelist(ips=ip_set)
                     try:
-                        for ip in answer['option']:
-                            potential_tunnels.remove(ip)  # Anything that has been checked will not be considered a tunnel.
-                    except KeyError:
-                        pass    # Probably the user pressing CTRL+C to cancel the selection, meaning no 'option' key.
-                #print("potential tunnels:", potential_tunnels)
-
-                for ip in potential_tunnels:
-                    ip_set.remove(ip)
-
-                #print("ip_set:", ip_set)
-
-            else:
-                print("No tunnels found!")
-            local_ip = get_private_ip()
-            ip_set.add(local_ip)
-            public_ip = get_public_ip()
-            if public_ip:
-                ip_set.add(public_ip)
-            else:
-                print_white('Failed to get Public IP. Running without.')
-
-            for ip, friend in custom_ips:
-                if friend.get('enabled'):
-                    try:
-                        ip_calc = IPValidator.validate_get(ip)
-                        ip_set.add(ip_calc)
-                    except ValidationError:
-                        logger.warning('Not valid IP or URL: {}'.format(ip))
-                        print_white('Not valid IP or URL: "' +
-                                    Fore.LIGHTCYAN_EX + '{}'.format(ip) +
+                        packet_filter.start()
+                        while True:
+                            time.sleep(10)  # this is still very terrible
+                    except KeyboardInterrupt:
+                        packet_filter.stop()
+                        logger.info('Stopping whitelisted session')
+                        print_white('Stopped: "' +
+                                    Fore.LIGHTCYAN_EX + 'Whitelisted session' +
                                     Fore.LIGHTWHITE_EX + '"')
-                        continue
-
-            for ip, friend in friends:
-                if friend.get('enabled'):
-                    ip_set.add(ip)
-
-            time.sleep(5)   # to see debug prints
-
-            os.system('cls')
-            logger.info('Starting whitelisted session with {} IPs'.format(len(ip_set)))
-            print_white('Running: "' +
-                        Fore.LIGHTCYAN_EX + 'Whitelisted session' +
-                        Fore.LIGHTWHITE_EX + '" Press "' +
-                        Fore.LIGHTCYAN_EX + 'CTRL + C' +
-                        Fore.LIGHTWHITE_EX + '" to stop.')
-
-            packet_filter = Whitelist(ips=ip_set)
-            try:
-                packet_filter.start()
-                while True:
-                    time.sleep(10)  # this is still very terrible
-            except KeyboardInterrupt:
-                packet_filter.stop()
-                logger.info('Stopping whitelisted session')
-                print_white('Stopped: "' +
-                            Fore.LIGHTCYAN_EX + 'Whitelisted session' +
-                            Fore.LIGHTWHITE_EX + '"')
 
         elif option == "lock_session":
-            os.system('cls')
-            logger.info('Session will now lock. All requests to join this session should fail.')
-            print_white('Running: "' +
-                        Fore.LIGHTCYAN_EX + 'Locked session' +
-                        Fore.LIGHTWHITE_EX + '" Press "' +
-                        Fore.LIGHTCYAN_EX + 'CTRL + C' +
-                        Fore.LIGHTWHITE_EX + '" to unlock session.')
+            print_white('Locked session:')
+            print('This mode blocks all join requests, preventing new players from entering the session.\n'
+                  'Anyone already in the session remains, and this mode prevents people from entering\n'
+                  'the session through R* servers, however if someone leaves they will not be able to get back in.\n')
 
-            packet_filter = Locked()
-            try:
-                packet_filter.start()
-                while True:
-                    time.sleep(10)  # this is still very terrible
-            except KeyboardInterrupt:
-                packet_filter.stop()
-                logger.info('Stopping whitelisted session')
-                print_white('Stopped: "' +
-                            Fore.LIGHTCYAN_EX + 'Locked session' +
-                            Fore.LIGHTWHITE_EX + '"')
+            options = {
+                'type': 'list',
+                'name': 'option',
+                'message': 'Do you want to start this type of session?',
+                'qmark': '@',
+                'choices': [
+                    {
+                        'name': 'Yes, start',
+                        'value': 'start'
+                    },
+                    {
+                        'name': 'No, go back',
+                        'value': 'back'
+                    }
+                ]
+            }
 
-        elif option == "lock_whitelist":
-            local_ip = get_private_ip()
-            ip_set = {local_ip}
-            public_ip = get_public_ip()
-            if public_ip:
-                ip_set.add(public_ip)
-            else:
-                print_white('Failed to get Public IP. Running without.')
+            answer = prompt(options, style=style, )
+            if answer:
+                os.system('cls')
+                option = answer['option']
 
-            for ip, friend in custom_ips:
-                if friend.get('enabled'):
+                if option == 'start':
+
+                    os.system('cls')
+                    logger.info('Session will now lock. All requests to join this session should fail.')
+                    print_white('Running: "' +
+                                Fore.LIGHTCYAN_EX + 'Locked session' +
+                                Fore.LIGHTWHITE_EX + '" Press "' +
+                                Fore.LIGHTCYAN_EX + 'CTRL + C' +
+                                Fore.LIGHTWHITE_EX + '" to unlock session.')
+
+                    packet_filter = Locked()
                     try:
-                        ip_calc = IPValidator.validate_get(ip)
-                        ip_set.add(ip_calc)
-                    except ValidationError:
-                        logger.warning('Not valid IP or URL: {}'.format(ip))
-                        print_white('Not valid IP or URL: "' +
-                                    Fore.LIGHTCYAN_EX + '{}'.format(ip) +
+                        packet_filter.start()
+                        while True:
+                            time.sleep(10)  # this is still very terrible
+                    except KeyboardInterrupt:
+                        packet_filter.stop()
+                        logger.info('Stopping whitelisted session')
+                        print_white('Stopped: "' +
+                                    Fore.LIGHTCYAN_EX + 'Locked session' +
                                     Fore.LIGHTWHITE_EX + '"')
-                        continue
-
-            for ip, friend in friends:
-                if friend.get('enabled'):
-                    ip_set.add(ip)
-
-            os.system('cls')
-            logger.info('Starting locked session with {} IP overrides'.format(len(ip_set)))
-            print_white('Running: "' +
-                        Fore.LIGHTCYAN_EX + 'Locked session w/ Whitelist override' +
-                        Fore.LIGHTWHITE_EX + '" Press "' +
-                        Fore.LIGHTCYAN_EX + 'CTRL + C' +
-                        Fore.LIGHTWHITE_EX + '" to stop.')
-
-            packet_filter = LockedWhitelist(ips=ip_set)
-            try:
-                packet_filter.start()
-                while True:
-                    time.sleep(10)  # this is still very terrible
-            except KeyboardInterrupt:
-                packet_filter.stop()
-                logger.info('Stopping locked session w/ whitelist override')
-                print_white('Stopped: "' +
-                            Fore.LIGHTCYAN_EX + 'Locked session w/ Whitelist override' +
-                            Fore.LIGHTWHITE_EX + '"')
 
         elif option == 'lists':
             while True:
