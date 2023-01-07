@@ -1,6 +1,7 @@
 from __future__ import print_function, unicode_literals
 import random
 import string
+import traceback
 from questionary import Validator, ValidationError, prompt
 from prompt_toolkit.styles import Style
 import os
@@ -166,6 +167,23 @@ class ValidateToken(Validator):
             raise ValidationError(
                 message='Token invalid',
                 cursor_position=len(document.text))  # Move cursor to end
+
+
+def crash_report(exception, additional=None, filename=None):
+    if filename is None:
+        filename = f"crashreport_{str(hex(int(time.time_ns())))[2:]}.log"
+
+    handle = open(filename, 'w')
+
+    handle.write(f"Report local time: {time.asctime(time.localtime())}\nReport UTC time:   {time.asctime(time.gmtime())}\n\n")
+    handle.write(f"Error: {str(exception)}\n\n")
+    handle.write(f"{traceback.format_exc()}\n")
+
+    if additional is not None:
+        handle.write(f"\nAdditional info: {str(additional)}\n")
+
+    handle.close()
+    return
 
 
 def main():
@@ -1398,102 +1416,109 @@ def main():
 if __name__ == '__main__':
     freeze_support()
 
-    success = False
-    while not success:
-        try:
-            config = data.ConfigData(data.file_name)
-            success = True  # if we reach here then config was parsed successfully
-        except Exception as e:
-            # config file could not be loaded. either file creation failed or data.json is corrupt.
-            if not os.path.isfile(data.file_name):
-                # could not create config. fatal error. MB_OK is 0x0, MB_ICON_ERROR is 0x10
-                ctypes.windll.user32.MessageBoxW(None, f"FATAL: Guardian could not create the config file {data.file_name}.\n\n"
-                                                       f"Press 'Ok' to close the program.",
-                                                 f"Fatal Error", 0x0 | 0x10)
-                raise e     # could call sys.exit instead but I think raising again is more sensible
-            else:
-                # MB_ABORTRETRYIGNORE is 0x2, MB_ICON_ERROR is 0x10
-                choice = ctypes.windll.user32.MessageBoxW(None, f"Guardian could not load the config file {data.file_name}.\n\n"
-                                                   f"The most common reason for this error is that the file is corrupt.\n\n"
-                                                   f"Press 'Abort' to close Guardian, press 'Retry' to load the config again, "
-                                                   f"or press 'Ignore' to \"Refresh\" Guardian by renaming the corrupt "
-                                                   f"config file and creating a new one.",
-                                                          f"Error", 0x2 | 0x10)
-                # ID_ABORT = 0x3, ID_RETRY = 0x4, ID_IGNORE = 0x5
-                if choice == 0x3:
-                    sys.exit(-2)
-                elif choice == 0x4:
-                    pass  # we'll hit the bottom of the loop and try again
+    try:
+        success = False
+        while not success:
+            try:
+                config = data.ConfigData(data.file_name)
+                success = True  # if we reach here then config was parsed successfully
+            except Exception as e:
+                # config file could not be loaded. either file creation failed or data.json is corrupt.
+                if not os.path.isfile(data.file_name):
+                    # could not create config. fatal error. MB_OK is 0x0, MB_ICON_ERROR is 0x10
+                    ctypes.windll.user32.MessageBoxW(None, f"FATAL: Guardian could not create the config file {data.file_name}.\n\n"
+                                                           f"Press 'Ok' to close the program.",
+                                                     f"Fatal Error", 0x0 | 0x10)
+                    raise e     # could call sys.exit instead but I think raising again is more sensible
                 else:
-                    char_set = string.ascii_lowercase + string.digits
-                    random_string = "".join(random.choice(char_set) for _ in range(8)) # generate 8 random chars
-                    separator = data.file_name.rindex('.')
-                    new_name = data.file_name[:separator] + '_' + random_string + data.file_name[separator:]
-                    os.rename(data.file_name, new_name)
-                    # file has been renamed, try again
+                    # MB_ABORTRETRYIGNORE is 0x2, MB_ICON_ERROR is 0x10
+                    choice = ctypes.windll.user32.MessageBoxW(None, f"Guardian could not load the config file {data.file_name}.\n\n"
+                                                       f"The most common reason for this error is that the file is corrupt.\n\n"
+                                                       f"Press 'Abort' to close Guardian, press 'Retry' to load the config again, "
+                                                       f"or press 'Ignore' to \"Refresh\" Guardian by renaming the corrupt "
+                                                       f"config file and creating a new one.",
+                                                              f"Error", 0x2 | 0x10)
+                    # ID_ABORT = 0x3, ID_RETRY = 0x4, ID_IGNORE = 0x5
+                    if choice == 0x3:
+                        sys.exit(-2)
+                    elif choice == 0x4:
+                        pass  # we'll hit the bottom of the loop and try again
+                    else:
+                        char_set = string.ascii_lowercase + string.digits
+                        random_string = "".join(random.choice(char_set) for _ in range(8)) # generate 8 random chars
+                        separator = data.file_name.rindex('.')
+                        new_name = data.file_name[:separator] + '_' + random_string + data.file_name[separator:]
+                        os.rename(data.file_name, new_name)
+                        # file has been renamed, try again
 
-    # at this point the file has been parsed and is valid--any additional exceptions are explicit or programmer error
-    try:
-        blacklist = data.CustomList('blacklist')
-        custom_ips = data.CustomList('custom_ips')
-        friends = data.CustomList('friends')
-    except data.MigrationRequired:
-        data.migrate_to_dict()
-        time.sleep(5)
-        sys.exit()
+        # at this point the file has been parsed and is valid--any additional exceptions are explicit or programmer error
+        try:
+            blacklist = data.CustomList('blacklist')
+            custom_ips = data.CustomList('custom_ips')
+            friends = data.CustomList('friends')
+        except data.MigrationRequired:
+            data.migrate_to_dict()
+            time.sleep(5)
+            sys.exit()
 
-    os.system('cls')
-    logger.info('Init')
-    if not ctypes.windll.shell32.IsUserAnAdmin():
-        print_white('Please start as administrator')
-        logger.info('Started without admin')
-        input('Press enter to exit.')
-        sys.exit()
-    logger.info('Booting up')
-    print_white('Booting up...')
-    if not pydivert.WinDivert.is_registered():
-        pydivert.WinDivert.register()
-    ctypes.windll.kernel32.SetConsoleTitleW('Guardian {}'.format(version))
-    cloud = networkmanager.Cloud()
-    ipsyncer = IPSyncer(None)
-    print_white('Building dynamic blacklist...')
-    dynamic_blacklist = set()
-    try:
-        #  TODO: Guardian does not correctly locally save files when run from command prompt outside of Guardian folder.
-        dynamic_blacklist = util.DynamicBlacklist.get_dynamic_blacklist("db.json")
-    except (util.DynamicBlacklist.ScrapeError, RequestException, json.decoder.JSONDecodeError, IndexError, ValueError, TypeError, KeyError, FileNotFoundError) as e:
-        print_white('ERROR: Could not construct dynamic blacklist: ' + str(e) +
-                    '\nAuto-Whitelist and Blacklist will not work correctly.')
-        time.sleep(3)
-    print_white('Checking connections.')
-    if cloud.check_connection():
-        version = cloud.version()
-        version = version.get('version', None) if version else None
-        if version:
-            if StrictVersion(version) > StrictVersion(version):
-                os.system('cls')
-                print_white('An update was found.')
-                options = {
-                    'type': 'confirm',
-                    'message': 'Open browser?',
-                    'name': 'option',
-                    'qmark': '@',
-                    'default': True
-                }
-                answer = prompt(options, style=style)
-                if answer['option']:
-                    webbrowser.open('https://www.thedigitalarc.com/software/Guardian')
-        token = config.get('token')
-        if token:
-            cloud.token = token
-            if cloud.check_token():
-                ipsyncer.token = token
-                ipsyncer.start()
-                print_white('Starting IP syncer.')
+        os.system('cls')
+        logger.info('Init')
+        if not ctypes.windll.shell32.IsUserAnAdmin():
+            print_white('Please start as administrator')
+            logger.info('Started without admin')
+            input('Press enter to exit.')
+            sys.exit()
+        logger.info('Booting up')
+        print_white('Booting up...')
+        if not pydivert.WinDivert.is_registered():
+            pydivert.WinDivert.register()
+        ctypes.windll.kernel32.SetConsoleTitleW('Guardian {}'.format(version))
+        cloud = networkmanager.Cloud()
+        ipsyncer = IPSyncer(None)
+        print_white('Building dynamic blacklist...')
+        dynamic_blacklist = set()
+        try:
+            dynamic_blacklist = util.DynamicBlacklist.get_dynamic_blacklist("db.json")
+        except (util.DynamicBlacklist.ScrapeError, RequestException, json.decoder.JSONDecodeError, IndexError, ValueError, TypeError, KeyError, FileNotFoundError) as e:
+            print_white('ERROR: Could not construct dynamic blacklist: ' + str(e) +
+                        '\nAuto-Whitelist and Blacklist will not work correctly.')
+            time.sleep(3)
+        print_white('Checking connections.')
+        if cloud.check_connection():
+            version = cloud.version()
+            version = version.get('version', None) if version else None
+            if version:
+                if StrictVersion(version) > StrictVersion(version):
+                    os.system('cls')
+                    print_white('An update was found.')
+                    options = {
+                        'type': 'confirm',
+                        'message': 'Open browser?',
+                        'name': 'option',
+                        'qmark': '@',
+                        'default': True
+                    }
+                    answer = prompt(options, style=style)
+                    if answer['option']:
+                        webbrowser.open('https://www.thedigitalarc.com/software/Guardian')
+            token = config.get('token')
+            if token:
+                cloud.token = token
+                if cloud.check_token():
+                    ipsyncer.token = token
+                    ipsyncer.start()
+                    print_white('Starting IP syncer.')
+    except Exception as e:
+        crash_report(e, "Guardian crashed before reaching main()")
+        raise
+
     while True:
         try:
             main()
         except KeyboardInterrupt:
             continue
+        except Exception as e:
+            crash_report(e, "Guardian crashed in main()")
+            raise   # still crash the program because it's not recoverable
         finally:
             ipsyncer.stop()
