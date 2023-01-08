@@ -160,7 +160,7 @@ class Whitelist(AbstractPacketFilter):
 
         """ The "special sauce" for the new filtering logic. We're using payload sizes to guess if the packet
             has a behaviour we want to allow through. """
-        if (ip in super().ips) or (size in heartbeat_sizes) or (size in matchmaking_sizes):
+        if (ip in self.ips) or (size in heartbeat_sizes) or (size in matchmaking_sizes):
             return True
 
 
@@ -188,7 +188,7 @@ class Blacklist(AbstractPacketFilter):
         elif ip not in super().ips:
             # If it's not directly blacklisted it might be in a blacklisted range
             if ip_in_cidr_block_set(ip, self.ip_blocks):
-                super().ips.add(ip)  # It was in a blacklisted range, add this to the standard list
+                self.ips.add(ip)  # It was in a blacklisted range, add this to the standard list
                 return False
 
             else:
