@@ -1549,10 +1549,8 @@ if __name__ == '__main__':
                     elif choice == 0x4:
                         pass  # we'll hit the bottom of the loop and try again
                     else:
-                        char_set = string.ascii_lowercase + string.digits
-                        random_string = "".join(random.choice(char_set) for _ in range(8)) # generate 8 random chars
                         separator = data.file_name.rindex('.')
-                        new_name = data.file_name[:separator] + '_' + random_string + data.file_name[separator:]
+                        new_name = data.file_name[:separator] + '_' + str(hex(int(time.time_ns())))[2:] + data.file_name[separator:]
                         os.rename(data.file_name, new_name)
                         # file has been renamed, try again
 
