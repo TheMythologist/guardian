@@ -334,7 +334,8 @@ def main():
                   'If you are the host of a session,\n'
                   'anyone not on your Custom list will\n'
                   'likely lose connection to the session.\n\n'
-                  'If you are non-host, you will lose connection to everyone else.\n')
+                  'If you are non-host, you will\n'
+                  'lose connection to everyone else.\n')
 
             options = {
                 'type': 'list',
@@ -442,11 +443,15 @@ def main():
                                     Fore.LIGHTWHITE_EX + '"')
 
         elif option == 'blacklist':
-            print_white('Blacklisted Session:')
-            print('IP addresses in your Blacklist list will not be allowed to connect to you.\n'
-                  'If a connection is routed through R* servers, that connection will\n'
-                  'also be blocked as a security measure. This mode is *not recommended*\n'
-                  'as GTA Online has custom routing if only a handful of IP addresses are blocked.\n')
+            print_white('Blacklisted Session:\n')
+            print('IP addresses in your Blacklist list\n'
+                  'will not be allowed to connect to you.\n\n'
+                  'If a connection is routed through R* servers,\n'
+                  'that connection will also be blocked\n'
+                  'as a security measure.\n\n'
+                  'This mode is *not recommended* as GTA Online\n'
+                  'has custom routing if only a handful of\n'
+                  'IP addresses are blocked.\n')
 
             options = {
                 'type': 'list',
@@ -529,12 +534,18 @@ def main():
 
         elif option == 'auto_whitelist':
             print_white('Auto whitelisted session:')
-            print('Same as a Whitelisted session, except everybody currently in the session is\n'
-                  'temporarily added to the whitelist, which prevents them from being kicked.\n'
-                  'Any automatically collected IPs will be lost once the session ends.\n\n'
-                  'If Guardian detects that a player in your session is being routed through R* servers,\n'
-                  'you will be warned whether you wish to add this IP to the temporary whitelist.\n'
-                  'If you do decide to allow those IPs, your session may not properly protected.\n')
+            print('Same as a Whitelisted session, except\n'
+                  'everybody currently in the session is\n'
+                  'temporarily added to the whitelist,\n'
+                  'which prevents them from being kicked.\n\n'
+                  'Any automatically collected IPs will be\n'
+                  'lost once the session ends.\n\n'
+                  'If Guardian detects that a player in your\n'
+                  'session is being routed through R* servers,\n'
+                  'you will be warned whether you wish to add\n'
+                  'this IP to the temporary whitelist.\n\n'
+                  'If you do decide to allow those IPs,\n'
+                  'your session may not properly protected.\n')
 
             options = {
                 'type': 'list',
@@ -664,9 +675,14 @@ def main():
 
         elif option == "lock_session":
             print_white('Locked session:')
-            print('This mode blocks all join requests, preventing new players from entering the session.\n'
-                  'Anyone already in the session remains, and this mode prevents people from entering\n'
-                  'the session through R* servers, however if someone leaves they will not be able to get back in.\n')
+            print('This mode blocks all join requests,\n'
+                  'preventing new players from entering\n'
+                  'the session.\n\n'
+                  'Anyone already in the session remains,\n'
+                  'and this mode prevents people from entering\n'
+                  'the session through R* servers, however\n'
+                  'if someone leaves they will\n'
+                  'not be able to get back in.\n')
 
             options = {
                 'type': 'list',
@@ -1434,7 +1450,7 @@ def main():
 
         elif option == 'discord':
             os.system('cls')
-            print_white('Opening Discord URL in default browser...')
+            print_white('Opening Discord URL in your default browser...')
             webbrowser.open("https://discord.gg/6FzKCh4j4v")
 
         elif option == 'support_zip':
