@@ -680,9 +680,11 @@ def main():
                   'the session.\n\n'
                   'Anyone already in the session remains,\n'
                   'and this mode prevents people from entering\n'
-                  'the session through R* servers, however\n'
-                  'if someone leaves they will\n'
-                  'not be able to get back in.\n')
+                  'the session through R* servers if someone\n'
+                  'is being tunnelled through a R* IP.\n\n'
+                  'However, if someone leaves the session\n'
+                  'they will not be able to get back in\n'
+                  'unless you end the Locked session.\n')
 
             options = {
                 'type': 'list',
