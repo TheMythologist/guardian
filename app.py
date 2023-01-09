@@ -273,9 +273,6 @@ def main():
         os.system('cls')
         option = answer['option']
 
-        # TODO: There's actually some fairly large optimisation available here. Concatenating strings with the '+'
-        #  operator in Python is quadratic in complexity ( O(n^2) ) instead of the expected linear ( O(n) ) complexity.
-        #  Appending all parts of the string as elements of a list and then using .join() is linear and i.e. faster.
         if option == 'solo':
             print_white('SOLO SESSION:\n')
             print('No one can connect to your game session,\n'
@@ -397,19 +394,17 @@ def main():
                                 Fore.LIGHTWHITE_EX + '" to stop.')
 
                     # Exposes session information, diagnostics and behaviour.
-                    manager = Manager()
-                    connection_stats = manager.list()
-                    session_info = sessioninfo.SessionInfo(manager.dict(), connection_stats, manager.Queue(), ip_tags)
+                    #manager = Manager()
+                    #connection_stats = manager.list()
+                    #session_info = sessioninfo.SessionInfo(manager.dict(), connection_stats, manager.Queue(), ip_tags)
 
-                    logger.info("ip_tags: " + str(ip_tags))
+                    #logger.info("ip_tags: " + str(ip_tags))
                     #logger.info("session_info: " + str(session_info))
 
                     """ Set up packet_filter outside the try-catch so it can be safely referenced inside KeyboardInterrupt."""
-                    packet_filter = Whitelist(ips=ip_set, session_info=session_info)
+                    packet_filter = Whitelist(ips=ip_set)
 
                     print("Experimental support for Online 1.54+ developed by Speyedr.\n")
-                          #"Not working? Found a bug?", "https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues",
-                          #"(Pressing ENTER will open the link in your web browser.)", sep="\n")
 
                     try:
                         #session_info.start()
@@ -431,8 +426,8 @@ def main():
 
                             #time.sleep(0.01)
                             #print(session_info)  # display session diagnostics
-                            print(sessioninfo.generate_stats(connection_stats))
-                            session_info.process_item()
+                            #print(sessioninfo.generate_stats(connection_stats))
+                            #session_info.process_item()
                             #os.system('cls')  # refresh console
                     except KeyboardInterrupt:
                         packet_filter.stop()
