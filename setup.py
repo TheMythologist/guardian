@@ -17,8 +17,8 @@ executables = [
 ]
 
 
-version = '3.1.0b4-fastload-fix'
-version_number = '3.1.0.4'
+version = '3.1.0b5-fastload-fix'
+version_number = '3.1.0.5'
 
 build_path = 'build/exe.win-amd64-{}.{}'.format(sys.version_info.major, sys.version_info.minor)
 

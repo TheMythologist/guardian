@@ -44,7 +44,7 @@ STD_OUTPUT_HANDLE = -11
 ipv4 = re.compile(r"((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}")
 domain = re.compile(r"^[a-z]+([a-z0-9-]*[a-z0-9]+)?(\.([a-z]+([a-z0-9-]*[\[a-z0-9]+)?)+)*$")
 
-version = '3.1.0a12'
+version = '3.1.0b5'
 
 style = Style([
     ('qmark', 'fg:#00FFFF bold'),  # token in front of the question
@@ -232,10 +232,6 @@ def main():
                     'value': 'lock_session',
                 },
                 {
-                    'name': 'Diagnostics Only           [Experimental]',
-                    'value': 'diagnostic',  # TODO: Actually add a diagnostic-only mode. Selecting this now would crash.
-                },
-                {
                     'name': 'Kick unknowns              [Unstable]',
                     'value': 'kick'
                 },
@@ -277,10 +273,12 @@ def main():
         #  operator in Python is quadratic in complexity ( O(n^2) ) instead of the expected linear ( O(n) ) complexity.
         #  Appending all parts of the string as elements of a list and then using .join() is linear and i.e. faster.
         if option == 'solo':
-            print_white('Solo Session:')
-            print('No one can connect to your game session, but critical R* related services\n'
-                  'and anything SocialClub related will still be let through.\n'
-                  'If you are in a session with any other player, they will lose connection to you.\n')
+            print_white('SOLO SESSION:\n')
+            print('No one can connect to your game session,\n'
+                  'but critical R* and SocialClub activity\n'
+                  'will still get through.\n\n'
+                  'If you are in a session with any other player,\n'
+                  'they will lose connection to you.\n')
 
             options = {
                 'type': 'list',
@@ -326,10 +324,12 @@ def main():
                         continue
 
         elif option == 'whitelist':
-            print_white('Whitelisted Session:')
-            print('Only IP addresses in your Custom list will be allowed to connect to you.\n'
-                  'If you are the host of a session, anyone not on your Custom list will\n'
-                  'likely lose connection to the session.\n'
+            print_white('WHITELISTED SESSION:\n')
+            print('Only IP addresses in your Custom list\n'
+                  'will be allowed to connect to you.\n\n'
+                  'If you are the host of a session,\n'
+                  'anyone not on your Custom list will\n'
+                  'likely lose connection to the session.\n\n'
                   'If you are non-host, you will lose connection to everyone else.\n')
 
             options = {
