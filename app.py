@@ -252,6 +252,10 @@ def main():
                     'value': 'token'
                 },
                 {
+                    'name': 'Discord',
+                    'value': 'discord'
+                },
+                {
                     'name': 'Support zip',
                     'value': 'support_zip'
                 },
@@ -1427,6 +1431,11 @@ def main():
             print_white('New token: "' +
                         Fore.LIGHTCYAN_EX + answer['token'] +
                         Fore.LIGHTWHITE_EX + '"')
+
+        elif option == 'discord':
+            os.system('cls')
+            print_white('Opening Discord URL in default browser...')
+            webbrowser.open("https://discord.gg/6FzKCh4j4v")
 
         elif option == 'support_zip':
             os.system('cls')
