@@ -443,13 +443,13 @@ def main():
                                     Fore.LIGHTWHITE_EX + '"')
 
         elif option == 'blacklist':
-            print_white('Blacklisted Session:\n')
+            print_white('BLACKLISTED SESSION:\n')
             print('IP addresses in your Blacklist list\n'
                   'will not be allowed to connect to you.\n\n'
                   'If a connection is routed through R* servers,\n'
                   'that connection will also be blocked\n'
                   'as a security measure.\n\n'
-                  'This mode is *not recommended* as GTA Online\n'
+                  'This mode is NOT RECOMMENDED as GTA Online\n'
                   'has custom routing if only a handful of\n'
                   'IP addresses are blocked.\n')
 
@@ -533,7 +533,7 @@ def main():
                                     Fore.LIGHTWHITE_EX + '"')
 
         elif option == 'auto_whitelist':
-            print_white('Auto whitelisted session:')
+            print_white('AUTO WHITELISTED SESSION:\n')
             print('Same as a Whitelisted session, except\n'
                   'everybody currently in the session is\n'
                   'temporarily added to the whitelist,\n'
@@ -674,7 +674,7 @@ def main():
                                     Fore.LIGHTWHITE_EX + '"')
 
         elif option == "lock_session":
-            print_white('Locked session:')
+            print_white('LOCKED SESSION:\n')
             print('This mode blocks all join requests,\n'
                   'preventing new players from entering\n'
                   'the session.\n\n'
