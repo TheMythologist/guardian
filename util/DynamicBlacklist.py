@@ -4,6 +4,7 @@ import re    # to search through the html to find the file (because there's curr
 import json         # to parse the file once it's been downloaded
 from sys import getsizeof  # for debug testing to determine the size of certain things
 import time         # timing
+from pathlib import Path
 
 """
 This file contains classes and methods to manage acquiring, parsing, and updating a possibly dynamic list of IP ranges
@@ -100,17 +101,43 @@ def generate_all_cidr_containing_ip(ip, min_cidr=0):
     return ips
 
 
-def parse_azure_ip_ranges(url_to_json_file):
+def parse_azure_ip_ranges_from_url(url_to_json_file):
     """
     Given a Microsoft Azure IP .JSON file, parses the file and returns an array of strings of CIDR ranges
     that may be used by R* Services.
     """
     response = requests.get(url_to_json_file)
     response.raise_for_status()  # Can't handle anything here. If we can't download the file, it's game over.
-    # TODO: Using reverse_search_ip_in_azure() indicates that R* Services use the generic 'AzureCloud' category.
-    #  A bit boring but to be expected and hey, at least they're actually in the file.
-    #  So, need to get the address ranges (they're CIDR) from that category and return a set of IPs to compare against.
-    azure_cloud_json = json.loads(response.content)
+
+    return parse_azure_ip_ranges(response.content)  # Parse the response and return it to be saved.
+
+
+def get_azure_ip_file_from_url(url_to_json_file):
+    # TODO: Provide some sanity checks to see if the file contains the content we expect.
+    response = requests.get(url_to_json_file)
+    response.raise_for_status()
+    return response.content
+
+
+def save_azure_file(data_to_save, where_to_save="db.json"):
+    file = open(where_to_save, mode="wb")
+    bytes_written = file.write(data_to_save)
+    file.close()
+    return bytes_written
+
+
+def azure_file_add_timestamp(azure_file, filename):
+    as_list = azure_file.splitlines(True)    # keep the line breaks
+    #print(as_list)
+    now = str(time.time())
+    # add timestamp and filename (should be formatted the same as the actual file)
+    as_list.insert(1, b'  "acquiredFrom": "' + bytes(filename, 'utf-8') + b'",\n')
+    as_list.insert(1, b'  "acquiredWhen": '  + bytes(now, 'utf-8')      + b',\n')
+    return b''.join(as_list)# if type(azure_file) is bytes else "".join(as_list)
+
+
+def parse_azure_ip_ranges(azure_file):
+    azure_cloud_json = json.loads(azure_file)   # load the .json file into memory
     categories = azure_cloud_json['values']
     arr_ranges = None
     for cat in categories:
@@ -119,9 +146,14 @@ def parse_azure_ip_ranges(url_to_json_file):
             break
     if arr_ranges is None:
         raise ValueError("Could not find AzureCloud category in values array.")
-    #ips = get_all_ips_from_cidr_array(arr_ranges)
-    #return ips
+    # ips = get_all_ips_from_cidr_array(arr_ranges)
+    # return ips
     return arr_ranges
+
+
+def parse_azure_ip_ranges_from_file(location_of_file):
+    file = open(location_of_file, mode='rb')
+    return parse_azure_ip_ranges(file.read())
 
 
 def cidr_to_tuple(ip_in_cidr):
@@ -167,9 +199,32 @@ def construct_cidr_block_set(ips_in_cidr):
 
     return ip_set
 
-def get_dynamic_blacklist():
-    download_link = get_azure_ip_ranges_download()
-    ranges = parse_azure_ip_ranges(download_link[0])  # TODO: Handle multiple download files!
+
+def get_dynamic_blacklist(backup_file="db.json"):
+    # TODO: It seems like we can determine if a range has changed by looking at the 'changeNumber' attribute
+    #  for a given category, however, there unfortunately doesn't appear to be any sort of timestamp included
+    #  in the actual JSON file. We'll probably need to save the timestamp manually by adding it to the JSON?
+    #  TL;DR the problem is that we can tell if the file has been updated by checking `changeNumber`, but that requires
+    #  attempting to download the file anyways. Ideally, we want to be able to skip trying to download all together
+    #  because the method isn't entirely reliable, and also fallback to the previously saved version if the download
+    #  fails.
+    #ranges = set()
+
+    try:
+        download_link = get_azure_ip_ranges_download()
+        content = get_azure_ip_file_from_url(download_link[0])      # TODO: Handle multiple download files!
+        ranges = parse_azure_ip_ranges(content)
+        #  TODO: If we get multiple files, we can try to find the one with the highest changeNumber.
+        # If we got here, then the ranges are *probably* okay.
+        save_azure_file(azure_file_add_timestamp(content, download_link[0]), backup_file)
+    except Exception as e:
+        print("ERROR: Could not parse Azure ranges from URL. Reason:", e)
+        try:
+            ranges = parse_azure_ip_ranges_from_file(backup_file)
+        except FileNotFoundError as e:
+            print("ERROR: Could not find backup file.")
+            raise e
+
     ranges.extend(T2_EU)    # add R* EU ranges
     ranges.extend(T2_US)    # add R* US ranges
     dynamic_blacklist = construct_cidr_block_set(ranges)
@@ -242,11 +297,12 @@ def get_cidr_suffixes(array_of_cidr):
 if __name__ == "__main__":
     #print(get_all_ips_from_cidr("185.56.64.0/24"))
     #print(len(get_all_ips_from_cidr_array(["185.56.64.0/24", "185.56.64.0/22"])))
-    dl = get_azure_ip_ranges_download()
-    print(dl)
-    start = time.perf_counter()
-    ips_test = parse_azure_ip_ranges(dl[0])
-    finish = time.perf_counter()
-    print("size:", getsizeof(ips_test), "len:", len(ips_test), "seconds:", (finish - start) / 1000)
+    #dl = get_azure_ip_ranges_download()
+    #print(dl)
+    #start = time.perf_counter()
+    #ips_test = parse_azure_ip_ranges_from_url(dl[0])
+    #finish = time.perf_counter()
+    #print("size:", getsizeof(ips_test), "len:", len(ips_test), "seconds:", (finish - start) / 1000)
+    get_dynamic_blacklist("db_test.json")
     # size: 1073742040 len: 21838185, time: like 90 minutes or something, shouldn't have used perf counter here I guess
 

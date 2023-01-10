@@ -1,11 +1,14 @@
 import multiprocessing
+from abc import abstractmethod
+
 import pydivert
 import re
 import logging
 import data
-from network import networkmanager
+from network import networkmanager, sessioninfo
 from app import IPValidator
 from questionary import ValidationError
+from util.DynamicBlacklist import ip_in_cidr_block_set
 
 debug_logger = logging.getLogger('debugger')
 debug_logger.setLevel(logging.DEBUG)
@@ -92,18 +95,140 @@ in case they're useful later on.
 """
 
 
-class Whitelist(object):
+class AbstractPacketFilter:
+
+    def __init__(self, ips, session_info=None, debug=False):
+        self.ips = ips
+        self.process = multiprocessing.Process(target=self.run, args=())
+        self.process.daemon = True
+        self.session_info = session_info    # If no session info object was passed then it won't be used.
+        self.debug_print_decisions = debug
+
+    def start(self):
+        self.process.start()
+        logger.info('Dispatched ' + self.__class__.__name__ + ' blocker process')
+
+    def stop(self):
+        self.process.terminate()
+        logger.info('Terminated ' + self.__class__.__name__ + ' blocker process')
+
+    @abstractmethod
+    def is_packet_allowed(self, packet):
+        pass
+
+    def run(self):
+        print("ips: " + str(self.ips))
+
+        if not pydivert.WinDivert.is_registered():
+            pydivert.WinDivert.register()
+        try:
+            with pydivert.WinDivert(packetfilter) as w:
+                for packet in w:
+                    decision = self.is_packet_allowed(packet)
+                    if decision:
+                        w.send(packet)
+
+                    if self.session_info is not None:
+                        self.session_info.add_packet(sessioninfo.safe_pickle_packet(packet), allowed=decision)
+
+                    if self.debug_print_decisions:
+                        print(self.construct_debug_packet_info(packet, decision))
+
+        except KeyboardInterrupt:
+            """ This never hits, but the override is still necessary to stop the program from quitting on CTRL + C. """
+            pass
+
+    @staticmethod
+    def construct_debug_packet_info(packet, decision=None):
+        prefix = "" if decision is None else ("ALLOWING" if decision else "DROPPING")
+
+        return prefix + \
+            " PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload))
+
+
+class Whitelist(AbstractPacketFilter):
     """
     Packet filter that will allow packets from with source ip present on ips list
     """
 
-    def __init__(self, ips):
+    def __init__(self, ips, session_info=None, debug=False):
+        super().__init__(ips, session_info, debug)
+
+    def is_packet_allowed(self, packet):
+        ip = packet.ip.src_addr
+        size = len(packet.payload)
+
+        """ The "special sauce" for the new filtering logic. We're using payload sizes to guess if the packet
+            has a behaviour we want to allow through. """
+        if (ip in self.ips) or (size in heartbeat_sizes) or (size in matchmaking_sizes):
+            return True
+
+
+class Blacklist(AbstractPacketFilter):
+
+    def __init__(self, ips, blocks=None, known_allowed=None, session_info=None, debug=False):
+        super().__init__(ips, session_info, debug)
+
+        if blocks is None:
+            blocks = set()
+        if known_allowed is None:
+            known_allowed = set()
+
+        self.ip_blocks = blocks  # set of CIDR blocks
+        self.known_allowed = known_allowed  # IPs which are known to not be in blocks
+
+    def is_packet_allowed(self, packet):
+        ip = packet.ip.src_addr
+        size = len(packet.payload)
+
+        """ Somewhat ironically we still use whitelisting logic. """
+        if (ip in self.known_allowed) or (size in matchmaking_sizes) or (size in heartbeat_sizes):
+            return True
+
+        elif ip not in self.ips:
+            # If it's not directly blacklisted it might be in a blacklisted range
+            if ip_in_cidr_block_set(ip, self.ip_blocks):
+                self.ips.add(ip)  # It was in a blacklisted range, add this to the standard list
+                return False
+
+            else:
+                self.known_allowed.add(ip)  # If not then it's definitely allowed, remember this for next time
+                return True
+
+        else:
+            return False
+
+
+class Locked(AbstractPacketFilter):
+
+    def __init__(self, session_info=None, debug=False):
+        super().__init__(set(), session_info, debug)
+
+    def is_packet_allowed(self, packet):
+        size = len(packet.payload)
+
+        """ No new matchmaking requests allowed.
+            Seems a bit overkill (and perhaps reckless) to always block these payload sizes but my packet
+            captures show that these payload sizes don't occur in any regular game traffic so... """
+        if size in matchmaking_sizes:
+            return False
+
+        return True
+
+
+class WhitelistOld(object):
+    """
+    Packet filter that will allow packets from with source ip present on ips list
+    """
+
+    def __init__(self, ips, session_info=None):
         """
         :param list ips:
         """
         self.ips = ips
         self.process = multiprocessing.Process(target=self.run, args=())
         self.process.daemon = True
+        self.session_info = session_info  # If no session info object was passed then it won't be used.
 
     def start(self):
         self.process.start()
@@ -115,6 +240,8 @@ class Whitelist(object):
 
     def run(self):
 
+        #self.session_info.start()
+
         print("ips: " + str(self.ips))
         if not pydivert.WinDivert.is_registered():
             pydivert.WinDivert.register()
@@ -123,6 +250,7 @@ class Whitelist(object):
                 for packet in w:
                     ip = packet.ip.src_addr
                     size = len(packet.payload)  # the size of the payload. used to guess packet's behaviour / "intent"
+                    #print(packet)
 
                     """
                     The "special sauce" for the new filtering logic. We're using payload sizes to guess if the packet
@@ -130,27 +258,39 @@ class Whitelist(object):
                     """
                     if (ip in self.ips) or (size in heartbeat_sizes) or (size in matchmaking_sizes):
                         w.send(packet)
+                        if self.session_info is not None:
+                            self.session_info.add_packet(sessioninfo.safe_pickle_packet(packet), allowed=True)
                         #print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
 
                     else:
                         #print("DROPPING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
                         pass    # drop the packet because it didn't match our filter.
+                        if self.session_info is not None:
+                            self.session_info.add_packet(sessioninfo.safe_pickle_packet(packet), allowed=False)
 
         except KeyboardInterrupt:
             """ This never hits, but the override is still necessary to stop the program from quitting on CTRL + C. """
+            #self.session_info.stop()
             pass
 
 
-class Blacklist(object):
+class BlacklistOld(object):
     """
     Packet filter that will block packets from with source ip present on ips list
     """
 
-    def __init__(self, ips):
+    def __init__(self, ips, blocks=None, known_allowed=None):
         """
-        :param list ips:
+        :param set ips:
         """
+        if blocks is None:
+            blocks = set()
+        if known_allowed is None:
+            known_allowed = set()
+
         self.ips = ips
+        self.ip_blocks = blocks  # set of CIDR blocks
+        self.known_allowed = known_allowed  # IPs which are known to not be in blocks
         self.process = multiprocessing.Process(target=self.run, args=())
         self.process.daemon = True
 
@@ -178,10 +318,30 @@ class Blacklist(object):
                     NOTE: This probably isn't a complete list of R* tunnels. Ideally, ipfilter should contain all
                           possible ranges of inbound (and maybe even outbound?) tunnels.
                     """
-                    if (ip in self.ips or ipfilter.match(ip)) and not ((size in matchmaking_sizes) or size in heartbeat_sizes):
-                        pass    # drop the packet because it's not allowed.
-                    else:
+                    if (ip in self.known_allowed) or (size in matchmaking_sizes) or (size in heartbeat_sizes):
                         w.send(packet)
+                        print("ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(len(packet.payload)))
+
+                    elif ip not in self.ips:
+                        # If it's not directly blacklisted it might be in a blacklisted range
+                        if ip_in_cidr_block_set(ip, self.ip_blocks):
+                            self.ips.add(ip)    # It was in a blacklisted range, add this to the standard list
+                            print(
+                                "DROPPING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(
+                                    len(packet.payload)))
+                        else:
+                            self.known_allowed.add(ip) # If not then it's definitely allowed, remember this for next time
+                            w.send(packet)
+                            print(
+                                "ALLOWING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(
+                                    len(packet.payload)))
+
+                    else:
+                        pass    # was in the blacklist
+                        print(
+                            "DROPPING PACKET FROM " + packet.src_addr + ":" + str(packet.src_port) + " Len:" + str(
+                                len(packet.payload)))
+
         except KeyboardInterrupt:
             pass
 
@@ -189,7 +349,7 @@ class Blacklist(object):
 #  unnecessarily duplicate code here.
 
 
-class Locked(object):
+class LockedOld(object):
     """
     Packet filter to block any new requests to join the session.
     """

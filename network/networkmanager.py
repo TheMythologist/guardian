@@ -16,15 +16,18 @@ class Cloud:
                    'Content-Type': 'application/json; charset=UTF-8',
                    'Authorization': self.token if self.token else None}
         for _ in range(3):
-            resp = s.request(method=method, url=url, params=params, json=payload, headers=headers, **kwargs)
-            if resp.status_code != 502:  # Retry on error 502 "Bad Gateway"
-                break
+            try:
+                resp = s.request(method=method, url=url, params=params, json=payload, headers=headers, **kwargs)
+                if resp.status_code != 502:  # Retry on error 502 "Bad Gateway"
+                    break
+            except requests.exceptions.RequestException as e:
+                raise ConnectionError
 
         if resp.status_code >= 400:
             raise ConnectionError
 
         try:
-            resp_text = resp.json(encoding="utf-8")
+            resp_text = resp.json()
         except ValueError:
             resp_text = resp.text
 

@@ -13,10 +13,12 @@ buildOptions = dict(packages=[], includes=['idna.idnadata', 'codecs', 'pydivert'
                     replace_paths=[("*", "")], optimize=2, zip_include_packages="*",
                     zip_exclude_packages=zip_exclude_packages, silent=True)
 executables = [
-    Executable('app.py', targetName='Guardian.exe', icon='logo.ico')
+    Executable('app.py', targetName='Guardian.exe', icon='logo.ico', uac_admin=True)
 ]
 
-version = '3.1.0b4-fastload-fix'
+
+version = '3.1.0b5-fastload-fix'
+version_number = '3.1.0.5'
 
 build_path = 'build/exe.win-amd64-{}.{}'.format(sys.version_info.major, sys.version_info.minor)
 
@@ -30,7 +32,7 @@ if os.path.isfile('build/exe/guardian-{}.zip'.format(version)):
     os.remove('build/exe/guardian-{}.zip'.format(version))
 
 setup(name='Guardian',
-      version=version,
+      version=version_number,
       description='Firewall',
       options=dict(build_exe=buildOptions),
       executables=executables)

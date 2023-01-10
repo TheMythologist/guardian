@@ -1,7 +1,7 @@
 certifi==2019.6.16
 chardet==3.0.4
 colorama==0.4.1
-cx-Freeze==6.8.3
+cx-Freeze~=6.10.0
 idna==2.8
 prompt-toolkit==2.0.9
 pydivert==2.1.0
