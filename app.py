@@ -331,8 +331,9 @@ def main():
                   'If you are the host of a session,\n'
                   'anyone not on your Custom list will\n'
                   'likely lose connection to the session.\n\n'
-                  'If you are non-host, you will\n'
-                  'lose connection to everyone else.\n')
+                  'If you are non-host (and any player\n'
+                  'in the session is not on your Custom\n'
+                  'list), you will lose connection to everyone else.\n')
 
             options = {
                 'type': 'list',
