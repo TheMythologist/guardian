@@ -185,7 +185,7 @@ class Blacklist(AbstractPacketFilter):
         if (ip in self.known_allowed) or (size in matchmaking_sizes) or (size in heartbeat_sizes):
             return True
 
-        elif ip not in super().ips:
+        elif ip not in self.ips:
             # If it's not directly blacklisted it might be in a blacklisted range
             if ip_in_cidr_block_set(ip, self.ip_blocks):
                 self.ips.add(ip)  # It was in a blacklisted range, add this to the standard list
