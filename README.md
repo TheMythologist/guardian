@@ -86,6 +86,11 @@ I never quite liked the idea of firewalled sessions, however modders were target
 - [**> Join the Discord server**](https://discord.gg/6FzKCh4j4v)
 
 ## Credits (for this fork)
+#### Sponsors
+- [DarkViperAU](https://www.youtube.com/@DarkViperAU)
+- TessioMT
+- Harald414
+
 #### Developers
 - [**DintNL**](https://gitlab.com/DintNL): Co-dev, pointed me in the right direction, suggested I make this fork.
 
