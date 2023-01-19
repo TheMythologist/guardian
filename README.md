@@ -89,6 +89,7 @@ I never quite liked the idea of firewalled sessions, however modders were target
 #### Sponsors
 - [DarkViperAU](https://www.youtube.com/@DarkViperAU)
 - TessioMT
+- AnExtraSleepyKitty
 - Harald414
 
 #### Developers
