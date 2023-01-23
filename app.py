@@ -62,7 +62,7 @@ if not logger.handlers:
 LF_FACESIZE = 32
 STD_OUTPUT_HANDLE = -11
 
-version = "3.1.0b5"
+version = "3.2.0"
 
 style = Style(
     [

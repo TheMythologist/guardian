@@ -5,8 +5,7 @@ import zipfile
 
 from cx_Freeze import Executable, setup
 
-version = "3.1.0b5-fastload-fix"
-version_number = "3.1.0.5"
+version = "3.2.0"
 
 build_path = f"build/exe.win-amd64-{sys.version_info.major}.{sys.version_info.minor}"
 
@@ -38,7 +37,7 @@ executables = [
 
 setup(
     name="Guardian",
-    version=version_number,
+    version=version,
     description="Firewall",
     options=dict(build_exe=buildOptions),
     executables=executables,
