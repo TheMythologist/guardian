@@ -5,8 +5,20 @@ import zipfile
 
 from cx_Freeze import Executable, setup
 
-# Dependencies are automatically detected, but it might need
-# fine tuning.
+version = "3.1.0b5-fastload-fix"
+version_number = "3.1.0.5"
+
+build_path = f"build/exe.win-amd64-{sys.version_info.major}.{sys.version_info.minor}"
+
+if os.path.exists(build_path):
+    shutil.rmtree(build_path)
+
+if not os.path.exists("build/exe"):
+    os.makedirs("build/exe")
+
+if os.path.isfile(f"build/exe/guardian-{version}.zip"):
+    os.remove(f"build/exe/guardian-{version}.zip")
+
 zip_exclude_packages = [
     "certifi",
     "pydivert",
@@ -23,23 +35,6 @@ buildOptions = dict(
 executables = [
     Executable("app.py", target_name="Guardian.exe", icon="logo.ico", uac_admin=True)
 ]
-
-
-version = "3.1.0b5-fastload-fix"
-version_number = "3.1.0.5"
-
-build_path = "build/exe.win-amd64-{}.{}".format(
-    sys.version_info.major, sys.version_info.minor
-)
-
-if os.path.exists(build_path):
-    shutil.rmtree(build_path)
-
-if not os.path.exists("build/exe"):
-    os.makedirs("build/exe")
-
-if os.path.isfile("build/exe/guardian-{}.zip".format(version)):
-    os.remove("build/exe/guardian-{}.zip".format(version))
 
 setup(
     name="Guardian",

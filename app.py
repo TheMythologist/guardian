@@ -8,42 +8,42 @@ import time
 import traceback
 import webbrowser
 import zipfile
-from distutils.version import StrictVersion
 from multiprocessing import Manager, freeze_support
 
 import pydivert
 from colorama import Fore
+from packaging.version import parse
 from prompt_toolkit.styles import Style
 from questionary import ValidationError, prompt
 from requests import RequestException
 from tqdm import tqdm
 
+import util.data as data
 import util.DynamicBlacklist  # new Azure-blocking functionality
 from network import networkmanager, sessioninfo
 from network.blocker import (
-    Whitelist,
     Blacklist,
-    Locked,
-    IPSyncer,
     Debugger,
     IPCollector,
-)
-from util.WorkingDirectoryFix import wd_fix
-from util.validator import (
-    NameInCustom,
-    NameInBlacklist,
-    IPValidator,
-    IPInCustom,
-    IPInBlacklist,
-    ValidateToken,
+    IPSyncer,
+    Locked,
+    Whitelist,
 )
 from util.printer import (
-    print_white,
+    print_invalid_ip,
     print_running_message,
     print_stopped_message,
-    print_invalid_ip,
+    print_white,
 )
-import data
+from util.validator import (
+    IPInBlacklist,
+    IPInCustom,
+    IPValidator,
+    NameInBlacklist,
+    NameInCustom,
+    ValidateToken,
+)
+from util.WorkingDirectoryFix import wd_fix
 
 wd_fix()
 
@@ -400,9 +400,7 @@ def main():
                                 logger.warning("Not valid IP or URL: %s", ip)
                                 print_invalid_ip(ip)
                                 continue
-                    logger.info(
-                        "Starting blacklisted session with %d IPs", len(ip_set)
-                    )
+                    logger.info("Starting blacklisted session with %d IPs", len(ip_set))
                     print_running_message("Blacklist")
 
                     packet_filter = Blacklist(
@@ -533,9 +531,7 @@ def main():
                             ip_set.add(ip)
 
                     os.system("cls")
-                    logger.info(
-                        "Starting whitelisted session with %d IPs", len(ip_set)
-                    )
+                    logger.info("Starting whitelisted session with %d IPs", len(ip_set))
                     print_running_message("Whitelisted")
 
                     packet_filter = Whitelist(ips=ip_set)
@@ -1479,7 +1475,7 @@ if __name__ == "__main__":
             version = cloud.version()
             version = version.get("version", None) if version else None
             if version:
-                if StrictVersion(version) > StrictVersion(version):
+                if parse(version) > parse(version):
                     os.system("cls")
                     print_white("An update was found.")
                     options = {

@@ -1,7 +1,9 @@
-from questionary import ValidationError, Validator
 import ipaddress
-import socket
 import re
+import socket
+
+from questionary import ValidationError, Validator
+
 from network import networkmanager
 
 ipv4 = re.compile(r"((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}")

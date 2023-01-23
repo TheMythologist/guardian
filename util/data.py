@@ -3,8 +3,9 @@ import os
 
 from questionary import ValidationError, confirm
 
-from app import IPValidator, print_white
 from network.networkmanager import Cloud
+from util.printer import print_white
+from util.validator import IPValidator
 
 file_name = "data.json"
 

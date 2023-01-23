@@ -2,15 +2,15 @@ import contextlib
 import logging
 import multiprocessing
 import re
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 
 import pydivert
 from questionary import ValidationError
 
-import data
-from app import IPValidator
+import util.data as data
 from network import networkmanager, sessioninfo
 from util.DynamicBlacklist import ip_in_cidr_block_set
+from util.validator import IPValidator
 
 debug_logger = logging.getLogger("debugger")
 debug_logger.setLevel(logging.DEBUG)
@@ -210,6 +210,9 @@ class Locked(AbstractPacketFilter):
     """
     Packet filter to block any new requests to join the session.
     """
+
+    def __init__(self, session_info=None, debug=False):
+        super().__init__(set(), session_info, debug)
 
     def is_packet_allowed(self, packet):
         size = len(packet.payload)
