@@ -1,7 +1,5 @@
 # Guardian
 
-![Logo](logo.ico)
-
 Simple custom firewall used for the game GTA5.
 
 This fork uses new methods to drop packets to R*-owned resources that are likely to be tunnelled game traffic, rather than let all R*-owned resources through. The only two behaviours intended to be allowed through from non-whitelisted IPs with this new model are the session "heartbeat" and any session information requests from the "matchmaking service" which provides initial connection details to clients.
