@@ -1,26 +1,30 @@
 [tool.poetry]
-name = "guardian"
+name = "Guardian"
 version = "3.1.0b5"
 description = "Custom firewall used to create private lobbies for GTA5 Online"
 authors = ["TheMythologist <leekaixuan2001@gmail.com>"]
 license = "LGPL-3.0"
 readme = "README.md"
 
+[tool.distutils.build_exe]
+includes = ["idna.idnadata", "codecs", "pydivert"]
+optimize = 2
+zip_exclude_packages = ["certifi", "pydivert"]
+
 [tool.poetry.dependencies]
 python = "^3.9"
-certifi = "2022.12.7"
-chardet = "3.0.4"
-colorama = "0.4.1"
-cx-freeze = ">=6.10.0,<6.11.0"
-idna = "2.8"
-prompt-toolkit = "2.0.9"
+chardet = "^5.1.0"
+colorama = "^0.4.6"
+cx-freeze = "^6.13"
+idna = "^3.4"
+prompt-toolkit = "^3.0.36"
 pydivert = "2.1.0"
-questionary = "1.2.1"
-six = "1.12.0"
-tqdm = "4.34.0"
-urllib3 = "1.26.5"
-wcwidth = "0.1.7"
-requests = "2.28.2"
+questionary = "^1.10.0"
+six = "^1.16.0"
+tqdm = "^4.64.1"
+urllib3 = "^1.26.14"
+wcwidth = "^0.2.6"
+requests = "^2.28.2"
 
 [tool.poetry.group.dev.dependencies]
 black = "^22.12.0"

@@ -5,8 +5,20 @@ import zipfile
 
 from cx_Freeze import Executable, setup
 
-# Dependencies are automatically detected, but it might need
-# fine tuning.
+version = "3.1.0b5-fastload-fix"
+version_number = "3.1.0.5"
+
+build_path = f"build/exe.win-amd64-{sys.version_info.major}.{sys.version_info.minor}"
+
+if os.path.exists(build_path):
+    shutil.rmtree(build_path)
+
+if not os.path.exists("build/exe"):
+    os.makedirs("build/exe")
+
+if os.path.isfile(f"build/exe/guardian-{version}.zip"):
+    os.remove(f"build/exe/guardian-{version}.zip")
+
 zip_exclude_packages = [
     "certifi",
     "pydivert",
@@ -21,25 +33,8 @@ buildOptions = dict(
     silent=True,
 )
 executables = [
-    Executable("app.py", targetName="Guardian.exe", icon="logo.ico", uac_admin=True)
+    Executable("app.py", target_name="Guardian.exe", icon="logo.ico", uac_admin=True)
 ]
-
-
-version = "3.1.0b5-fastload-fix"
-version_number = "3.1.0.5"
-
-build_path = "build/exe.win-amd64-{}.{}".format(
-    sys.version_info.major, sys.version_info.minor
-)
-
-if os.path.exists(build_path):
-    shutil.rmtree(build_path)
-
-if not os.path.exists("build/exe"):
-    os.makedirs("build/exe")
-
-if os.path.isfile("build/exe/guardian-{}.zip".format(version)):
-    os.remove("build/exe/guardian-{}.zip".format(version))
 
 setup(
     name="Guardian",
@@ -60,25 +55,20 @@ def zip_folder(folder_path, output_path):
     contents = os.walk(
         folder_path,
     )
-    zip_file = zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED)
-
-    for root, folders, files in contents:
-        # Include all subfolders, including empty ones.
-        for folder_name in folders:
-            absolute_path = os.path.join(root, folder_name)
-            relative_path = absolute_path.replace(parent_folder + "\\", "")
-            zip_file.write(absolute_path, relative_path.replace(build_path, ""))
-        for file_name in files:
-            absolute_path = os.path.join(root, file_name)
-            relative_path = absolute_path.replace(parent_folder + "\\", "")
-            zip_file.write(absolute_path, relative_path.replace(build_path, ""))
-    zip_file.close()
+    with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        for root, folders, files in contents:
+            # Include all subfolders, including empty ones.
+            for folder_name in folders:
+                absolute_path = os.path.join(root, folder_name)
+                relative_path = absolute_path.replace(parent_folder + "\\", "")
+                zip_file.write(absolute_path, relative_path.replace(build_path, ""))
+            for file_name in files:
+                absolute_path = os.path.join(root, file_name)
+                relative_path = absolute_path.replace(parent_folder + "\\", "")
+                zip_file.write(absolute_path, relative_path.replace(build_path, ""))
 
 
-try:
-    shutil.copyfile("LICENSE", build_path + "/LICENSE")
-    shutil.copyfile("SOURCE", build_path + "/SOURCE")
-except:
-    pass
+shutil.copyfile("LICENSE", f"{build_path}/LICENSE")
+shutil.copyfile("SOURCE", f"{build_path}/SOURCE")
 
-zip_folder(build_path, "build\exe\guardian-{}.zip".format(version))
+zip_folder(build_path, rf"build\exe\guardian-{version}.zip")

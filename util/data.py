@@ -3,20 +3,18 @@ import os
 
 from questionary import ValidationError, confirm
 
-from app import IPValidator, print_white
 from network.networkmanager import Cloud
+from util.printer import print_white
+from util.validator import IPValidator
 
 file_name = "data.json"
 
 
 class MigrationRequired(Exception):
-    """
-    Custom exception to notify data migration is required
-    """
-
     pass
 
 
+# TODO: Use magic methods `__enter__` and `__exit__`
 class ConfigData:
     """
     Abstraction of the configuration storage implemented in a singleton-like way to have easy global access and avoid re-reads
@@ -27,15 +25,7 @@ class ConfigData:
     instance = None
 
     class __DataSource:
-        """
-        Configuration data source
-        """
-
         def __init__(self, data_file):
-            """
-
-            :param data_file:
-            """
             self.data_file = data_file
             self.data = {"config": {}, "token": None}
             if not os.path.isfile(data_file):
@@ -47,20 +37,12 @@ class ConfigData:
             self.token = self.data.get("token", None)
 
         def save(self):
-            """
-
-            :return: None
-            """
             if not os.path.isfile(self.data_file):
                 self.__create()
             with open(self.data_file, "w") as file:
                 json.dump(self.data, file, indent=4)
 
         def __create(self):
-            """
-
-            :return: None
-            """
             with open(self.data_file, "w") as write_file:
                 json.dump(self.data, write_file, indent=4)
 
@@ -158,7 +140,7 @@ class CustomList(ConfigData):
         :return:
         """
         items = self.find_all(value, key)
-        return True if items else False
+        return bool(items)
 
     def find(self, value, key="name"):
         """
@@ -214,13 +196,14 @@ def update_cloud_friends():
             friend_item = f
             friends.delete(ip)
         friends.add(friend.get("ip"), friend_item)
-    missing = list()
-    for key, friend in friends.data.items():
-        if not any(
-            cloud_friend.get("name") == friend.get("name")
+    missing = [
+        key
+        for key, friend in friends.data.items()
+        if all(
+            cloud_friend.get("name") != friend.get("name")
             for cloud_friend in cloud_friends_list
-        ):
-            missing.append(key)
+        )
+    ]
     for key in missing:
         friends.delete(key)
     config.save()
