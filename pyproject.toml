@@ -1,0 +1,40 @@
+[tool.poetry]
+name = "guardian"
+version = "3.1.0b5"
+description = "Custom firewall used to create private lobbies for GTA5 Online"
+authors = ["TheMythologist <leekaixuan2001@gmail.com>"]
+license = "LGPL-3.0"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+certifi = "2022.12.7"
+chardet = "3.0.4"
+colorama = "0.4.1"
+cx-freeze = ">=6.10.0,<6.11.0"
+idna = "2.8"
+prompt-toolkit = "2.0.9"
+pydivert = "2.1.0"
+questionary = "1.2.1"
+six = "1.12.0"
+tqdm = "4.34.0"
+urllib3 = "1.26.5"
+wcwidth = "0.1.7"
+requests = "2.28.2"
+
+[tool.poetry.group.dev.dependencies]
+black = "^22.12.0"
+isort = "^5.11.4"
+flake8 = "^6.0.0"
+pyproject-flake8 = "^6.0.0.post1"
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = "E203"
+
+[tool.isort]
+profile = "black"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
