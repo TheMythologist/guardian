@@ -1,15 +1,19 @@
-import os
 import json
-from network.networkmanager import Cloud
-from app import IPValidator, print_white
+import os
+
 from questionary import ValidationError, confirm
-file_name = 'data.json'
+
+from app import IPValidator, print_white
+from network.networkmanager import Cloud
+
+file_name = "data.json"
 
 
 class MigrationRequired(Exception):
     """
     Custom exception to notify data migration is required
     """
+
     pass
 
 
@@ -19,29 +23,28 @@ class ConfigData:
     :var instance: Global instance of the internal class for the data source
     :vartype instance: __DataSource
     """
+
     instance = None
 
     class __DataSource:
         """
         Configuration data source
         """
+
         def __init__(self, data_file):
             """
 
             :param data_file:
             """
             self.data_file = data_file
-            self.data = {
-                'config': {},
-                'token': None
-            }
+            self.data = {"config": {}, "token": None}
             if not os.path.isfile(data_file):
                 self.__create()
             else:
                 with open(self.data_file, "r") as file:
                     self.data = json.load(file)
 
-            self.token = self.data.get('token', None)
+            self.token = self.data.get("token", None)
 
         def save(self):
             """
@@ -104,6 +107,7 @@ class CustomList(ConfigData):
     """
     Extra lists to store on the configuration data
     """
+
     def __init__(self, name):
         """
         Retrieves or initializes the list with specified name
@@ -146,7 +150,7 @@ class CustomList(ConfigData):
         """
         return self.data.get(key, default)
 
-    def has(self, value, key='name'):
+    def has(self, value, key="name"):
         """
         Check if item exists from the list by it's key property value
         :param value:
@@ -156,7 +160,7 @@ class CustomList(ConfigData):
         items = self.find_all(value, key)
         return True if items else False
 
-    def find(self, value, key='name'):
+    def find(self, value, key="name"):
         """
         Retrieve the first item from the list by it's key property value
         :param value: Value to find
@@ -166,7 +170,7 @@ class CustomList(ConfigData):
         items = self.find_all(value, key)
         return items[0] if items else (None, None)
 
-    def find_all(self, value, key='name'):
+    def find_all(self, value, key="name"):
         """
         Retrieve all items from the list whose key property equals value
         :param value: Value to find
@@ -199,20 +203,23 @@ def update_cloud_friends():
     :return: Dict of cloud friends
     """
     config = ConfigData(file_name)
-    friends = CustomList('friends')
-    token = config.get('token', None)
+    friends = CustomList("friends")
+    token = config.get("token", None)
     runner = Cloud(token)
     cloud_friends_list = runner.get_friends()
     for friend in cloud_friends_list:
-        ip, f = friends.find(friend.get('name'))
-        friend_item = {'name': friend.get('name'), 'enabled': False}
+        ip, f = friends.find(friend.get("name"))
+        friend_item = {"name": friend.get("name"), "enabled": False}
         if f:
             friend_item = f
             friends.delete(ip)
-        friends.add(friend.get('ip'), friend_item)
+        friends.add(friend.get("ip"), friend_item)
     missing = list()
     for key, friend in friends.data.items():
-        if not any(cloud_friend.get('name') == friend.get('name') for cloud_friend in cloud_friends_list):
+        if not any(
+            cloud_friend.get("name") == friend.get("name")
+            for cloud_friend in cloud_friends_list
+        ):
             missing.append(key)
     for key in missing:
         friends.delete(key)
@@ -232,10 +239,10 @@ def migrate_to_dict():
             d = {}
             for item in value:
                 try:
-                    ip = item.pop('ip')
+                    ip = item.pop("ip")
                     ip_calc = IPValidator.validate_get(ip)
                     if ip != ip_calc:
-                        item['value'] = ip
+                        item["value"] = ip
                     d[ip_calc] = item
                 except ValidationError as e:
                     print_white(e.message)
@@ -249,4 +256,6 @@ def migrate_to_dict():
         config.save()
         print_white("Config files required migration, please restart the program.")
     else:
-        print_white("Issues found in some items, delete or fix them manually to proceed.")
+        print_white(
+            "Issues found in some items, delete or fix them manually to proceed."
+        )
