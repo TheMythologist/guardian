@@ -1,11 +1,10 @@
-import ipaddress  # woah, this is a default module? neat.
-import json  # to parse the file once it's been downloaded
-import re  # to search through the html to find the file (because there's currently no API to automate getting ranges)
-import time  # timing
-from pathlib import Path
-from sys import getsizeof  # for debug testing to determine the size of certain things
+import contextlib
+import ipaddress
+import json
+import re
+import time
 
-import requests  # to get the microsoft azure ip ranges
+import requests
 
 """
 This file contains classes and methods to manage acquiring, parsing, and updating a possibly dynamic list of IP ranges
@@ -79,8 +78,11 @@ def get_azure_ip_ranges_download(page_to_search=AZURE_GET_PUBLIC_CLOUD_URL):
     try:
         response = requests.get(page_to_search)
         response.raise_for_status()  # If there was an error code, raise it.
-        # if response.status_code != 200:
-        #    raise ScrapeError("URL to scrape returned " + str(response.status_code) + " instead of 200.", response)
+        if response.status_code != 200:
+            raise ScrapeError(
+                f"URL to scrape returned {response.status_code} instead of 200.",
+                response,
+            )
 
         # Search through the HTML for all download.microsoft.com JSON files.
         files = re.findall(MICROSOFT_DOWNLOAD_REGEX, str(response.content))
@@ -90,7 +92,7 @@ def get_azure_ip_ranges_download(page_to_search=AZURE_GET_PUBLIC_CLOUD_URL):
                 response,
             )
 
-        files = list(set(files))  # Removes any duplicate finds.
+        files = list(set(files))
         return files
 
     except (ScrapeError, requests.exceptions.RequestException) as e:
@@ -100,10 +102,9 @@ def get_azure_ip_ranges_download(page_to_search=AZURE_GET_PUBLIC_CLOUD_URL):
 
 
 def construct_all_cidr_masks():
-    all_ones = 4294967295  # 0b11111111111111111111111111111111
+    all_ones = 0b11111111111111111111111111111111
     masks = [all_ones]
-    for _ in range(32):
-        masks.append((masks[len(masks) - 1] << 1) & all_ones)
+    masks.extend(masks[-1] << 1 & all_ones for _ in range(32))
     masks.reverse()
     return masks
 
@@ -111,22 +112,17 @@ def construct_all_cidr_masks():
 CIDR_MASKS = construct_all_cidr_masks()
 
 # TODO: Convert all CIDR notation into integers (by chopping off the subnet mask part). Then, store all these integers
-#  in a set. Then, to see if an IP is within a CIDR range, we will need to construct all CIDR blocks containing that IP.
-#  This can be done by converting the IP to an integer and then apply each mask with bitwise AND.
+# in a set. Then, to see if an IP is within a CIDR range, we will need to construct all CIDR blocks containing that IP.
+# This can be done by converting the IP to an integer and then apply each mask with bitwise AND.
 
-"""
-To generate all CIDR blocks containing a certain IP, we must zero the right-most bit, append /32, then zero the next
-right-most bit (move one bit left), append /31, and so on.
-Probably best manipulated using ipaddress.packed attribute?
-"""
+# To generate all CIDR blocks containing a certain IP, we must zero the right-most bit, append /32, then zero the next
+# right-most bit (move one bit left), append /31, and so on.
+# Probably best manipulated using ipaddress.packed attribute?
 
 
 def generate_all_cidr_containing_ip(ip, min_cidr=0):
-    ip_num = int(ipaddress.IPv4Address(ip))  # convert to number
-    ips = []
-    for index in range(min_cidr, len(CIDR_MASKS)):  # index into CIDR_MASKS
-        ips.append(ip_num & CIDR_MASKS[index])
-    return ips
+    ip_num = int(ipaddress.IPv4Address(ip))
+    return [ip_num & CIDR_MASKS[index] for index in range(min_cidr, len(CIDR_MASKS))]
 
 
 def parse_azure_ip_ranges_from_url(url_to_json_file):
@@ -137,9 +133,8 @@ def parse_azure_ip_ranges_from_url(url_to_json_file):
     response = requests.get(url_to_json_file)
     response.raise_for_status()  # Can't handle anything here. If we can't download the file, it's game over.
 
-    return parse_azure_ip_ranges(
-        response.content
-    )  # Parse the response and return it to be saved.
+    # Parse the response and return it to be saved
+    return parse_azure_ip_ranges(response.content)
 
 
 def get_azure_ip_file_from_url(url_to_json_file):
@@ -150,30 +145,32 @@ def get_azure_ip_file_from_url(url_to_json_file):
 
 
 def save_azure_file(data_to_save, where_to_save="db.json"):
-    file = open(where_to_save, mode="wb")
-    bytes_written = file.write(data_to_save)
-    file.close()
+    with open(where_to_save, mode="wb") as file:
+        bytes_written = file.write(data_to_save)
     return bytes_written
 
 
 def azure_file_add_timestamp(azure_file, filename):
-    as_list = azure_file.splitlines(True)  # keep the line breaks
-    # print(as_list)
+    # keep the line breaks
+    as_list = azure_file.splitlines(True)
     now = str(time.time())
     # add timestamp and filename (should be formatted the same as the actual file)
     as_list.insert(1, b'  "acquiredFrom": "' + bytes(filename, "utf-8") + b'",\n')
     as_list.insert(1, b'  "acquiredWhen": ' + bytes(now, "utf-8") + b",\n")
-    return b"".join(as_list)  # if type(azure_file) is bytes else "".join(as_list)
+    return b"".join(as_list)
 
 
 def parse_azure_ip_ranges(azure_file):
-    azure_cloud_json = json.loads(azure_file)  # load the .json file into memory
+    azure_cloud_json = json.loads(azure_file)
     categories = azure_cloud_json["values"]
-    arr_ranges = None
-    for cat in categories:
-        if cat["name"] == "AzureCloud":
-            arr_ranges = cat["properties"]["addressPrefixes"]
-            break
+    arr_ranges = next(
+        (
+            cat["properties"]["addressPrefixes"]
+            for cat in categories
+            if cat["name"] == "AzureCloud"
+        ),
+        None,
+    )
     if arr_ranges is None:
         raise ValueError("Could not find AzureCloud category in values array.")
     # ips = get_all_ips_from_cidr_array(arr_ranges)
@@ -182,8 +179,8 @@ def parse_azure_ip_ranges(azure_file):
 
 
 def parse_azure_ip_ranges_from_file(location_of_file):
-    file = open(location_of_file, mode="rb")
-    return parse_azure_ip_ranges(file.read())
+    with open(location_of_file, mode="rb") as file:
+        return parse_azure_ip_ranges(file.read())
 
 
 def cidr_to_tuple(ip_in_cidr):
@@ -195,13 +192,11 @@ def cidr_to_tuple(ip_in_cidr):
     NOTE: Does *not* check for the validity of a CIDR block. Example, 255.255.255.255/1 would be accepted, but is not
     a valid CIDR block.
     """
-    """
-    Calculating the suffix seems weird, but it's best explained with an example. Let's say you have the CIDR block
-    111.22.3.44/9. Here, the suffix is only 1 digit (i.e. 1 character in the string), and we can determine this by
-    seeing if the second-last character was the slash. If the second-last character isn't a slash, it must be a number,
-    in which case the IP address is something like 111.22.3.44/29. We then take either those one or two digits, and
-    convert it to an integer.
-    """
+    # Calculating the suffix seems weird, but it's best explained with an example. Let's say you have the CIDR block
+    # 111.22.3.44/9. Here, the suffix is only 1 digit (i.e. 1 character in the string), and we can determine this by
+    # seeing if the second-last character was the slash. If the second-last character isn't a slash, it must be a number,
+    # in which case the IP address is something like 111.22.3.44/29. We then take either those one or two digits, and
+    # convert it to an integer.
     is_one_digit_suffix = ip_in_cidr[-2] == "/"
     suffix_int = int(ip_in_cidr[-1:]) if is_one_digit_suffix else int(ip_in_cidr[-2:])
     ip_str = ip_in_cidr[:-2] if is_one_digit_suffix else ip_in_cidr[:-3]
@@ -219,52 +214,46 @@ def construct_cidr_block_set(ips_in_cidr):
     """
     ip_set = set()
     for ip_cidr in ips_in_cidr:
-        try:
-            ip_tuple = cidr_to_tuple(
-                ip_cidr
-            )  # [0] is IP as integer, [1] is subnet mask in /xy notation (only xy)
+        # IndexError if string too short
+        # ValueError if `int()` conversion failed
+        # AddressValueError if invalid IPv4 address
+        with contextlib.suppress(IndexError, ValueError, ipaddress.AddressValueError):
+            # [0] is IP as integer, [1] is subnet mask in /xy notation (only xy)
+            ip_tuple = cidr_to_tuple(ip_cidr)
             ip_set.add(ip_tuple)
-        except (IndexError, ValueError, ipaddress.AddressValueError):
-            """IndexError if string too short, ValueError if int() conversion failed, AddressValueError if not IPv4.
-            In any case, just ignore the element."""
-            pass
-
     return ip_set
 
 
 def get_dynamic_blacklist(backup_file="db.json"):
     # TODO: It seems like we can determine if a range has changed by looking at the 'changeNumber' attribute
-    #  for a given category, however, there unfortunately doesn't appear to be any sort of timestamp included
-    #  in the actual JSON file. We'll probably need to save the timestamp manually by adding it to the JSON?
-    #  TL;DR the problem is that we can tell if the file has been updated by checking `changeNumber`, but that requires
-    #  attempting to download the file anyways. Ideally, we want to be able to skip trying to download all together
-    #  because the method isn't entirely reliable, and also fallback to the previously saved version if the download
-    #  fails.
+    # for a given category, however, there unfortunately doesn't appear to be any sort of timestamp included
+    # in the actual JSON file. We'll probably need to save the timestamp manually by adding it to the JSON?
+    # TL;DR the problem is that we can tell if the file has been updated by checking `changeNumber`, but that requires
+    # attempting to download the file anyways. Ideally, we want to be able to skip trying to download all together
+    # because the method isn't entirely reliable, and also fallback to the previously saved version if the download
+    # fails.
     # ranges = set()
 
     try:
         download_link = get_azure_ip_ranges_download()
-        content = get_azure_ip_file_from_url(
-            download_link[0]
-        )  # TODO: Handle multiple download files!
+        # TODO: Handle multiple download files!
+        content = get_azure_ip_file_from_url(download_link[0])
         ranges = parse_azure_ip_ranges(content)
-        #  TODO: If we get multiple files, we can try to find the one with the highest changeNumber.
+        # TODO: If we get multiple files, we can try to find the one with the highest changeNumber.
         # If we got here, then the ranges are *probably* okay.
         save_azure_file(
             azure_file_add_timestamp(content, download_link[0]), backup_file
         )
+        ranges.extend(T2_EU)  # add R* EU ranges
+        ranges.extend(T2_US)  # add R* US ranges
+        return construct_cidr_block_set(ranges)
     except Exception as e:
-        print("ERROR: Could not parse Azure ranges from URL. Reason:", e)
+        print("ERROR: Could not parse Azure ranges from URL. Reason: ", e)
         try:
             ranges = parse_azure_ip_ranges_from_file(backup_file)
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             print("ERROR: Could not find backup file.")
-            raise e
-
-    ranges.extend(T2_EU)  # add R* EU ranges
-    ranges.extend(T2_US)  # add R* US ranges
-    dynamic_blacklist = construct_cidr_block_set(ranges)
-    return dynamic_blacklist
+            raise
 
 
 def ip_in_cidr_block_set(ip, cidr_block_set, min_cidr_suffix=0):
@@ -272,33 +261,23 @@ def ip_in_cidr_block_set(ip, cidr_block_set, min_cidr_suffix=0):
     Essentially a reverse-search for all possible entries in cidr_block_set that would contain ip.
     """
     ip_int = int(ipaddress.IPv4Address(ip))
-    for suffix in range(min_cidr_suffix, len(CIDR_MASKS)):
-        # try each subnet mask
-        if (ip_int & CIDR_MASKS[suffix], suffix) in cidr_block_set:
-            return True
-
-    return False  # "brute-force" searched against all possible subnet masks, didn't find a match
+    return any(
+        (ip_int & CIDR_MASKS[suffix], suffix) in cidr_block_set
+        for suffix in range(min_cidr_suffix, len(CIDR_MASKS))
+    )
 
 
 def get_all_ips_from_cidr(ip_in_cidr_notation):
-    ips = list()
-    # print("generating IPs")
     ip_range = ipaddress.IPv4Network(ip_in_cidr_notation)
-    for ip in ip_range:
-        # print("adding " + str(ip))
-        ips.append(str(ip))
-
-    return ips
+    return [str(ip) for ip in ip_range]
 
 
 def get_all_ips_from_cidr_array(array_of_ip_in_cidr_notation):
     ips = set()
     for ip_range in array_of_ip_in_cidr_notation:
-        try:
+        # Ignore invalid IPv4 addresses
+        with contextlib.suppress(ipaddress.AddressValueError):
             ips = ips.union(get_all_ips_from_cidr(ip_range))
-        except ipaddress.AddressValueError:
-            pass  # element ignored because it wasn't valid IPv4
-
     return ips
 
 
@@ -310,35 +289,25 @@ def reverse_search_ip_in_azure(ip, azure_info_json):
     for cat in categories:
         ranges = cat["properties"]["addressPrefixes"]
         for str_cidr in ranges:
-            try:
+            # Ignore invalid IPv4 addresses
+            with contextlib.suppress(ipaddress.AddressValueError):
                 cidr = ipaddress.IPv4Network(str_cidr)
                 if ipaddress.IPv4Address(ip) in cidr:
                     search.append(cat)
-            except ipaddress.AddressValueError:
-                pass  # not an IPv4 CIDR range. couldn't find an "is IPv4" / "is CIDR" function
     return search
 
 
 def get_cidr_suffixes(array_of_cidr):
     cidrs = set()
     for entry in array_of_cidr:
-        try:
+        # Ignore invalid IPv4 addresses
+        with contextlib.suppress(ipaddress.AddressValueError):
             ipaddress.IPv4Network(entry)  # lazy way of seeing if it's a valid ipv4
             cidrs.add(entry[-2:])
-        except ipaddress.AddressValueError:  # not ipv4
-            pass
-
     return cidrs
 
 
 if __name__ == "__main__":
-    # print(get_all_ips_from_cidr("185.56.64.0/24"))
-    # print(len(get_all_ips_from_cidr_array(["185.56.64.0/24", "185.56.64.0/22"])))
     # dl = get_azure_ip_ranges_download()
-    # print(dl)
-    # start = time.perf_counter()
     # ips_test = parse_azure_ip_ranges_from_url(dl[0])
-    # finish = time.perf_counter()
-    # print("size:", getsizeof(ips_test), "len:", len(ips_test), "seconds:", (finish - start) / 1000)
     get_dynamic_blacklist("db_test.json")
-    # size: 1073742040 len: 21838185, time: like 90 minutes or something, shouldn't have used perf counter here I guess

@@ -1,13 +1,8 @@
-from __future__ import print_function, unicode_literals
-
 import ctypes
-import ipaddress
 import json
 import logging
 import os
-import random
 import socket
-import string
 import sys
 import time
 import traceback
@@ -15,23 +10,42 @@ import webbrowser
 import zipfile
 from distutils.version import StrictVersion
 from multiprocessing import Manager, freeze_support
-from pathlib import Path  # save local azure file copy
 
 import pydivert
 from colorama import Fore
 from prompt_toolkit.styles import Style
-from questionary import ValidationError, Validator, prompt
+from questionary import ValidationError, prompt
 from requests import RequestException
 from tqdm import tqdm
 
 import util.DynamicBlacklist  # new Azure-blocking functionality
 from network import networkmanager, sessioninfo
-from network.blocker import *
-from util.WorkingDirectoryFix import (
-    wd_fix,  # workaround for python's working directory jank
+from network.blocker import (
+    Whitelist,
+    Blacklist,
+    Locked,
+    IPSyncer,
+    Debugger,
+    IPCollector,
 )
+from util.WorkingDirectoryFix import wd_fix
+from util.validator import (
+    NameInCustom,
+    NameInBlacklist,
+    IPValidator,
+    IPInCustom,
+    IPInBlacklist,
+    ValidateToken,
+)
+from util.printer import (
+    print_white,
+    print_running_message,
+    print_stopped_message,
+    print_invalid_ip,
+)
+import data
 
-wd_fix()  # Fix working directory before doing literally anything else
+wd_fix()
 
 logger = logging.getLogger("guardian")
 logger.propagate = False
@@ -48,11 +62,6 @@ if not logger.handlers:
 LF_FACESIZE = 32
 STD_OUTPUT_HANDLE = -11
 
-ipv4 = re.compile(r"((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}")
-domain = re.compile(
-    r"^[a-z]+([a-z0-9-]*[a-z0-9]+)?(\.([a-z]+([a-z0-9-]*[\[a-z0-9]+)?)+)*$"
-)
-
 version = "3.1.0b5"
 
 style = Style(
@@ -66,10 +75,6 @@ style = Style(
         ("instruction", ""),  # user instructions for select, rawselect, checkbox
     ]
 )
-
-
-def print_white(msg):
-    print(Fore.LIGHTWHITE_EX + msg + Fore.RESET)
 
 
 def get_public_ip():
@@ -90,115 +95,19 @@ def get_private_ip():
     return local_ip
 
 
-class NameInCustom(Validator):
-    def validate(self, document):
-        global custom_ips
-        if custom_ips.has(document.text):
-            raise ValidationError(
-                message="Name already in list", cursor_position=len(document.text)
-            )  # Move cursor to end
-
-
-class NameInBlacklist(Validator):
-    def validate(self, document):
-        global blacklist
-        if blacklist.has(document.text):
-            raise ValidationError(
-                message="Name already in list", cursor_position=len(document.text)
-            )  # Move cursor to end
-
-
-class IPValidator(Validator):
-    def validate(self, document):
-        error = ValidationError(
-            message="Not a valid IP or URL", cursor_position=len(document.text)
-        )  # Move cursor to end
-        try:
-            ip = document.text
-            if ipv4.match(ip):
-                ipaddress.IPv4Address(ip)
-            elif not domain.match(ip):
-                raise error
-        except (ipaddress.AddressValueError, socket.gaierror):
-            raise error
-
-    # TODO: Add an extra validator to check if an IP could be used by R* services (i.e. it's part of Microsoft Azure)
-
-    @staticmethod
-    def validate_get(text):
-        error = ValidationError(
-            message="Not a valid IP or URL", cursor_position=len(text)
-        )  # Move cursor to end
-        try:
-            ip = text
-            if ipv4.match(ip):
-                ipaddress.IPv4Address(ip)
-            elif domain.match(ip):
-                ip = socket.gethostbyname(text)
-                ipaddress.IPv4Address(ip)
-            else:
-                raise error
-            return ip
-        except ipaddress.AddressValueError:
-            raise error
-        except socket.gaierror:
-            raise ValidationError(
-                message="URL {} can't be resolved to IP.".format(text),
-                cursor_position=len(text),
-            )  # Move cursor to end
-
-
-class IPInCustom(IPValidator):
-    def validate(self, document):
-        super().validate(document)
-        global custom_ips
-        if document.text in custom_ips or custom_ips.has(document.text, "value"):
-            raise ValidationError(
-                message="IP already in list", cursor_position=len(document.text)
-            )  # Move cursor to end
-
-
-class IPInBlacklist(Validator):
-    def validate(self, document):
-        super().validate(document)
-        global blacklist
-        if document.text in blacklist or blacklist.has(document.text, "value"):
-            raise ValidationError(
-                message="IP already in list", cursor_position=len(document.text)
-            )  # Move cursor to end
-
-
-class ValidateToken(Validator):
-    def validate(self, document):
-        conn = networkmanager.Cloud(document.text)
-        if not conn.check_connection():
-            raise ValidationError(
-                message="DigitalArc is unavailable, unable to check token.",
-                cursor_position=len(document.text),
-            )  # Move cursor to end
-
-        if not conn.check_token():
-            raise ValidationError(
-                message="Token invalid", cursor_position=len(document.text)
-            )  # Move cursor to end
-
-
 def crash_report(exception, additional=None, filename=None):
     if filename is None:
-        filename = f"crashreport_{str(hex(int(time.time_ns())))[2:]}.log"
+        filename = f"crashreport_{hex(int(time.time_ns()))[2:]}.log"
 
-    handle = open(filename, "w")
+    with open(filename, "w") as handle:
+        handle.write(
+            f"Report local time: {time.asctime(time.localtime())}\nReport UTC time:   {time.asctime(time.gmtime())}\n\n"
+        )
+        handle.write(f"Error: {exception}\n\n")
+        handle.write(f"{traceback.format_exc()}\n")
 
-    handle.write(
-        f"Report local time: {time.asctime(time.localtime())}\nReport UTC time:   {time.asctime(time.gmtime())}\n\n"
-    )
-    handle.write(f"Error: {str(exception)}\n\n")
-    handle.write(f"{traceback.format_exc()}\n")
-
-    if additional is not None:
-        handle.write(f"\nAdditional info: {str(additional)}\n")
-
-    handle.close()
+        if additional is not None:
+            handle.write(f"\nAdditional info: {additional}\n")
     return
 
 
@@ -221,6 +130,9 @@ def main():
             else:
                 logger.info("Cloud offline.")
                 print_white("Cloud service down")
+        dynamic_blacklist_checker = (
+            "Experimental" if len(dynamic_blacklist) > 0 else "Not working"
+        )
         options = {
             "type": "list",
             "name": "option",
@@ -233,15 +145,11 @@ def main():
                     "value": "whitelist",
                 },
                 {
-                    "name": "Blacklisted session        ["
-                    + ("Experimental" if len(dynamic_blacklist) > 0 else "Not working")
-                    + "]",
+                    "name": f"Blacklisted session        [{dynamic_blacklist_checker}]",
                     "value": "blacklist",
                 },
                 {
-                    "name": "Auto whitelisted session   ["
-                    + ("Experimental" if len(dynamic_blacklist) > 0 else "Not working")
-                    + "]",
+                    "name": f"Auto whitelisted session   [{dynamic_blacklist_checker}]",
                     "value": "auto_whitelist",
                 },
                 {
@@ -304,33 +212,18 @@ def main():
                 if option == "start":
 
                     logger.info("Starting solo session")
-                    print_white(
-                        'Running: "'
-                        + Fore.LIGHTCYAN_EX
-                        + "Solo session"
-                        + Fore.LIGHTWHITE_EX
-                        + '" Press "'
-                        + Fore.LIGHTCYAN_EX
-                        + "CTRL + C"
-                        + Fore.LIGHTWHITE_EX
-                        + '" to stop.'
-                    )
+                    print_running_message("Solo")
 
                     packet_filter = Whitelist(ips=[])
                     try:
                         packet_filter.start()
                         while True:
-                            time.sleep(10)  # this is still very terrible
+                            # TODO: Patch all `time.sleep` while loops
+                            time.sleep(10)
                     except KeyboardInterrupt:
                         packet_filter.stop()
                         logger.info("Stopped solo session")
-                        print_white(
-                            'Stopped: "'
-                            + Fore.LIGHTCYAN_EX
-                            + "Solo session"
-                            + Fore.LIGHTWHITE_EX
-                            + '"'
-                        )
+                        print_stopped_message("Solo")
                         continue
 
         elif option == "whitelist":
@@ -375,7 +268,7 @@ def main():
                         ip_set.add(public_ip)
                         ip_tags.append(sessioninfo.IPTag(public_ip, "PUBLIC IP"))
                     else:
-                        print_white("Failed to get Public IP. Running without.")
+                        print_white("Failed to get Public IP, running without")
 
                     for ip, friend in custom_ips:
                         if friend.get("enabled"):
@@ -384,41 +277,23 @@ def main():
                                 ip_set.add(ip_calc)
                                 ip_tags.append(
                                     sessioninfo.IPTag(
-                                        ip_calc, friend.get("name") + " [WHITELIST]"
+                                        ip_calc, f"{friend.get('name')} [WHITELIST]"
                                     )
                                 )
                             except ValidationError:
-                                logger.warning("Not valid IP or URL: {}".format(ip))
-                                print_white(
-                                    'Not valid IP or URL: "'
-                                    + Fore.LIGHTCYAN_EX
-                                    + "{}".format(ip)
-                                    + Fore.LIGHTWHITE_EX
-                                    + '"'
-                                )
+                                logger.warning("Not valid IP or URL: %s", ip)
+                                print_invalid_ip(ip)
                                 continue
 
                     for ip, friend in friends:
                         if friend.get("enabled"):
                             ip_set.add(ip)
                             ip_tags.append(
-                                sessioninfo.IPTag(ip, friend.get("name") + " [CLOUD]")
+                                sessioninfo.IPTag(ip, f"{friend.get('name')} [CLOUD]")
                             )
 
-                    logger.info(
-                        "Starting whitelisted session with {} IPs".format(len(ip_set))
-                    )
-                    print_white(
-                        'Running: "'
-                        + Fore.LIGHTCYAN_EX
-                        + "Whitelisted session"
-                        + Fore.LIGHTWHITE_EX
-                        + '" Press "'
-                        + Fore.LIGHTCYAN_EX
-                        + "CTRL + C"
-                        + Fore.LIGHTWHITE_EX
-                        + '" to stop.'
-                    )
+                    logger.info("Starting whitelisted session with %d IPs", len(ip_set))
+                    print_running_message("Whitelisted")
 
                     # Exposes session information, diagnostics and behaviour.
                     # manager = Manager()
@@ -428,28 +303,22 @@ def main():
                     # logger.info("ip_tags: " + str(ip_tags))
                     # logger.info("session_info: " + str(session_info))
 
-                    """ Set up packet_filter outside the try-catch so it can be safely referenced inside KeyboardInterrupt."""
+                    # Set up packet_filter outside the try-catch so it can be safely referenced inside KeyboardInterrupt.
                     packet_filter = Whitelist(ips=ip_set)
 
-                    print(
-                        "Experimental support for Online 1.54+ developed by Speyedr.\n"
-                    )
+                    print("Experimental support for Online 1.54+ developed by Speyedr.")
 
                     try:
                         # session_info.start()
                         packet_filter.start()
                         while True:
-                            """
-                            Here is *probably* where the PacketLogger and SessionInfo classes should be managed.
-                            Every [x] milliseconds the SessionInfo class will .update() with packet info (and a new print),
-                            and the PacketLogger instance will be passed down to Whitelist() when initialized so the filter
-                            loop can add packets to the capture. Once the session has stopped, the PacketLogger will add all
-                            packets in its' memory queue to disk (or perhaps it should be sequentially writing to a file) and
-                            save that file for investigation later.
-                            """
-                            time.sleep(
-                                10
-                            )  # this is still very terrible but might be good enough for now?
+                            # Here is *probably* where the PacketLogger and SessionInfo classes should be managed.
+                            # Every [x] milliseconds the SessionInfo class will .update() with packet info (and a new print),
+                            # and the PacketLogger instance will be passed down to Whitelist() when initialized so the filter
+                            # loop can add packets to the capture. Once the session has stopped, the PacketLogger will add all
+                            # packets in its' memory queue to disk (or perhaps it should be sequentially writing to a file) and
+                            # save that file for investigation later.
+                            time.sleep(10)
                             # input()
                             # if we reach here then the user pressed ENTER
                             # webbrowser.open("https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues")
@@ -463,14 +332,7 @@ def main():
                     except KeyboardInterrupt:
                         packet_filter.stop()
                         # session_info.stop()
-                        logger.info("Stopped whitelisted session")
-                        print_white(
-                            'Stopped: "'
-                            + Fore.LIGHTCYAN_EX
-                            + "Whitelisted session"
-                            + Fore.LIGHTWHITE_EX
-                            + '"'
-                        )
+                        print_stopped_message("Whitelisted")
 
         elif option == "blacklist":
             print_white("BLACKLISTED SESSION:\n")
@@ -512,7 +374,7 @@ def main():
                     if public_ip:
                         allowed_ips.add(public_ip)
                     else:
-                        print_white("Failed to get Public IP. Running without.")
+                        print_white("Failed to get Public IP, running without")
 
                     for ip, friend in custom_ips:
                         if friend.get("enabled"):
@@ -520,14 +382,8 @@ def main():
                                 ip_calc = IPValidator.validate_get(ip)
                                 allowed_ips.add(ip_calc)
                             except ValidationError:
-                                logger.warning("Not valid IP or URL: {}".format(ip))
-                                print_white(
-                                    'Not valid IP or URL: "'
-                                    + Fore.LIGHTCYAN_EX
-                                    + "{}".format(ip)
-                                    + Fore.LIGHTWHITE_EX
-                                    + '"'
-                                )
+                                logger.warning("Not valid IP or URL: %s", ip)
+                                print_invalid_ip(ip)
                                 continue
 
                     for ip, friend in friends:
@@ -541,29 +397,13 @@ def main():
                                 ip = IPValidator.validate_get(ip)
                                 ip_set.add(ip)
                             except ValidationError:
-                                logger.warning("Not valid IP or URL: {}".format(ip))
-                                print_white(
-                                    'Not valid IP or URL: "'
-                                    + Fore.LIGHTCYAN_EX
-                                    + "{}".format(ip)
-                                    + Fore.LIGHTWHITE_EX
-                                    + '"'
-                                )
+                                logger.warning("Not valid IP or URL: %s", ip)
+                                print_invalid_ip(ip)
                                 continue
                     logger.info(
-                        "Starting blacklisted session with {} IPs".format(len(ip_set))
+                        "Starting blacklisted session with %d IPs", len(ip_set)
                     )
-                    print_white(
-                        'Running: "'
-                        + Fore.LIGHTBLACK_EX
-                        + "Blacklist"
-                        + Fore.LIGHTWHITE_EX
-                        + '" Press "'
-                        + Fore.LIGHTBLACK_EX
-                        + "CTRL + C"
-                        + Fore.LIGHTWHITE_EX
-                        + '" to stop.'
-                    )
+                    print_running_message("Blacklist")
 
                     packet_filter = Blacklist(
                         ips=ip_set, blocks=dynamic_blacklist, known_allowed=allowed_ips
@@ -571,17 +411,11 @@ def main():
                     try:
                         packet_filter.start()
                         while True:
-                            time.sleep(10)  # this is still very terrible
+                            time.sleep(10)
                     except KeyboardInterrupt:
                         packet_filter.stop()
                         logger.info("Stopped blacklisted session")
-                        print_white(
-                            'Stopped: "'
-                            + Fore.LIGHTBLACK_EX
-                            + "Blacklist"
-                            + Fore.LIGHTWHITE_EX
-                            + '"'
-                        )
+                        print_stopped_message("Blacklist")
 
         elif option == "auto_whitelist":
             print_white("AUTO WHITELISTED SESSION:\n")
@@ -629,19 +463,16 @@ def main():
                         time.sleep(0.5)
                     collector.stop()
                     ip_set = set(collector.ips)
-                    logger.info("Collected {} IPs".format(len(ip_set)))
-                    # print("IPs: " + str(ip_set))
+                    logger.info("Collected %d IPs", len(ip_set))
                     print("Checking for potential tunnels in collected IPs...\n")
                     potential_tunnels = set()
                     for ip in ip_set:
                         if util.DynamicBlacklist.ip_in_cidr_block_set(
                             ip, dynamic_blacklist, min_cidr_suffix=0
                         ):
-                            if (
-                                ip not in custom_ips
-                            ):  # Ignore if user has this IP in custom whitelist.
+                            # Ignore if user has this IP in custom whitelist.
+                            if ip not in custom_ips:
                                 potential_tunnels.add(ip)
-                    # print("potential tunnels: ", potential_tunnels)
                     if len(potential_tunnels) > 0:
                         c = [{"name": ip, "checked": False} for ip in potential_tunnels]
                         options = {
@@ -649,9 +480,7 @@ def main():
                             "name": "option",
                             "qmark": "@",
                             "message": "",
-                            "WARNING! Guardian has detected "
-                            + str(len(potential_tunnels))
-                            + " IP"
+                            f"WARNING! Guardian has detected {len(potential_tunnels)} IP"
                             + ("" if len(potential_tunnels) == 1 else "s")
                             + " in your current session that may be used for "
                             + "connection tunnelling, and may break session security if added to the whitelist.\nUnless "
@@ -670,17 +499,14 @@ def main():
                         if answer is not None:
                             try:
                                 for ip in answer["option"]:
-                                    potential_tunnels.remove(
-                                        ip
-                                    )  # Anything that has been checked will not be considered a tunnel.
+                                    # Anything that has been checked will not be considered a tunnel.
+                                    potential_tunnels.remove(ip)
                             except KeyError:
-                                pass  # Probably the user pressing CTRL+C to cancel the selection, meaning no 'option' key.
-                        # print("potential tunnels:", potential_tunnels)
+                                # Probably the user pressing CTRL+C to cancel the selection, meaning no 'option' key.
+                                pass
 
                         for ip in potential_tunnels:
                             ip_set.remove(ip)
-
-                        # print("ip_set:", ip_set)
 
                     else:
                         print("No tunnels found!")
@@ -690,7 +516,7 @@ def main():
                     if public_ip:
                         ip_set.add(public_ip)
                     else:
-                        print_white("Failed to get Public IP. Running without.")
+                        print_white("Failed to get Public IP, running without")
 
                     for ip, friend in custom_ips:
                         if friend.get("enabled"):
@@ -698,53 +524,29 @@ def main():
                                 ip_calc = IPValidator.validate_get(ip)
                                 ip_set.add(ip_calc)
                             except ValidationError:
-                                logger.warning("Not valid IP or URL: {}".format(ip))
-                                print_white(
-                                    'Not valid IP or URL: "'
-                                    + Fore.LIGHTCYAN_EX
-                                    + "{}".format(ip)
-                                    + Fore.LIGHTWHITE_EX
-                                    + '"'
-                                )
+                                logger.warning("Not valid IP or URL: %s", ip)
+                                print_invalid_ip(ip)
                                 continue
 
                     for ip, friend in friends:
                         if friend.get("enabled"):
                             ip_set.add(ip)
 
-                    time.sleep(5)  # to see debug prints
-
                     os.system("cls")
                     logger.info(
-                        "Starting whitelisted session with {} IPs".format(len(ip_set))
+                        "Starting whitelisted session with %d IPs", len(ip_set)
                     )
-                    print_white(
-                        'Running: "'
-                        + Fore.LIGHTCYAN_EX
-                        + "Whitelisted session"
-                        + Fore.LIGHTWHITE_EX
-                        + '" Press "'
-                        + Fore.LIGHTCYAN_EX
-                        + "CTRL + C"
-                        + Fore.LIGHTWHITE_EX
-                        + '" to stop.'
-                    )
+                    print_running_message("Whitelisted")
 
                     packet_filter = Whitelist(ips=ip_set)
                     try:
                         packet_filter.start()
                         while True:
-                            time.sleep(10)  # this is still very terrible
+                            time.sleep(10)
                     except KeyboardInterrupt:
                         packet_filter.stop()
                         logger.info("Stopping whitelisted session")
-                        print_white(
-                            'Stopped: "'
-                            + Fore.LIGHTCYAN_EX
-                            + "Whitelisted session"
-                            + Fore.LIGHTWHITE_EX
-                            + '"'
-                        )
+                        print_stopped_message("Whitelisted")
 
         elif option == "lock_session":
             print_white("LOCKED SESSION:\n")
@@ -787,32 +589,18 @@ def main():
                         "Session will now lock. All requests to join this session should fail."
                     )
                     print_white(
-                        'Running: "'
-                        + Fore.LIGHTCYAN_EX
-                        + "Locked session"
-                        + Fore.LIGHTWHITE_EX
-                        + '" Press "'
-                        + Fore.LIGHTCYAN_EX
-                        + "CTRL + C"
-                        + Fore.LIGHTWHITE_EX
-                        + '" to unlock session.'
+                        f'Running: "{Fore.LIGHTCYAN_EX}Locked session{Fore.LIGHTWHITE_EX}" Press "{Fore.LIGHTCYAN_EX}CTRL + C{Fore.LIGHTWHITE_EX}" to unlock session.'
                     )
 
                     packet_filter = Locked()
                     try:
                         packet_filter.start()
                         while True:
-                            time.sleep(10)  # this is still very terrible
+                            time.sleep(10)
                     except KeyboardInterrupt:
                         packet_filter.stop()
                         logger.info("Stopping whitelisted session")
-                        print_white(
-                            'Stopped: "'
-                            + Fore.LIGHTCYAN_EX
-                            + "Locked session"
-                            + Fore.LIGHTWHITE_EX
-                            + '"'
-                        )
+                        print_stopped_message("Locked")
 
         elif option == "lists":
             while True:
@@ -887,7 +675,7 @@ def main():
                                 config.save()
 
                         # TODO: Prevent users from accidentally adding R* / T2 IPs to the whitelist.
-                        #  Perhaps this could be done by updating the validator?
+                        # Perhaps this could be done by updating the validator?
                         elif answer["option"] == "add":
                             os.system("cls")
                             options = [
@@ -1391,14 +1179,14 @@ def main():
                                             if result:
                                                 print_white("Accepted")
                                             else:
-                                                print_white("{}".format(msg))
+                                                print_white(str(msg))
 
                                         elif answer["option"] == "decline":
                                             result, msg = cloud.revoke(name)
                                             if result:
                                                 print_white("Request declined")
                                             else:
-                                                print_white("{}".format(msg))
+                                                print_white(str(msg))
 
         elif option == "kick_by_ip":
             collector = IPCollector()
@@ -1443,7 +1231,7 @@ def main():
             if public_ip:
                 ip_set.add(public_ip)
             else:
-                print_white("Failed to get Public IP. Running without.")
+                print_white("Failed to get Public IP, running without")
             for ip, friend in custom_ips:
                 if friend.get("enabled"):
                     try:
@@ -1451,13 +1239,7 @@ def main():
                         ip_set.add(ip_calc)
                     except ValidationError:
                         logger.warning("Not valid IP or URL: {}".format(ip))
-                        print_white(
-                            'Not valid IP or URL: "'
-                            + Fore.LIGHTCYAN_EX
-                            + "{}".format(ip)
-                            + Fore.LIGHTWHITE_EX
-                            + '"'
-                        )
+                        print_invalid_ip(ip)
                         continue
 
             for ip, friend in friends:
@@ -1614,7 +1396,7 @@ if __name__ == "__main__":
         while not success:
             try:
                 config = data.ConfigData(data.file_name)
-                success = True  # if we reach here then config was parsed successfully
+                success = True
             except Exception as e:
                 # config file could not be loaded. either file creation failed or data.json is corrupt.
                 if not os.path.isfile(data.file_name):
@@ -1623,10 +1405,10 @@ if __name__ == "__main__":
                         None,
                         f"FATAL: Guardian could not create the config file {data.file_name}.\n\n"
                         f"Press 'Ok' to close the program.",
-                        f"Fatal Error",
+                        "Fatal Error",
                         0x0 | 0x10,
                     )
-                    raise e  # could call sys.exit instead but I think raising again is more sensible
+                    raise e
                 else:
                     # MB_ABORTRETRYIGNORE is 0x2, MB_ICON_ERROR is 0x10
                     choice = ctypes.windll.user32.MessageBoxW(
@@ -1636,7 +1418,7 @@ if __name__ == "__main__":
                         f"Press 'Abort' to close Guardian, press 'Retry' to load the config again, "
                         f"or press 'Ignore' to \"Refresh\" Guardian by renaming the corrupt "
                         f"config file and creating a new one.",
-                        f"Error",
+                        "Error",
                         0x2 | 0x10,
                     )
                     # ID_ABORT = 0x3, ID_RETRY = 0x4, ID_IGNORE = 0x5
@@ -1646,16 +1428,11 @@ if __name__ == "__main__":
                         pass  # we'll hit the bottom of the loop and try again
                     else:
                         separator = data.file_name.rindex(".")
-                        new_name = (
-                            data.file_name[:separator]
-                            + "_"
-                            + str(hex(int(time.time_ns())))[2:]
-                            + data.file_name[separator:]
-                        )
+                        new_name = f"{data.file_name[:separator]}_{hex(int(time.time_ns()))[2:]}{data.file_name[separator:]}"
                         os.rename(data.file_name, new_name)
-                        # file has been renamed, try again
 
-        # at this point the file has been parsed and is valid--any additional exceptions are explicit or programmer error
+        # at this point the file has been parsed and is valid
+        # Any additional exceptions are explicit or programmer error
         try:
             blacklist = data.CustomList("blacklist")
             custom_ips = data.CustomList("custom_ips")
@@ -1694,9 +1471,7 @@ if __name__ == "__main__":
             FileNotFoundError,
         ) as e:
             print_white(
-                "ERROR: Could not construct dynamic blacklist: "
-                + str(e)
-                + "\nAuto-Whitelist and Blacklist will not work correctly."
+                f"ERROR: Could not construct dynamic blacklist: {e}\nAuto-Whitelist and Blacklist will not work correctly."
             )
             time.sleep(3)
         print_white("Checking connections.")

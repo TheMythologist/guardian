@@ -21,7 +21,7 @@ buildOptions = dict(
     silent=True,
 )
 executables = [
-    Executable("app.py", targetName="Guardian.exe", icon="logo.ico", uac_admin=True)
+    Executable("app.py", target_name="Guardian.exe", icon="logo.ico", uac_admin=True)
 ]
 
 
@@ -60,25 +60,20 @@ def zip_folder(folder_path, output_path):
     contents = os.walk(
         folder_path,
     )
-    zip_file = zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED)
-
-    for root, folders, files in contents:
-        # Include all subfolders, including empty ones.
-        for folder_name in folders:
-            absolute_path = os.path.join(root, folder_name)
-            relative_path = absolute_path.replace(parent_folder + "\\", "")
-            zip_file.write(absolute_path, relative_path.replace(build_path, ""))
-        for file_name in files:
-            absolute_path = os.path.join(root, file_name)
-            relative_path = absolute_path.replace(parent_folder + "\\", "")
-            zip_file.write(absolute_path, relative_path.replace(build_path, ""))
-    zip_file.close()
+    with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        for root, folders, files in contents:
+            # Include all subfolders, including empty ones.
+            for folder_name in folders:
+                absolute_path = os.path.join(root, folder_name)
+                relative_path = absolute_path.replace(parent_folder + "\\", "")
+                zip_file.write(absolute_path, relative_path.replace(build_path, ""))
+            for file_name in files:
+                absolute_path = os.path.join(root, file_name)
+                relative_path = absolute_path.replace(parent_folder + "\\", "")
+                zip_file.write(absolute_path, relative_path.replace(build_path, ""))
 
 
-try:
-    shutil.copyfile("LICENSE", build_path + "/LICENSE")
-    shutil.copyfile("SOURCE", build_path + "/SOURCE")
-except:
-    pass
+shutil.copyfile("LICENSE", f"{build_path}/LICENSE")
+shutil.copyfile("SOURCE", f"{build_path}/SOURCE")
 
-zip_folder(build_path, "build\exe\guardian-{}.zip".format(version))
+zip_folder(build_path, rf"build\exe\guardian-{version}.zip")
