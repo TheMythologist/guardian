@@ -1,10 +1,11 @@
-import ipaddress    # woah, this is a default module? neat.
-import requests     # to get the microsoft azure ip ranges
-import re    # to search through the html to find the file (because there's currently no API to automate getting ranges)
-import json         # to parse the file once it's been downloaded
-from sys import getsizeof  # for debug testing to determine the size of certain things
-import time         # timing
+import ipaddress  # woah, this is a default module? neat.
+import json  # to parse the file once it's been downloaded
+import re  # to search through the html to find the file (because there's currently no API to automate getting ranges)
+import time  # timing
 from pathlib import Path
+from sys import getsizeof  # for debug testing to determine the size of certain things
+
+import requests  # to get the microsoft azure ip ranges
 
 """
 This file contains classes and methods to manage acquiring, parsing, and updating a possibly dynamic list of IP ranges
@@ -14,27 +15,51 @@ miscellaneous R* Services, such as Microsoft Azure.
 
 
 class ScrapeError(BaseException):
-    """ Could not scrape the HTML for data for some reason. """
+    """Could not scrape the HTML for data for some reason."""
 
 
 # TODO: Find an API we can use to get these ranges dynamically. If necessary, these ones can be used as a fallback,
 #  as I don't think these ranges change often.
 # https://whois.ipip.net/AS202021
-T2_EU = {"185.56.64.0/24", "185.56.64.0/22", "185.56.65.0/24", "185.56.66.0/24", "185.56.67.0/24"}
+T2_EU = {
+    "185.56.64.0/24",
+    "185.56.64.0/22",
+    "185.56.65.0/24",
+    "185.56.66.0/24",
+    "185.56.67.0/24",
+}
 
 # https://whois.ipip.net/AS46555
-T2_US = {"104.255.104.0/24", "104.255.104.0/22", "104.255.105.0/24", "104.255.106.0/24", "104.255.107.0/24",
-         "192.81.240.0/24", "192.81.240.0/22", "192.81.241.0/24", "192.81.242.0/24", "192.81.243.0/24",
-         "192.81.244.0/24", "192.81.244.0/22", "192.81.245.0/24", "192.81.246.0/24", "192.81.247.0/24",
-         "198.133.210.0/24"}
+T2_US = {
+    "104.255.104.0/24",
+    "104.255.104.0/22",
+    "104.255.105.0/24",
+    "104.255.106.0/24",
+    "104.255.107.0/24",
+    "192.81.240.0/24",
+    "192.81.240.0/22",
+    "192.81.241.0/24",
+    "192.81.242.0/24",
+    "192.81.243.0/24",
+    "192.81.244.0/24",
+    "192.81.244.0/22",
+    "192.81.245.0/24",
+    "192.81.246.0/24",
+    "192.81.247.0/24",
+    "198.133.210.0/24",
+}
 
 # This URL should return information about the most up-to-date JSON file containing Azure IP ranges.
 # Microsoft claims that a new file is published every 7 days, and that any new IPs will not be used for another 7 days.
 # Note that we could also possibly manually generate the URL if necessary.
 # I'm not very good at web development so idk what the best practice is for this lol
-AZURE_GET_PUBLIC_CLOUD_URL = "https://www.microsoft.com/en-us/download/confirmation.aspx?id=56519"
+AZURE_GET_PUBLIC_CLOUD_URL = (
+    "https://www.microsoft.com/en-us/download/confirmation.aspx?id=56519"
+)
 # The regex pattern to find download files on the page.
-MICROSOFT_DOWNLOAD_REGEX = re.compile('https://download.microsoft.com/download[^"]*[.]json')
+MICROSOFT_DOWNLOAD_REGEX = re.compile(
+    'https://download.microsoft.com/download[^"]*[.]json'
+)
 
 
 def get_azure_ip_ranges_download(page_to_search=AZURE_GET_PUBLIC_CLOUD_URL):
@@ -54,19 +79,22 @@ def get_azure_ip_ranges_download(page_to_search=AZURE_GET_PUBLIC_CLOUD_URL):
     try:
         response = requests.get(page_to_search)
         response.raise_for_status()  # If there was an error code, raise it.
-        #if response.status_code != 200:
+        # if response.status_code != 200:
         #    raise ScrapeError("URL to scrape returned " + str(response.status_code) + " instead of 200.", response)
 
         # Search through the HTML for all download.microsoft.com JSON files.
         files = re.findall(MICROSOFT_DOWNLOAD_REGEX, str(response.content))
         if files is None:
-            raise ScrapeError("Did not find any valid download URLs while searching the page.", response)
+            raise ScrapeError(
+                "Did not find any valid download URLs while searching the page.",
+                response,
+            )
 
         files = list(set(files))  # Removes any duplicate finds.
         return files
 
     except (ScrapeError, requests.exceptions.RequestException) as e:
-        """ For whatever reason, we couldn't find a file to download. We can attempt to generate the URL manually. """
+        """For whatever reason, we couldn't find a file to download. We can attempt to generate the URL manually."""
         # TODO: Figure out what times (and timezones) Microsoft publish their IP ranges at.
         raise e
 
@@ -109,7 +137,9 @@ def parse_azure_ip_ranges_from_url(url_to_json_file):
     response = requests.get(url_to_json_file)
     response.raise_for_status()  # Can't handle anything here. If we can't download the file, it's game over.
 
-    return parse_azure_ip_ranges(response.content)  # Parse the response and return it to be saved.
+    return parse_azure_ip_ranges(
+        response.content
+    )  # Parse the response and return it to be saved.
 
 
 def get_azure_ip_file_from_url(url_to_json_file):
@@ -127,22 +157,22 @@ def save_azure_file(data_to_save, where_to_save="db.json"):
 
 
 def azure_file_add_timestamp(azure_file, filename):
-    as_list = azure_file.splitlines(True)    # keep the line breaks
-    #print(as_list)
+    as_list = azure_file.splitlines(True)  # keep the line breaks
+    # print(as_list)
     now = str(time.time())
     # add timestamp and filename (should be formatted the same as the actual file)
-    as_list.insert(1, b'  "acquiredFrom": "' + bytes(filename, 'utf-8') + b'",\n')
-    as_list.insert(1, b'  "acquiredWhen": '  + bytes(now, 'utf-8')      + b',\n')
-    return b''.join(as_list)# if type(azure_file) is bytes else "".join(as_list)
+    as_list.insert(1, b'  "acquiredFrom": "' + bytes(filename, "utf-8") + b'",\n')
+    as_list.insert(1, b'  "acquiredWhen": ' + bytes(now, "utf-8") + b",\n")
+    return b"".join(as_list)  # if type(azure_file) is bytes else "".join(as_list)
 
 
 def parse_azure_ip_ranges(azure_file):
-    azure_cloud_json = json.loads(azure_file)   # load the .json file into memory
-    categories = azure_cloud_json['values']
+    azure_cloud_json = json.loads(azure_file)  # load the .json file into memory
+    categories = azure_cloud_json["values"]
     arr_ranges = None
     for cat in categories:
-        if cat['name'] == 'AzureCloud':
-            arr_ranges = cat['properties']['addressPrefixes']
+        if cat["name"] == "AzureCloud":
+            arr_ranges = cat["properties"]["addressPrefixes"]
             break
     if arr_ranges is None:
         raise ValueError("Could not find AzureCloud category in values array.")
@@ -152,7 +182,7 @@ def parse_azure_ip_ranges(azure_file):
 
 
 def parse_azure_ip_ranges_from_file(location_of_file):
-    file = open(location_of_file, mode='rb')
+    file = open(location_of_file, mode="rb")
     return parse_azure_ip_ranges(file.read())
 
 
@@ -190,11 +220,13 @@ def construct_cidr_block_set(ips_in_cidr):
     ip_set = set()
     for ip_cidr in ips_in_cidr:
         try:
-            ip_tuple = cidr_to_tuple(ip_cidr)  # [0] is IP as integer, [1] is subnet mask in /xy notation (only xy)
+            ip_tuple = cidr_to_tuple(
+                ip_cidr
+            )  # [0] is IP as integer, [1] is subnet mask in /xy notation (only xy)
             ip_set.add(ip_tuple)
         except (IndexError, ValueError, ipaddress.AddressValueError):
-            """ IndexError if string too short, ValueError if int() conversion failed, AddressValueError if not IPv4.
-                In any case, just ignore the element. """
+            """IndexError if string too short, ValueError if int() conversion failed, AddressValueError if not IPv4.
+            In any case, just ignore the element."""
             pass
 
     return ip_set
@@ -208,15 +240,19 @@ def get_dynamic_blacklist(backup_file="db.json"):
     #  attempting to download the file anyways. Ideally, we want to be able to skip trying to download all together
     #  because the method isn't entirely reliable, and also fallback to the previously saved version if the download
     #  fails.
-    #ranges = set()
+    # ranges = set()
 
     try:
         download_link = get_azure_ip_ranges_download()
-        content = get_azure_ip_file_from_url(download_link[0])      # TODO: Handle multiple download files!
+        content = get_azure_ip_file_from_url(
+            download_link[0]
+        )  # TODO: Handle multiple download files!
         ranges = parse_azure_ip_ranges(content)
         #  TODO: If we get multiple files, we can try to find the one with the highest changeNumber.
         # If we got here, then the ranges are *probably* okay.
-        save_azure_file(azure_file_add_timestamp(content, download_link[0]), backup_file)
+        save_azure_file(
+            azure_file_add_timestamp(content, download_link[0]), backup_file
+        )
     except Exception as e:
         print("ERROR: Could not parse Azure ranges from URL. Reason:", e)
         try:
@@ -225,8 +261,8 @@ def get_dynamic_blacklist(backup_file="db.json"):
             print("ERROR: Could not find backup file.")
             raise e
 
-    ranges.extend(T2_EU)    # add R* EU ranges
-    ranges.extend(T2_US)    # add R* US ranges
+    ranges.extend(T2_EU)  # add R* EU ranges
+    ranges.extend(T2_US)  # add R* US ranges
     dynamic_blacklist = construct_cidr_block_set(ranges)
     return dynamic_blacklist
 
@@ -246,10 +282,10 @@ def ip_in_cidr_block_set(ip, cidr_block_set, min_cidr_suffix=0):
 
 def get_all_ips_from_cidr(ip_in_cidr_notation):
     ips = list()
-    #print("generating IPs")
+    # print("generating IPs")
     ip_range = ipaddress.IPv4Network(ip_in_cidr_notation)
     for ip in ip_range:
-        #print("adding " + str(ip))
+        # print("adding " + str(ip))
         ips.append(str(ip))
 
     return ips
@@ -269,10 +305,10 @@ def get_all_ips_from_cidr_array(array_of_ip_in_cidr_notation):
 # Tries to find places where an IP occurs in the azure info.
 def reverse_search_ip_in_azure(ip, azure_info_json):
     search = []  # where categories will be added
-    categories = azure_info_json['values']
+    categories = azure_info_json["values"]
     # categories is a list of dictionaries
     for cat in categories:
-        ranges = cat['properties']['addressPrefixes']
+        ranges = cat["properties"]["addressPrefixes"]
         for str_cidr in ranges:
             try:
                 cidr = ipaddress.IPv4Network(str_cidr)
@@ -294,15 +330,15 @@ def get_cidr_suffixes(array_of_cidr):
 
     return cidrs
 
+
 if __name__ == "__main__":
-    #print(get_all_ips_from_cidr("185.56.64.0/24"))
-    #print(len(get_all_ips_from_cidr_array(["185.56.64.0/24", "185.56.64.0/22"])))
-    #dl = get_azure_ip_ranges_download()
-    #print(dl)
-    #start = time.perf_counter()
-    #ips_test = parse_azure_ip_ranges_from_url(dl[0])
-    #finish = time.perf_counter()
-    #print("size:", getsizeof(ips_test), "len:", len(ips_test), "seconds:", (finish - start) / 1000)
+    # print(get_all_ips_from_cidr("185.56.64.0/24"))
+    # print(len(get_all_ips_from_cidr_array(["185.56.64.0/24", "185.56.64.0/22"])))
+    # dl = get_azure_ip_ranges_download()
+    # print(dl)
+    # start = time.perf_counter()
+    # ips_test = parse_azure_ip_ranges_from_url(dl[0])
+    # finish = time.perf_counter()
+    # print("size:", getsizeof(ips_test), "len:", len(ips_test), "seconds:", (finish - start) / 1000)
     get_dynamic_blacklist("db_test.json")
     # size: 1073742040 len: 21838185, time: like 90 minutes or something, shouldn't have used perf counter here I guess
-

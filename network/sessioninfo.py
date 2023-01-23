@@ -1,7 +1,6 @@
-from multiprocessing import Manager, Process
 import os
 import time
-
+from multiprocessing import Manager, Process
 
 """
 Ok so now that we've finally figured out most of the bugs / problems with pickling packets we can now actually start
@@ -89,15 +88,15 @@ Can we also add coloured rows to the list? Would be pretty pog to see rows turn 
       
  """
 
+
 class MinimalPacket:
-
     def __init__(self, packet):
-        #self.ip = packet.ip
-        #self.ip.src_addr = packet.ip.src_addr
+        # self.ip = packet.ip
+        # self.ip.src_addr = packet.ip.src_addr
 
-        #self.ip.raw.release()
-        #self.ip.raw = bytes(self.ip.raw)
-        #self.payload = bytes(packet.raw)
+        # self.ip.raw.release()
+        # self.ip.raw = bytes(self.ip.raw)
+        # self.payload = bytes(packet.raw)
         self.payload_length = len(packet.payload)
         self.src_addr = packet.src_addr
         self.src_port = packet.src_port
@@ -106,6 +105,7 @@ class MinimalPacket:
         self.is_inbound = packet.is_inbound
         self.is_outbound = packet.is_outbound
         self.direction = packet.direction
+
 
 def safe_pickle_packet(packet):
     """
@@ -121,49 +121,51 @@ def safe_pickle_packet(packet):
     
     TODO: Investigate performance of serialization with JSON instead of pickling to improve program security.
     """
-    #packet.raw.release()
-    #packet.raw = None
-    #packet.raw = packet.raw.tobytes()  # convert to finite array
+    # packet.raw.release()
+    # packet.raw = None
+    # packet.raw = packet.raw.tobytes()  # convert to finite array
 
     # packet.ipv4.raw and packet.udp.raw reference the *exact* same buffer as packet.raw so they also get "released".
-    #packet.ipv4.raw.release()
-    #packet.udp.raw.release()
+    # packet.ipv4.raw.release()
+    # packet.udp.raw.release()
 
     min_packet = MinimalPacket(packet)
 
-    #print(min_packet)
+    # print(min_packet)
 
     return min_packet
 
 
 def generate_stats(connection_stats):
     """
-Given a list containing connection statistics, generates a human-readable representation of those statistics.
- This function was originally the override for __str__ (so you could just call print(session_info)) but it appears a lot
- of my assumptions about programming design need to go out the window when writing multi-processing programs.
+    Given a list containing connection statistics, generates a human-readable representation of those statistics.
+     This function was originally the override for __str__ (so you could just call print(session_info)) but it appears a lot
+     of my assumptions about programming design need to go out the window when writing multi-processing programs.
     """
-    #print("connection_stats: ", connection_stats)
-    #print("len(connection_stats): ", len(connection_stats))
-    str_gen = []  # A partially generated string. Concatenating strings in python using '+' is sub-optimal; O(n^2)
-    #get = self.connection_stats
+    # print("connection_stats: ", connection_stats)
+    # print("len(connection_stats): ", len(connection_stats))
+    str_gen = (
+        []
+    )  # A partially generated string. Concatenating strings in python using '+' is sub-optimal; O(n^2)
+    # get = self.connection_stats
     for con_stat in connection_stats:
         info = con_stat.get_info()
         # TODO: Would an implementation of list that returns itself (to allow recursive .append() calls)
         #  instead of None (which is why we have so many lines) be useful?
         str_gen.append("IP: ")
-        str_gen.append(info['ip'])
+        str_gen.append(info["ip"])
         str_gen.append("\t | Packets IN: ")
-        str_gen.append(str(info['packets_in']))
+        str_gen.append(str(info["packets_in"]))
         str_gen.append("\t | Packets OUT: ")
-        str_gen.append(str(info['packets_out']))
+        str_gen.append(str(info["packets_out"]))
         str_gen.append("\t | Last Seen: ")
-        str_gen.append(str(info['last_seen']))
+        str_gen.append(str(info["last_seen"]))
         str_gen.append("\t | # Allowed: ")
-        str_gen.append(str(info['packets_allowed']))
+        str_gen.append(str(info["packets_allowed"]))
         str_gen.append("\t | # Dropped: ")
-        str_gen.append(str(info['packets_dropped']))
+        str_gen.append(str(info["packets_dropped"]))
         str_gen.append("\t | Tag: ")
-        str_gen.append(info['tag'])
+        str_gen.append(info["tag"])
         str_gen.append("\n")
 
     # Once this loop is complete, the *actual* string object can be built.
@@ -186,6 +188,7 @@ class SessionInfo:
         Value stored is the index into an array of ConnectionStats.
     connection_stats: Array of ConnectionStats, which contain the calculations and statistics of connections. (duh)
     """
+
     def __init__(self, proxy_dict, proxy_list, proxy_queue, initial_ips=None):
         if initial_ips is None:
             initial_ips = []
@@ -195,24 +198,24 @@ class SessionInfo:
         self.connection_stats = proxy_list
 
         for ip_tag in initial_ips:
-            #print("ip_tag: " + str(ip_tag))
+            # print("ip_tag: " + str(ip_tag))
             self.add_con_stat_from_ip_tag(ip_tag)
         # Connection stats and known IPs are now initialised.
 
-        #print(self.known_ips)
-        #print(self.connection_stats)
+        # print(self.known_ips)
+        # print(self.connection_stats)
 
         i = 0
         while i < len(self.connection_stats):
-            #print("ATTEMPTING TO ACCESS connection_stats[" + str(i) + "]")
+            # print("ATTEMPTING TO ACCESS connection_stats[" + str(i) + "]")
             con_stat = self.connection_stats[i]
-            #print("ACCESS SUCCESSFUL")
-            #print(con_stat)
+            # print("ACCESS SUCCESSFUL")
+            # print(con_stat)
             i += 1
 
-        #print("ATTEMPTING FOR LOOP")
-        #for con_stat in self.connection_stats:
-            #print(con_stat)
+        # print("ATTEMPTING FOR LOOP")
+        # for con_stat in self.connection_stats:
+        # print(con_stat)
 
         """
         This is a queue of packets pending processing. I wanted to make adding packets to SessionInfo objects as light
@@ -226,14 +229,14 @@ class SessionInfo:
         """
         self.packet_queue = proxy_queue
 
-        #self.processing_thread = Process(target=self.run, args=())
-        #self.processing_thread.daemon = True    # Terminate this thread if the parent gets terminated.
+        # self.processing_thread = Process(target=self.run, args=())
+        # self.processing_thread.daemon = True    # Terminate this thread if the parent gets terminated.
 
-    #def start(self):
-        #self.processing_thread.start()
+    # def start(self):
+    # self.processing_thread.start()
 
-    #def stop(self):
-        #self.processing_thread.terminate()
+    # def stop(self):
+    # self.processing_thread.terminate()
 
     """
     A packet was received by the filter and is now being shared with SessionInfo.
@@ -241,23 +244,24 @@ class SessionInfo:
     packet: The packet (as received by PyDivert)
     allowed: Whether the packet was allowed (true) or dropped (false).
     """
+
     def add_packet(self, packet, allowed):
         """
         We cannot waste any time waiting for a spot in the queue. This function is called in the context of the
         filtering thread and so processing will happen later (and almost certainly on a different thread).
         """
-        #print(packet)
+        # print(packet)
         self.packet_queue.put((packet, allowed), block=False)
 
-    #def run(self):
+        # def run(self):
         """
         Continually (and indefinitely) process the packet queue. Obviously this should be run in its' own thread.
         """
-        #while True:
-            #self.process_item()
-            #os.system('cls')  # clear the console for new print
-            #print(self)  # When new packet received, update display.
-            # Might be a good idea to add some sort of sleep here?
+        # while True:
+        # self.process_item()
+        # os.system('cls')  # clear the console for new print
+        # print(self)  # When new packet received, update display.
+        # Might be a good idea to add some sort of sleep here?
 
     def process_item(self, block=True):
         """
@@ -266,21 +270,27 @@ class SessionInfo:
         If you don't want your thread blocked, you will need to handle Empty exceptions because the queue *will* be
         empty at some points during processing.
         """
-        (packet, allowed) = self.packet_queue.get(block)  # If there is a packet in the queue, get it (or wait for one)
-        self.process_packet(packet, allowed)              # Actually process the packet.
+        (packet, allowed) = self.packet_queue.get(
+            block
+        )  # If there is a packet in the queue, get it (or wait for one)
+        self.process_packet(packet, allowed)  # Actually process the packet.
         return  # If you want to process another packet, you'll need to call this function again.
 
     def process_packet(self, packet, allowed):
         ip = packet.src_addr if packet.is_inbound else packet.dst_addr
-        #print("KNOWN IPS (process_packet): ", self.known_ips)
+        # print("KNOWN IPS (process_packet): ", self.known_ips)
 
         # If we're not aware of this destination, a new ConnectionStat (and conseq. IPTag) is required.
         if ip not in self.known_ips:
             # TODO: We might be able to use IP ranges to give IPs custom tags. (e.g. ROCKSTAR, UNKNOWN (USA), etc.)
-            self.add_con_stat_from_ip_tag(IPTag(ip, "UNKNOWN"))  # Now that the ConnectionStat exists, we can get it
+            self.add_con_stat_from_ip_tag(
+                IPTag(ip, "UNKNOWN")
+            )  # Now that the ConnectionStat exists, we can get it
 
         con_stat = self.get_con_stat_from_ip(ip)
-        con_stat.add_packet(packet, allowed)  # Pass the packet down to ConnectionStat where metrics will be calculated
+        con_stat.add_packet(
+            packet, allowed
+        )  # Pass the packet down to ConnectionStat where metrics will be calculated
         """ Was I really updating a *copy* of the object, and not saving it back when necessary??? """
         self.connection_stats[self.known_ips[ip]] = con_stat
         """ Sigh. I thought that con_stat would be a shallow copy, but considering 
@@ -291,23 +301,26 @@ class SessionInfo:
     """
     Adds an IP (with tag) to connection stats.
     """
+
     def add_con_stat_from_ip_tag(self, ip_tag):
         this_ip = ip_tag.get_ip()
-        #print("KNOWN IPS: ", self.known_ips)
+        # print("KNOWN IPS: ", self.known_ips)
 
         if this_ip in self.known_ips:
-            return    # If this IP has already been added, don't do it again.
+            return  # If this IP has already been added, don't do it again.
 
-        self.known_ips[this_ip] = len(self.connection_stats)    # Add this_ip to dictionary with value of index into
+        self.known_ips[this_ip] = len(
+            self.connection_stats
+        )  # Add this_ip to dictionary with value of index into
         self.connection_stats.append(ConnectionStats(ip_tag))
 
-        #print("KNOWN IPS: ", self.known_ips)
+        # print("KNOWN IPS: ", self.known_ips)
 
-        #print("idk: ", self.connection_stats)
+        # print("idk: ", self.connection_stats)
         i = 0
         while i < len(self.connection_stats):
-            #print("trying to print ", i)
-            #print(self.connection_stats[i])
+            # print("trying to print ", i)
+            # print(self.connection_stats[i])
             i += 1
 
     """
@@ -315,8 +328,11 @@ class SessionInfo:
     
     NOTE: Will throw KeyError there is no ConnectionStat for the given ip.
     """
+
     def get_con_stat_from_ip(self, ip):
-        return self.connection_stats[self.known_ips[ip]]  # Use known_ips to get the index into connection_stats.
+        return self.connection_stats[
+            self.known_ips[ip]
+        ]  # Use known_ips to get the index into connection_stats.
 
     """
     Returns the human-readable representation of the current session.
@@ -328,6 +344,7 @@ class IPTag:
     """
     Container method for storing an IP with an arbitrary String attached.
     """
+
     def __init__(self, ip, tag=""):
         self.ip = ip
         self.tag = tag
@@ -353,12 +370,13 @@ class ConnectionStats:
     """
     Stores the actual relevant information for a connection.
     """
+
     def __init__(self, ip_tag):
         self.ip_tag = ip_tag
-        #self.packets = Manager().list()    # REALLY? THIS IS WHAT WAS BREAKING IT!!!???
+        # self.packets = Manager().list()    # REALLY? THIS IS WHAT WAS BREAKING IT!!!???
         self.packets = []
-        #print("__init__(): self.packets.__repr__():", self.packets.__repr__())
-        self.last_seen = None       # has not been seen yet
+        # print("__init__(): self.packets.__repr__():", self.packets.__repr__())
+        self.last_seen = None  # has not been seen yet
         self.packets_in = 0
         self.packets_out = 0
         self.packets_allowed = 0
@@ -368,16 +386,23 @@ class ConnectionStats:
     """
     Give a packet to this connection statistic so the relevant information can be stored.
     """
+
     def add_packet(self, packet, allowed):
-        #print("add_packet(): self.packets.__repr__():", self.packets.__repr__())
-        #print("ADDING PACKET TO LIST")
-        self.packets.append(packet)  # For now, I'm just going to add it to the array. Actual stats can be added later.
-        if packet.is_outbound and packet.payload_length == 125 and not self.is_connected(3):
+        # print("add_packet(): self.packets.__repr__():", self.packets.__repr__())
+        # print("ADDING PACKET TO LIST")
+        self.packets.append(
+            packet
+        )  # For now, I'm just going to add it to the array. Actual stats can be added later.
+        if (
+            packet.is_outbound
+            and packet.payload_length == 125
+            and not self.is_connected(3)
+        ):
             self.session_requests += 1
-        #print("packet count: " + str(len(self.packets)))
-        #print("add_packet(): self.packets.__repr__():", self.packets.__repr__())
+        # print("packet count: " + str(len(self.packets)))
+        # print("add_packet(): self.packets.__repr__():", self.packets.__repr__())
         self.last_seen = time.time()
-        #print("last seen: " + str(self.last_seen))
+        # print("last seen: " + str(self.last_seen))
 
         # Generic counters
         if packet.is_inbound:
@@ -393,6 +418,7 @@ class ConnectionStats:
     """
     If we haven't seen any activity from this source in the last 'threshold' seconds, then we're not connected.
     """
+
     def is_connected(self, threshold=5):
         if self.last_seen is None:
             return False
@@ -403,7 +429,9 @@ class ConnectionStats:
         if self.last_seen is None:
             return "Never"
         else:
-            return "".join([str(round((time.time() - self.last_seen) * 1000)), " ms ago"])
+            return "".join(
+                [str(round((time.time() - self.last_seen) * 1000)), " ms ago"]
+            )
 
     """
     Sometimes, a tag (or part of it) may be temporarily overridden.
@@ -411,14 +439,19 @@ class ConnectionStats:
     Tag overrides affect the first part of a string.
     Tag overrides should not affect the default / original tag for an IP.
     """
+
     def get_tag_override(self):
         tag = self.ip_tag.get_tag_raw()
         override = tag
 
         if isinstance(tag, list):
-            tag = list(tag)    # shallow copy (this is fine because all the elements are immutable strings)
+            tag = list(
+                tag
+            )  # shallow copy (this is fine because all the elements are immutable strings)
             override = tag[0]  # the thing we might be overriding
-        if override == "LOCAL IP" or override == "PUBLIC IP":  # Local / Public IP tags take precedence.
+        if (
+            override == "LOCAL IP" or override == "PUBLIC IP"
+        ):  # Local / Public IP tags take precedence.
             # TODO: Check if R* SERVICE
             return self.ip_tag.get_tag()
         if self.is_connected():
@@ -433,14 +466,21 @@ class ConnectionStats:
             tag[0] = override
 
         return tag
-        #return override if isinstance(tag, str) else tag[1::].insert(0, override)
-
+        # return override if isinstance(tag, str) else tag[1::].insert(0, override)
 
     """
     Returns an anonymous dictionary of information about this connection.
     """
+
     def get_info(self):
-        return {'ip': self.ip_tag.get_ip(), 'tag': self.get_tag_override(), 'packet_count': len(self.packets),
-                'is_connected': self.is_connected(3), 'last_seen': self.get_last_seen_str(),
-                'packets_in': self.packets_in, 'packets_out': self.packets_out, 'packets_allowed': self.packets_allowed,
-                'packets_dropped': self.packets_dropped}
+        return {
+            "ip": self.ip_tag.get_ip(),
+            "tag": self.get_tag_override(),
+            "packet_count": len(self.packets),
+            "is_connected": self.is_connected(3),
+            "last_seen": self.get_last_seen_str(),
+            "packets_in": self.packets_in,
+            "packets_out": self.packets_out,
+            "packets_allowed": self.packets_allowed,
+            "packets_dropped": self.packets_dropped,
+        }
