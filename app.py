@@ -1249,7 +1249,7 @@ def main():
         elif option == "new":
             print_white("Creating new session")
             time.sleep(2)
-            packet_filter = Whitelist(ips=[])
+            packet_filter = Whitelist(ips={})
             packet_filter.start()
             time.sleep(10)
             packet_filter.stop()

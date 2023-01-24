@@ -3,6 +3,7 @@ import logging
 import multiprocessing
 import re
 from abc import ABC, abstractmethod
+from typing import Optional
 
 import pydivert
 from questionary import ValidationError
@@ -102,8 +103,12 @@ known_sizes = heartbeat_sizes.union(matchmaking_sizes)
 
 
 class AbstractPacketFilter(ABC):
-    # TODO: Type safety -> should ips be `list` or `set`?
-    def __init__(self, ips, session_info=None, debug=False):
+    def __init__(
+        self,
+        ips: set[str],
+        session_info: Optional[sessioninfo.SessionInfo] = None,
+        debug=False,
+    ):
         self.ips = ips
         self.process = multiprocessing.Process(target=self.run)
         self.process.daemon = True
@@ -121,12 +126,10 @@ class AbstractPacketFilter(ABC):
         logger.info("Terminated %s blocker process", self.__class__.__name__)
 
     @abstractmethod
-    def is_packet_allowed(self, packet) -> bool:
+    def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
         pass
 
     def run(self):
-        logger.info("ips: %s", self.ips)
-
         # To allow termination via CTRL + C
         with contextlib.suppress(KeyboardInterrupt):
             with pydivert.WinDivert(packetfilter) as w:
@@ -144,7 +147,7 @@ class AbstractPacketFilter(ABC):
                         print(self.construct_debug_packet_info(packet, decision))
 
     @staticmethod
-    def construct_debug_packet_info(packet, decision=None):
+    def construct_debug_packet_info(packet: pydivert.Packet, decision=None):
         prefix = "" if decision is None else ("ALLOWING" if decision else "DROPPING")
 
         return f"{prefix} PACKET FROM {packet.src_addr}:{packet.src_port}  Len: {len(packet.payload)}"
@@ -157,10 +160,10 @@ class Solo(AbstractPacketFilter):
     connecting to your client except the heartbeat.
     """
 
-    def __init__(self, session_info=None, debug=False):
+    def __init__(self, session_info=None, debug: bool = False):
         super().__init__(set(), session_info, debug)
 
-    def is_packet_allowed(self, packet) -> bool:
+    def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
         size = len(packet.payload)
 
         return size in heartbeat_sizes
@@ -170,19 +173,13 @@ class Whitelist(AbstractPacketFilter):
     """
     Packet filter that will allow packets from with source ip present on ips list
 
-    ips: A list of whitelisted IPs.
-    blocks_r: A list of CIDR blocks used by R* / T2.
+    ips: A set of whitelisted IPs.
     """
 
-    def __init__(self, ips, blocks_r=None, session_info=None, debug=False):
+    def __init__(self, ips: set[str], session_info=None, debug=False):
         super().__init__(ips, session_info, debug)
-        if blocks_r is None:
-            blocks_r = set()
-        self.ip_blocks_r = blocks_r
-        self.known_r = set()
-        self.known_b = set()
 
-    def is_packet_allowed(self, packet) -> bool:
+    def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
         ip = packet.ip.src_addr
         size = len(packet.payload)
 
@@ -197,7 +194,12 @@ class Blacklist(AbstractPacketFilter):
     """
 
     def __init__(
-        self, ips, blocks=None, known_allowed=None, session_info=None, debug=False
+        self,
+        ips: set[str],
+        blocks=None,
+        known_allowed=None,
+        session_info=None,
+        debug: bool = False,
     ):
         super().__init__(ips, session_info, debug)
 
@@ -209,7 +211,7 @@ class Blacklist(AbstractPacketFilter):
         self.ip_blocks = blocks  # set of CIDR blocks
         self.known_allowed = known_allowed  # IPs which are known to not be in blocks
 
-    def is_packet_allowed(self, packet) -> bool:
+    def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
         ip = packet.ip.src_addr
         size = len(packet.payload)
 
@@ -238,7 +240,7 @@ class Locked(AbstractPacketFilter):
     def __init__(self, session_info=None, debug=False):
         super().__init__(set(), session_info, debug)
 
-    def is_packet_allowed(self, packet) -> bool:
+    def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
         size = len(packet.payload)
 
         # No new matchmaking requests allowed.
@@ -275,7 +277,7 @@ class IPSyncer:
                 if conn.check_token() and not conn.set_ip():
                     logger.warning("Failed to update cloud IP")
                 config = data.ConfigData(data.file_name)
-                lists = [data.CustomList("blacklist"), data.CustomList("custom_ips")]
+                lists = (data.CustomList("blacklist"), data.CustomList("custom_ips"))
                 for custom_list in lists:
                     outdated = []
                     new = {}

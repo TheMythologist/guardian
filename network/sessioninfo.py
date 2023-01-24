@@ -1,4 +1,7 @@
 import timeit
+from typing import Optional
+
+from pydivert.packet import Packet
 
 # Ok so now that we've finally figured out most of the bugs / problems with pickling packets we can now actually start
 # to curate information from packets (and perhaps even other metrics) that can be displayed. I have a couple ideas:
@@ -85,7 +88,7 @@ import timeit
 
 
 class MinimalPacket:
-    def __init__(self, packet):
+    def __init__(self, packet: Packet):
         self.payload_length = len(packet.payload)
         self.src_addr = packet.src_addr
         self.src_port = packet.src_port
@@ -96,7 +99,7 @@ class MinimalPacket:
         self.direction = packet.direction
 
 
-def safe_pickle_packet(packet):
+def safe_pickle_packet(packet: Packet) -> MinimalPacket:
     """
     Returns a variant of a PyDivert packet that:
     a) can be pickled (typical PyDivert packets use MemoryView which cannot be pickled)
@@ -111,28 +114,26 @@ def safe_pickle_packet(packet):
     return MinimalPacket(packet)
 
 
-def generate_stats(connection_stats):
+class IPTag:
     """
-    Given a list containing connection statistics, generates a human-readable representation of those statistics.
-    This function was originally the override for __str__ (so you could just call print(session_info)) but it appears a lot
-    of my assumptions about programming design need to go out the window when writing multi-processing programs.
+    Container method for storing an IP with an arbitrary String attached.
     """
-    str_gen = []
-    for con_stat in connection_stats:
-        info = con_stat.get_info()
-        info_str = "\t | ".join(
-            (
-                f"IP: {info['ip']}",
-                f"Packets IN: {info['packets_in']}",
-                f"Packets OUT: {info['packets_out']}",
-                f"Last Seen: {info['last_seen']}",
-                f"Allowed: {info['packets_allowed']}",
-                f"Dropped: {info['packets_dropped']}",
-                f"Tag: {info['tag']}",
-            )
-        )
-        str_gen.append(info_str)
-    return "\n".join(str_gen)
+
+    def __init__(self, ip, tag=""):
+        self.ip = ip
+        self.tag = tag
+
+    def get_ip(self):
+        return self.ip
+
+    def get_tag(self):
+        return "".join(self.tag) if isinstance(self.tag, list) else self.tag
+
+    def get_tag_raw(self):
+        return self.tag
+
+    def set_tag(self, tag):
+        self.tag = tag
 
 
 class SessionInfo:
@@ -151,7 +152,13 @@ class SessionInfo:
     connection_stats: Array of ConnectionStats, which contain the calculations and statistics of connections. (duh)
     """
 
-    def __init__(self, proxy_dict, proxy_list, proxy_queue, initial_ips=None):
+    def __init__(
+        self,
+        proxy_dict,
+        proxy_list,
+        proxy_queue,
+        initial_ips: Optional[list[IPTag]] = None,
+    ):
         if initial_ips is None:
             initial_ips = []
 
@@ -183,7 +190,7 @@ class SessionInfo:
     def stop(self):
         self.processing_thread.terminate()
 
-    def add_packet(self, packet, allowed):
+    def add_packet(self, packet: Packet, allowed: bool):
         """
         A packet was received by the filter and is now being shared with SessionInfo.
 
@@ -206,7 +213,7 @@ class SessionInfo:
         self.process_packet(packet, allowed)  # Actually process the packet.
         return  # If you want to process another packet, you'll need to call this function again.
 
-    def process_packet(self, packet, allowed):
+    def process_packet(self, packet: Packet, allowed):
         ip = packet.src_addr if packet.is_inbound else packet.dst_addr
 
         # If we're not aware of this destination, a new ConnectionStat (and conseq. IPTag) is required.
@@ -225,7 +232,7 @@ class SessionInfo:
         # updating con_stat here without saving / 'writing' the new state back into the proxy list wouldn't
         # actually change the data in connection_stats.
 
-    def add_con_stat_from_ip_tag(self, ip_tag):
+    def add_con_stat_from_ip_tag(self, ip_tag: IPTag):
         """
         Adds an IP (with tag) to connection stats.
         """
@@ -246,28 +253,6 @@ class SessionInfo:
         NOTE: Will throw KeyError there is no ConnectionStat for the given ip.
         """
         return self.connection_stats[self.known_ips[ip]]
-
-
-class IPTag:
-    """
-    Container method for storing an IP with an arbitrary String attached.
-    """
-
-    def __init__(self, ip, tag=""):
-        self.ip = ip
-        self.tag = tag
-
-    def get_ip(self):
-        return self.ip
-
-    def get_tag(self):
-        return "".join(self.tag) if isinstance(self.tag, list) else self.tag
-
-    def get_tag_raw(self):
-        return self.tag
-
-    def set_tag(self, tag):
-        self.tag = tag
 
 
 class ConnectionStats:
@@ -367,3 +352,27 @@ class ConnectionStats:
             "packets_allowed": self.packets_allowed,
             "packets_dropped": self.packets_dropped,
         }
+
+
+def generate_stats(connection_stats: list[ConnectionStats]) -> str:
+    """
+    Given a list containing connection statistics, generates a human-readable representation of those statistics.
+    This function was originally the override for __str__ (so you could just call print(session_info)) but it appears a lot
+    of my assumptions about programming design need to go out the window when writing multi-processing programs.
+    """
+    str_gen = []
+    for con_stat in connection_stats:
+        info = con_stat.get_info()
+        info_str = "\t | ".join(
+            (
+                f"IP: {info['ip']}",
+                f"Packets IN: {info['packets_in']}",
+                f"Packets OUT: {info['packets_out']}",
+                f"Last Seen: {info['last_seen']}",
+                f"Allowed: {info['packets_allowed']}",
+                f"Dropped: {info['packets_dropped']}",
+                f"Tag: {info['tag']}",
+            )
+        )
+        str_gen.append(info_str)
+    return "\n".join(str_gen)

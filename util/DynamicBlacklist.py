@@ -1,5 +1,4 @@
 import contextlib
-import ipaddress
 import json
 import os.path
 import re
@@ -125,7 +124,7 @@ def get_azure_ip_ranges_download(
         raise e
 
 
-def construct_all_cidr_masks():
+def construct_all_cidr_masks() -> list[int]:
     all_ones = 0b11111111111111111111111111111111
     masks = [all_ones]
     masks.extend(masks[-1] << 1 & all_ones for _ in range(32))
@@ -143,7 +142,7 @@ CIDR_MASKS = construct_all_cidr_masks()
 # right-most bit (move one bit left), append /31, and so on.
 
 
-def parse_azure_ip_ranges_from_url(url_to_json_file):
+def parse_azure_ip_ranges_from_url(url_to_json_file: str) -> list[str]:
     """
     Given a Microsoft Azure IP .JSON file, parses the file and returns an array of strings of CIDR ranges
     that may be used by R* Services.
@@ -155,31 +154,30 @@ def parse_azure_ip_ranges_from_url(url_to_json_file):
     return parse_azure_ip_ranges(response.content)
 
 
-def get_azure_ip_file_from_url(url_to_json_file):
+def get_azure_ip_file_from_url(url_to_json_file: str) -> bytes:
     # TODO: Provide some sanity checks to see if the file contains the content we expect.
     response = requests.get(url_to_json_file)
     response.raise_for_status()
     return response.content
 
 
-def save_azure_file(data_to_save, where_to_save="db.json"):
+def save_azure_file(data_to_save: bytes, where_to_save: str = "db.json") -> None:
     with open(where_to_save, mode="wb") as file:
-        bytes_written = file.write(data_to_save)
-    return bytes_written
+        file.write(data_to_save)
 
 
-def azure_file_add_timestamp(azure_file, filename):
+def azure_file_add_timestamp(azure_file_contents: bytes, filename: str) -> bytes:
     # keep the line breaks
-    as_list = azure_file.splitlines(True)
+    as_list = azure_file_contents.splitlines(True)
     now = str(time.time())
     # add timestamp and filename (should be formatted the same as the actual file)
-    as_list.insert(1, b'  "acquiredFrom": "' + bytes(filename, "utf-8") + b'",\n')
-    as_list.insert(1, b'  "acquiredWhen": ' + bytes(now, "utf-8") + b",\n")
+    as_list.insert(1, f'  "acquiredFrom": "{filename}",\n'.encode())
+    as_list.insert(1, f'  "acquiredWhen": "{now}",\n'.encode())
     return b"".join(as_list)
 
 
-def parse_azure_ip_ranges(azure_file):
-    azure_cloud_json = json.loads(azure_file)
+def parse_azure_ip_ranges(azure_file_contents: bytes) -> list[str]:
+    azure_cloud_json = json.loads(azure_file_contents)
     categories = azure_cloud_json["values"]
     arr_ranges = next(
         (
@@ -194,7 +192,7 @@ def parse_azure_ip_ranges(azure_file):
     return arr_ranges
 
 
-def parse_azure_ip_ranges_from_file(location_of_file):
+def parse_azure_ip_ranges_from_file(location_of_file: str) -> list[str]:
     with open(location_of_file, mode="rb") as file:
         return parse_azure_ip_ranges(file.read())
 
@@ -223,7 +221,7 @@ def cidr_to_tuple(ip_in_cidr: str) -> tuple[int, int]:
     return ip_int, suffix_int
 
 
-def construct_cidr_block_set(ips_in_cidr):
+def construct_cidr_block_set(ips_in_cidr: list[str]) -> set[tuple[int, int]]:
     """
     Construct a set of IPs in CIDR notation. This set is specifically optimised to only work with the
     ip_in_cidr_block_set() function.
@@ -239,7 +237,7 @@ def construct_cidr_block_set(ips_in_cidr):
     return ip_set
 
 
-def get_dynamic_blacklist(backup_file="db.json"):
+def get_dynamic_blacklist(backup_file: str = "db.json") -> set[tuple[int, int]]:
     # TODO: It seems like we can determine if a range has changed by looking at the 'changeNumber' attribute
     # for a given category, however, there unfortunately doesn't appear to be any sort of timestamp included
     # in the actual JSON file. We'll probably need to save the timestamp manually by adding it to the JSON?
@@ -266,7 +264,7 @@ def get_dynamic_blacklist(backup_file="db.json"):
     return construct_cidr_block_set(ranges)
 
 
-def ip_in_cidr_block_set(ip, cidr_block_set, min_cidr_suffix=0):
+def ip_in_cidr_block_set(ip: str, cidr_block_set, min_cidr_suffix: int = 0) -> bool:
     """
     Essentially a reverse-search for all possible entries in cidr_block_set that would contain ip.
     """
@@ -275,32 +273,6 @@ def ip_in_cidr_block_set(ip, cidr_block_set, min_cidr_suffix=0):
         (ip_int & CIDR_MASKS[suffix], suffix) in cidr_block_set
         for suffix in range(min_cidr_suffix, len(CIDR_MASKS))
     )
-
-
-# Tries to find places where an IP occurs in the azure info.
-def reverse_search_ip_in_azure(ip, azure_info_json):
-    search = []  # where categories will be added
-    categories = azure_info_json["values"]
-    # categories is a list of dictionaries
-    for cat in categories:
-        ranges = cat["properties"]["addressPrefixes"]
-        for str_cidr in ranges:
-            # Ignore invalid IPv4 addresses
-            with contextlib.suppress(ipaddress.AddressValueError):
-                cidr = ipaddress.IPv4Network(str_cidr)
-                if ipaddress.IPv4Address(ip) in cidr:
-                    search.append(cat)
-    return search
-
-
-def get_cidr_suffixes(array_of_cidr):
-    cidrs = set()
-    for entry in array_of_cidr:
-        # Ignore invalid IPv4 addresses
-        with contextlib.suppress(ipaddress.AddressValueError):
-            ipaddress.IPv4Network(entry)  # lazy way of seeing if it's a valid ipv4
-            cidrs.add(entry[-2:])
-    return cidrs
 
 
 if __name__ == "__main__":

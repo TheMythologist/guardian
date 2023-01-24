@@ -1,4 +1,5 @@
-from typing import Optional
+import contextlib
+from typing import Any, Literal, Optional
 
 import requests
 
@@ -10,11 +11,17 @@ s = requests.Session()
 class Cloud:
     api_url = "https://www.thedigitalarc.com/api/{}"
 
-    def __init__(self, token=None):
-        self.token: Optional[str] = token
+    def __init__(self, token: Optional[str] = None):
+        self.token = token
 
-    def __send_request(self, method, endpoint, params=None, payload=None, **kwargs):
-        resp, resp_text = None, None
+    def __send_request(
+        self,
+        method: Literal["GET", "POST"],
+        endpoint: str,
+        params: Optional[dict[str, str]] = None,
+        payload=None,
+        **kwargs,
+    ) -> tuple[int, Any | str]:
         url = self.api_url.format(endpoint)
         headers = {
             "User-Agent": f"Guardian/{version})",
@@ -74,40 +81,32 @@ class Cloud:
         except (ConnectionError, AttributeError):
             return None
 
-    def request(self, name):
+    def request(self, name: str) -> tuple[bool, Any | None]:
+        return self.__send_post_request(name, "guardian/request")
+
+    def revoke(self, name: str) -> tuple[bool, Any | None]:
+        return self.__send_post_request(name, "guardian/revoke")
+
+    def accept(self, name: str) -> tuple[bool, Any | None]:
+        return self.__send_post_request(name, "guardian/accept")
+
+    def __send_post_request(self, name: str, endpoint: str) -> tuple[bool, Any | None]:
         param = {"name": name}
-        try:
-            code, r = self.__send_request("POST", "guardian/request", params=param)
-            return code == 200, r.get("error", None)
-        except (ConnectionError, AttributeError):
-            return False, None
+        with contextlib.suppress(ConnectionError):
+            code, r = self.__send_request("POST", endpoint, params=param)
+            if r is not None:
+                return code == 200, r.get("error", None)  # type: ignore[union-attr]
+        return False, None
 
-    def revoke(self, name):
-        param = {"name": name}
-        try:
-            code, r = self.__send_request("POST", "guardian/revoke", params=param)
-            return code == 200, r.get("error", None)
-        except (ConnectionError, AttributeError):
-            return False, None
+    def check_token(self) -> bool:
+        return self.__send_check("authenticate")
 
-    def accept(self, name):
-        param = {"name": name}
-        try:
-            code, r = self.__send_request("POST", "guardian/accept", params=param)
-            return code == 200, r.get("error", None)
-        except (ConnectionError, AttributeError):
-            return False, None
+    def check_connection(self) -> bool:
+        return self.__send_check("ping")
 
-    def check_token(self):
+    def __send_check(self, endpoint: str) -> bool:
         try:
-            code, r = self.__send_request("GET", "authenticate")
-            return code == 200
-        except ConnectionError:
-            return False
-
-    def check_connection(self):
-        try:
-            code, r = self.__send_request("GET", "ping")
+            code, r = self.__send_request("GET", endpoint)
             return code == 200
         except ConnectionError:
             return False

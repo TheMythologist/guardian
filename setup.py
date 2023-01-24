@@ -27,7 +27,7 @@ executables = [
 ]
 
 
-def zip_folder(folder_path, output_path):
+def zip_folder(folder_path: str, output_path: str) -> None:
     """
     Zip the contents of an entire folder (with that folder included
     in the archive). Empty subfolders will be included in the archive

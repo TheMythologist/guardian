@@ -25,14 +25,14 @@ class ConfigData:
     instance = None
 
     class __DataSource:
-        def __init__(self, data_file):
+        def __init__(self, data_file: str):
             self.data_file = data_file
-            self.data = {"config": {}, "token": None}
-            if not os.path.isfile(data_file):
-                self.__create()
-            else:
+            self.data: dict[str, None | dict] = {"config": {}, "token": None}
+            if os.path.isfile(data_file):
                 with open(self.data_file, "r") as file:
                     self.data = json.load(file)
+            else:
+                self.__create()
 
             self.token = self.data.get("token", None)
 
@@ -46,13 +46,13 @@ class ConfigData:
             with open(self.data_file, "w") as write_file:
                 json.dump(self.data, write_file, indent=4)
 
-    def __init__(self, data_file):
+    def __init__(self, data_file: str):
         """
         Instantiate the data source item if it isn't defined already.
         :param data_file: Config file path
         :vartype data_file: str
         """
-        if not ConfigData.instance:
+        if ConfigData.instance is None:
             ConfigData.instance = ConfigData.__DataSource(data_file)
 
     def get(self, key, default=None):
@@ -90,19 +90,19 @@ class CustomList(ConfigData):
     Extra lists to store on the configuration data
     """
 
-    def __init__(self, name):
+    def __init__(self, name: str):
         """
         Retrieves or initializes the list with specified name
         :param name: List name
         """
-        super().__init__(None)
+        super().__init__(name)
         self.name = name
         self.data = self.instance.data.get(name, None) if self.instance else None
         if type(self.data) is list:
             raise MigrationRequired("Need to update to using dicts")
         if self.data is None:
             self.data = {}
-            self.instance.data[self.name] = self.data
+            self.instance.data[self.name] = self.data  # type: ignore[union-attr]
             self.save()
 
     def __contains__(self, key):
@@ -179,7 +179,7 @@ class CustomList(ConfigData):
         self.pop(key, None)
 
 
-def update_cloud_friends():
+def update_cloud_friends() -> CustomList:
     """
     Get the list of approved friends from cloud
     :return: Dict of cloud friends
@@ -196,29 +196,29 @@ def update_cloud_friends():
             friend_item = f
             friends.delete(ip)
         friends.add(friend.get("ip"), friend_item)
-    missing = [
-        key
-        for key, friend in friends.data.items()
-        if all(
-            cloud_friend.get("name") != friend.get("name")
-            for cloud_friend in cloud_friends_list
-        )
-    ]
-    for key in missing:
-        friends.delete(key)
+    if friends.data:
+        missing = [
+            key
+            for key, friend in friends.data.items()
+            if all(
+                cloud_friend.get("name") != friend.get("name")
+                for cloud_friend in cloud_friends_list
+            )
+        ]
+        for key in missing:
+            friends.delete(key)
     config.save()
     return friends
 
 
-def migrate_to_dict():
+def migrate_to_dict() -> None:
     """
     Aux function to migrate if old data file is being used
-    :return: None
     """
     error = False
     config = ConfigData(file_name)
     for key, value in config:
-        if type(value) is list:
+        if isinstance(value, list):
             d = {}
             for item in value:
                 try:
