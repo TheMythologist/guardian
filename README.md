@@ -1,6 +1,6 @@
 # Guardian
 
-Simple custom firewall used for the game GTA5.
+Simple custom firewall used for the game GTA5 Online.
 
 This fork uses new methods to drop packets to R*-owned resources that are likely to be tunnelled game traffic, rather than let all R*-owned resources through. The only two behaviours intended to be allowed through from non-whitelisted IPs with this new model are the session "heartbeat" and any session information requests from the "matchmaking service" which provides initial connection details to clients.
 
@@ -50,7 +50,7 @@ The most important requirement for securing a session with Guardian is that you 
 
 ## Motivation
 
-I never quite liked the idea of firewalled sessions, however modders were targetting a grinding crew I was in by crashing our sessions, leaking our IPs and scraping our R* IDs to join non-public sessions and continue harassing us whenever any of us tried to play Online. So, I did my own research and testing and was eventually able to share a working version with crew members. Now that we have something to defend ourselves, it was suggested that I also fix publicly available whitelisting programs too.
+GTA Online on PC was too crazy with modders wreaking havoc and constantly spamming text messages or emails. They could also crash sessions, leak IPs, or even scrape R* IDs to join non-public sessions to continue harrassing people. Speyedr did some research and testing, and was eventually able to get Guardian to work again, and he publicly shared it with the open-source community. (Check out his repository [here](https://gitlab.com/Speyedr/guardian-fastload-fix).) I then decided to fork his own project and improve on the codebase further, as well as further improvements that I think the codebase can benefit from.
 
 - [Requirements](#requirements)
   - [System](#system)
@@ -76,17 +76,30 @@ I never quite liked the idea of firewalled sessions, however modders were target
 ## Build from source
 
 - Install poetry.
-`pip install poetry`
-- Install project dependencies
-`poetry install`
-- Open a command prompt in the top-level repo folder and run `poetry run python setup.py build`.
-  - If python cannot be found, you will need to provide the full location of `python.exe` instead. Your command prompt will still need to be in the same directory as `setup.py` though.
+
+  ```bash
+  pip install poetry
+  ```
+
+- Install project dependencies via poetry from the top-level repo folder.
+
+  ```bash
+  poetry install
+  ```
+
+- Build the package from the top-level repo folder.
+
+  ```bash
+  poetry run python setup.py build
+  ```
 
 ## Miscellaneous
 
-- This fork's initial release took about 2 months of casual research and testing to complete.
-- No reverse engineering of any R*-owned Intellectual Property was undertaken to produce this fork.
+- No reverse engineering of any R*-owned Intellectual Property was undertaken.
 - No decryption (nor any similar attack on encryption used to secure GTA Online) was performed to investigate packets.
+- I will not be held responsible for any misusing of this tool, including:
+  - Getting banned by R* games (unlikely to happen)
+  - Still getting hacked/harrassed by modders despiste using the tool
 
 ## Support
 
@@ -97,13 +110,6 @@ I never quite liked the idea of firewalled sessions, however modders were target
 
 - [**DigitalArc Studio**](https://gitlab.com/digitalarc/guardian)
 - [**Speyedr**](https://gitlab.com/Speyedr/guardian-fastload-fix)
-
-## Sponsors
-
-- [DarkViperAU](https://www.youtube.com/@DarkViperAU)
-- TessioMT
-- AnExtraSleepyKitty
-- Harald414
 
 ## Developers
 
