@@ -121,7 +121,7 @@ class AbstractPacketFilter(ABC):
         logger.info("Terminated %s blocker process", self.__class__.__name__)
 
     @abstractmethod
-    def is_packet_allowed(self, packet):
+    def is_packet_allowed(self, packet) -> bool:
         pass
 
     def run(self):
@@ -154,13 +154,13 @@ class Solo(AbstractPacketFilter):
     """
     Packet filter that does not allow join requests at all. Previously, Solo Session was actually just
     "Whitelisted" with an empty list. This variant is technically more secure if you truly don't want anything
-    connecting to your client.
+    connecting to your client except the heartbeat.
     """
 
     def __init__(self, session_info=None, debug=False):
         super().__init__(set(), session_info, debug)
 
-    def is_packet_allowed(self, packet):
+    def is_packet_allowed(self, packet) -> bool:
         size = len(packet.payload)
 
         return size in heartbeat_sizes
@@ -169,12 +169,20 @@ class Solo(AbstractPacketFilter):
 class Whitelist(AbstractPacketFilter):
     """
     Packet filter that will allow packets from with source ip present on ips list
+
+    ips: A list of whitelisted IPs.
+    blocks_r: A list of CIDR blocks used by R* / T2.
     """
 
-    def __init__(self, ips, session_info=None, debug=False):
+    def __init__(self, ips, blocks_r=None, session_info=None, debug=False):
         super().__init__(ips, session_info, debug)
+        if blocks_r is None:
+            blocks_r = set()
+        self.ip_blocks_r = blocks_r
+        self.known_r = set()
+        self.known_b = set()
 
-    def is_packet_allowed(self, packet):
+    def is_packet_allowed(self, packet) -> bool:
         ip = packet.ip.src_addr
         size = len(packet.payload)
 
@@ -201,7 +209,7 @@ class Blacklist(AbstractPacketFilter):
         self.ip_blocks = blocks  # set of CIDR blocks
         self.known_allowed = known_allowed  # IPs which are known to not be in blocks
 
-    def is_packet_allowed(self, packet):
+    def is_packet_allowed(self, packet) -> bool:
         ip = packet.ip.src_addr
         size = len(packet.payload)
 
@@ -217,19 +225,20 @@ class Blacklist(AbstractPacketFilter):
                 # If not then it's definitely allowed, remember this for next time
                 self.known_allowed.add(ip)
                 return True
-        else:
-            return False
+        return False
 
 
 class Locked(AbstractPacketFilter):
     """
-    Packet filter to block any new requests to join the session.
+    Packet filter to block all join request packets and i.e. any new attempts to connect to your client.
+    Any existing connections do not get blocked. Locked is the only way to firewall a session off if one
+    or more of those players are not directly routed to the Session Host (i.e. you).
     """
 
     def __init__(self, session_info=None, debug=False):
         super().__init__(set(), session_info, debug)
 
-    def is_packet_allowed(self, packet):
+    def is_packet_allowed(self, packet) -> bool:
         size = len(packet.payload)
 
         # No new matchmaking requests allowed.
