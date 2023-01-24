@@ -40,7 +40,7 @@ platform = "win32"
 exclude = ["build/"]
 
 [[tool.mypy.overrides]]
-module = ["cx_Freeze", "pydivert"]
+module = ["cx_Freeze", "pydivert", "prsw"]
 ignore_missing_imports = true
 
 [build-system]
