@@ -1446,7 +1446,7 @@ if __name__ == "__main__":
         print_white("Building dynamic blacklist...")
         dynamic_blacklist = set()
         try:
-            dynamic_blacklist = get_dynamic_blacklist("db.json")
+            dynamic_blacklist = get_dynamic_blacklist()
         except (
             ScrapeError,
             RequestException,
