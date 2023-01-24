@@ -26,6 +26,7 @@ from network.blocker import (
     IPCollector,
     IPSyncer,
     Locked,
+    Solo,
     Whitelist,
 )
 from util.DynamicBlacklist import (
@@ -215,7 +216,7 @@ def main():
                     logger.info("Starting solo session")
                     print_running_message("Solo")
 
-                    packet_filter = Whitelist(ips=[])
+                    packet_filter = Solo()
                     try:
                         packet_filter.start()
                         while True:
