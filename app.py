@@ -8,7 +8,7 @@ import time
 import traceback
 import webbrowser
 import zipfile
-from multiprocessing import Manager, freeze_support
+from multiprocessing import freeze_support
 
 import pydivert
 from colorama import Fore
@@ -295,13 +295,10 @@ def main():
                     logger.info("Starting whitelisted session with %d IPs", len(ip_set))
                     print_running_message("Whitelisted")
 
-                    # Exposes session information, diagnostics and behaviour.
+                    # # Exposes session information, diagnostics and behaviour.
                     # manager = Manager()
                     # connection_stats = manager.list()
                     # session_info = sessioninfo.SessionInfo(manager.dict(), connection_stats, manager.Queue(), ip_tags)
-
-                    # logger.info("ip_tags: " + str(ip_tags))
-                    # logger.info("session_info: " + str(session_info))
 
                     # Set up packet_filter outside the try-catch so it can be safely referenced inside KeyboardInterrupt.
                     packet_filter = Whitelist(ips=ip_set)
@@ -325,7 +322,7 @@ def main():
                             # time.sleep(1)      # prevents the user from opening the page a ludicrous amount of times?
 
                             # time.sleep(0.01)
-                            # print(session_info)  # display session diagnostics
+                            # print(session_info)
                             # print(sessioninfo.generate_stats(connection_stats))
                             # session_info.process_item()
                             # os.system('cls')  # refresh console

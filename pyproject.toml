@@ -31,10 +31,11 @@ black = "^22.12.0"
 isort = "^5.11.4"
 flake8 = "^6.0.0"
 pyproject-flake8 = "^6.0.0.post1"
+pre-commit = "^2.21.0"
 
 [tool.flake8]
 max-line-length = 88
-extend-ignore = "E203"
+extend-ignore = ["E203", "E501"]
 
 [tool.isort]
 profile = "black"
