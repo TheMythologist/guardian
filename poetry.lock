@@ -624,6 +624,27 @@ files = [
 wcwidth = "*"
 
 [[package]]
+name = "prsw"
+version = "0.3.1"
+description = "PRSW, the Python RIPE Stat Wrapper, is a python package that simplifies access to the RIPE Stat public data API."
+category = "main"
+optional = false
+python-versions = "~=3.7"
+files = [
+    {file = "prsw-0.3.1-py3-none-any.whl", hash = "sha256:ad200c333403f7f617be92acf100168d728b2c41fdc5a59ff22b3288c43342db"},
+    {file = "prsw-0.3.1.tar.gz", hash = "sha256:7065bb2875f1d8a9fb602337096d65e8a25aeaca553d6c0cc0c5f3eaffcace2b"},
+]
+
+[package.dependencies]
+requests = ">=2"
+
+[package.extras]
+dev = ["black", "flake8", "packaging", "pre-commit", "pydocstyle", "pytest (>=2.7.3)", "sphinx", "sphinx-rtd-theme"]
+lint = ["black", "flake8", "pydocstyle", "sphinx", "sphinx-rtd-theme"]
+readthedocs = ["sphinx"]
+test = ["pytest (>=2.7.3)"]
+
+[[package]]
 name = "pycodestyle"
 version = "2.10.0"
 description = "Python style guide checker"
@@ -951,4 +972,4 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "8e002ffbd0fe97228d219223f44b3e7800ad415cacab6b7bd8fdd8128c617f86"
+content-hash = "32ffedc66d00dfc2f5e50cd72ddebab7f12cef9e08a07ca6f044a57471cc6d31"

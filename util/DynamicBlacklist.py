@@ -4,6 +4,7 @@ import json
 import re
 import time
 
+import prsw
 import requests
 
 """
@@ -17,36 +18,39 @@ class ScrapeError(BaseException):
     """Could not scrape the HTML for data for some reason."""
 
 
-# TODO: Find an API we can use to get these ranges dynamically. If necessary, these ones can be used as a fallback,
-#  as I don't think these ranges change often.
-# https://whois.ipip.net/AS202021
-T2_EU = {
-    "185.56.64.0/24",
-    "185.56.64.0/22",
-    "185.56.65.0/24",
-    "185.56.66.0/24",
-    "185.56.67.0/24",
-}
+ripe = prsw.RIPEstat()
+try:
+    T2_EU = {peer.prefix for peer in ripe.announced_prefixes(202021)}
+    T2_US = {peer.prefix for peer in ripe.announced_prefixes(46555)}
+except ConnectionError:
+    # https://whois.ipip.net/AS202021
+    T2_EU = {
+        "185.56.64.0/24",
+        "185.56.64.0/22",
+        "185.56.65.0/24",
+        "185.56.66.0/24",
+        "185.56.67.0/24",
+    }
 
-# https://whois.ipip.net/AS46555
-T2_US = {
-    "104.255.104.0/24",
-    "104.255.104.0/22",
-    "104.255.105.0/24",
-    "104.255.106.0/24",
-    "104.255.107.0/24",
-    "192.81.240.0/24",
-    "192.81.240.0/22",
-    "192.81.241.0/24",
-    "192.81.242.0/24",
-    "192.81.243.0/24",
-    "192.81.244.0/24",
-    "192.81.244.0/22",
-    "192.81.245.0/24",
-    "192.81.246.0/24",
-    "192.81.247.0/24",
-    "198.133.210.0/24",
-}
+    # https://whois.ipip.net/AS46555
+    T2_US = {
+        "104.255.104.0/24",
+        "104.255.104.0/22",
+        "104.255.105.0/24",
+        "104.255.106.0/24",
+        "104.255.107.0/24",
+        "192.81.240.0/24",
+        "192.81.240.0/22",
+        "192.81.241.0/24",
+        "192.81.242.0/24",
+        "192.81.243.0/24",
+        "192.81.244.0/24",
+        "192.81.244.0/22",
+        "192.81.245.0/24",
+        "192.81.246.0/24",
+        "192.81.247.0/24",
+        "198.133.210.0/24",
+    }
 
 # This URL should return information about the most up-to-date JSON file containing Azure IP ranges.
 # Microsoft claims that a new file is published every 7 days, and that any new IPs will not be used for another 7 days.
