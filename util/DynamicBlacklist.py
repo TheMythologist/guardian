@@ -141,7 +141,6 @@ CIDR_MASKS = construct_all_cidr_masks()
 
 # To generate all CIDR blocks containing a certain IP, we must zero the right-most bit, append /32, then zero the next
 # right-most bit (move one bit left), append /31, and so on.
-# Probably best manipulated using ipaddress.packed attribute?
 
 
 def parse_azure_ip_ranges_from_url(url_to_json_file):
