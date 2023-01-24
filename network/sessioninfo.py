@@ -119,11 +119,9 @@ def generate_stats(connection_stats):
     """
     str_gen = []
     for con_stat in connection_stats:
-        # TODO: Would an implementation of list that returns itself (to allow recursive .append() calls)
-        # instead of None (which is why we have so many lines) be useful?
         info = con_stat.get_info()
         info_str = "\t | ".join(
-            [
+            (
                 f"IP: {info['ip']}",
                 f"Packets IN: {info['packets_in']}",
                 f"Packets OUT: {info['packets_out']}",
@@ -131,7 +129,7 @@ def generate_stats(connection_stats):
                 f"Allowed: {info['packets_allowed']}",
                 f"Dropped: {info['packets_dropped']}",
                 f"Tag: {info['tag']}",
-            ]
+            )
         )
         str_gen.append(info_str)
     return "\n".join(str_gen)

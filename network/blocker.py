@@ -229,9 +229,6 @@ class IPSyncer:
     """
 
     def __init__(self, token):
-        """
-        :param token: Cloud api token
-        """
         self.token = token
         self.process = multiprocessing.Process(target=self.run)
         self.exit = multiprocessing.Event()
