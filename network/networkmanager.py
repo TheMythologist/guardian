@@ -1,3 +1,5 @@
+from typing import Optional
+
 import requests
 
 from app import version
@@ -9,7 +11,7 @@ class Cloud:
     api_url = "https://www.thedigitalarc.com/api/{}"
 
     def __init__(self, token=None):
-        self.token = token
+        self.token: Optional[str] = token
 
     def __send_request(self, method, endpoint, params=None, payload=None, **kwargs):
         resp, resp_text = None, None
