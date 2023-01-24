@@ -1464,14 +1464,12 @@ if __name__ == "__main__":
             time.sleep(3)
         print_white("Checking connections.")
         if cloud.check_connection():
-            version = cloud.version()
-            # Checking of version used to be performed here
             # TODO: Implement checking of latest version
             token = config.get("token")
             if token:
-                cloud.token = token
+                cloud.token = token  # type: ignore[has-type]
                 if cloud.check_token():
-                    ipsyncer.token = token
+                    ipsyncer.token = token  # type: ignore[has-type]
                     ipsyncer.start()
                     print_white("Starting IP syncer.")
     except Exception as e:

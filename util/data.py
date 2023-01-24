@@ -1,17 +1,29 @@
+from __future__ import annotations
+
 import json
 import os
+from typing import TypedDict
 
 from questionary import ValidationError, confirm
+from typing_extensions import NotRequired
 
 from network.networkmanager import Cloud
 from util.printer import print_white
 from util.validator import IPValidator
 
+# TODO: `file_name` variable should be used a class default
 file_name = "data.json"
 
 
 class MigrationRequired(Exception):
     pass
+
+
+class ConfigDataType(TypedDict):
+    token: NotRequired[str | None]
+    blacklist: NotRequired[dict[str, str]]
+    custom_ips: NotRequired[dict[str, str]]
+    friends: NotRequired[dict[str, str]]
 
 
 # TODO: Use magic methods `__enter__` and `__exit__`
@@ -22,12 +34,12 @@ class ConfigData:
     :vartype instance: __DataSource
     """
 
-    instance = None
+    instance: __DataSource
 
     class __DataSource:
         def __init__(self, data_file: str):
             self.data_file = data_file
-            self.data: dict[str, None | dict] = {"config": {}, "token": None}
+            self.data: ConfigDataType = {"token": None}
             if os.path.isfile(data_file):
                 with open(self.data_file, "r") as file:
                     self.data = json.load(file)
@@ -52,7 +64,7 @@ class ConfigData:
         :param data_file: Config file path
         :vartype data_file: str
         """
-        if ConfigData.instance is None:
+        if not hasattr(ConfigData, "instance"):
             ConfigData.instance = ConfigData.__DataSource(data_file)
 
     def get(self, key, default=None):
@@ -64,19 +76,17 @@ class ConfigData:
         """
         return self.instance.data.get(key, default)
 
-    def set(self, key, value):
+    def set(self, key, value) -> None:
         """
         Set data to configuration
         :param key: Key to store the data on the config
         :param value: Value to store
-        :return:  None
         """
-        self.instance.data[key] = value
+        self.instance.data[key] = value  # type: ignore[literal-required]
 
-    def save(self):
+    def save(self) -> None:
         """
         Store the changes made on memory to the data file
-        :return:  None
         """
         if self.instance:
             self.instance.save()
@@ -102,7 +112,7 @@ class CustomList(ConfigData):
             raise MigrationRequired("Need to update to using dicts")
         if self.data is None:
             self.data = {}
-            self.instance.data[self.name] = self.data  # type: ignore[union-attr]
+            self.instance.data[self.name] = self.data  # type: ignore[literal-required]
             self.save()
 
     def __contains__(self, key):
@@ -196,7 +206,7 @@ def update_cloud_friends() -> CustomList:
             friend_item = f
             friends.delete(ip)
         friends.add(friend.get("ip"), friend_item)
-    if friends.data:
+    if isinstance(friends.data, dict):
         missing = [
             key
             for key, friend in friends.data.items()

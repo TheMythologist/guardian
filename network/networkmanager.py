@@ -9,7 +9,7 @@ s = requests.Session()
 
 
 class Cloud:
-    api_url = "https://www.thedigitalarc.com/api/{}"
+    api_url = "https://www.thedigitalarc.com/api/"
 
     def __init__(self, token: Optional[str] = None):
         self.token = token
@@ -21,8 +21,8 @@ class Cloud:
         params: Optional[dict[str, str]] = None,
         payload=None,
         **kwargs,
-    ) -> tuple[int, Any | str]:
-        url = self.api_url.format(endpoint)
+    ) -> tuple[int, dict]:
+        url = self.api_url + endpoint
         headers = {
             "User-Agent": f"Guardian/{version})",
             "Content-Type": "application/json; charset=UTF-8",
@@ -46,11 +46,7 @@ class Cloud:
         if resp.status_code >= 400:
             raise ConnectionError
 
-        try:
-            resp_text = resp.json()
-        except ValueError:
-            resp_text = resp.text
-
+        resp_text = resp.json()
         return resp.status_code, resp_text
 
     def get_friends(self):
@@ -95,7 +91,7 @@ class Cloud:
         with contextlib.suppress(ConnectionError):
             code, r = self.__send_request("POST", endpoint, params=param)
             if r is not None:
-                return code == 200, r.get("error", None)  # type: ignore[union-attr]
+                return code == 200, r.get("error", None)
         return False, None
 
     def check_token(self) -> bool:
@@ -111,14 +107,14 @@ class Cloud:
         except ConnectionError:
             return False
 
-    def version(self):
+    def version(self) -> Any | str | None:
         try:
             code, r = self.__send_request("GET", "software/version/guardian")
             return r
         except ConnectionError:
             return None
 
-    def set_ip(self):
+    def set_ip(self) -> Any | str | None:
         try:
             code, r = self.__send_request(
                 "POST", "setclientip", params={"application": "guardian"}
@@ -127,7 +123,7 @@ class Cloud:
         except ConnectionError:
             return False
 
-    def get_ip(self):
+    def get_ip(self) -> Any | str | None:
         try:
             code, r = self.__send_request("GET", "getclientip")
             return r

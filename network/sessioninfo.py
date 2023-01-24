@@ -1,7 +1,7 @@
 import timeit
 from typing import Optional
 
-from pydivert.packet import Packet
+from pydivert import packet
 
 # Ok so now that we've finally figured out most of the bugs / problems with pickling packets we can now actually start
 # to curate information from packets (and perhaps even other metrics) that can be displayed. I have a couple ideas:
@@ -88,7 +88,7 @@ from pydivert.packet import Packet
 
 
 class MinimalPacket:
-    def __init__(self, packet: Packet):
+    def __init__(self, packet: packet.Packet):
         self.payload_length = len(packet.payload)
         self.src_addr = packet.src_addr
         self.src_port = packet.src_port
@@ -99,7 +99,7 @@ class MinimalPacket:
         self.direction = packet.direction
 
 
-def safe_pickle_packet(packet: Packet) -> MinimalPacket:
+def safe_pickle_packet(packet: packet.Packet) -> MinimalPacket:
     """
     Returns a variant of a PyDivert packet that:
     a) can be pickled (typical PyDivert packets use MemoryView which cannot be pickled)
@@ -190,7 +190,7 @@ class SessionInfo:
     def stop(self):
         self.processing_thread.terminate()
 
-    def add_packet(self, packet: Packet, allowed: bool):
+    def add_packet(self, packet: packet.Packet, allowed: bool):
         """
         A packet was received by the filter and is now being shared with SessionInfo.
 
@@ -213,7 +213,7 @@ class SessionInfo:
         self.process_packet(packet, allowed)  # Actually process the packet.
         return  # If you want to process another packet, you'll need to call this function again.
 
-    def process_packet(self, packet: Packet, allowed):
+    def process_packet(self, packet: packet.Packet, allowed):
         ip = packet.src_addr if packet.is_inbound else packet.dst_addr
 
         # If we're not aware of this destination, a new ConnectionStat (and conseq. IPTag) is required.

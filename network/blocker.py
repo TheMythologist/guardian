@@ -107,7 +107,7 @@ class AbstractPacketFilter(ABC):
         self,
         ips: set[str],
         session_info: Optional[sessioninfo.SessionInfo] = None,
-        debug=False,
+        debug: bool = False,
     ):
         self.ips = ips
         self.process = multiprocessing.Process(target=self.run)
@@ -117,11 +117,11 @@ class AbstractPacketFilter(ABC):
         if not pydivert.WinDivert.is_registered():
             pydivert.WinDivert.register()
 
-    def start(self):
+    def start(self) -> None:
         self.process.start()
         logger.info("Dispatched %s blocker process", self.__class__.__name__)
 
-    def stop(self):
+    def stop(self) -> None:
         self.process.terminate()
         logger.info("Terminated %s blocker process", self.__class__.__name__)
 
@@ -129,7 +129,7 @@ class AbstractPacketFilter(ABC):
     def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
         pass
 
-    def run(self):
+    def run(self) -> None:
         # To allow termination via CTRL + C
         with contextlib.suppress(KeyboardInterrupt):
             with pydivert.WinDivert(packetfilter) as w:
@@ -147,7 +147,9 @@ class AbstractPacketFilter(ABC):
                         print(self.construct_debug_packet_info(packet, decision))
 
     @staticmethod
-    def construct_debug_packet_info(packet: pydivert.Packet, decision=None):
+    def construct_debug_packet_info(
+        packet: pydivert.Packet, decision: Optional[bool] = None
+    ) -> str:
         prefix = "" if decision is None else ("ALLOWING" if decision else "DROPPING")
 
         return f"{prefix} PACKET FROM {packet.src_addr}:{packet.src_port}  Len: {len(packet.payload)}"
@@ -160,7 +162,11 @@ class Solo(AbstractPacketFilter):
     connecting to your client except the heartbeat.
     """
 
-    def __init__(self, session_info=None, debug: bool = False):
+    def __init__(
+        self,
+        session_info: Optional[sessioninfo.SessionInfo] = None,
+        debug: bool = False,
+    ):
         super().__init__(set(), session_info, debug)
 
     def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
@@ -176,7 +182,12 @@ class Whitelist(AbstractPacketFilter):
     ips: A set of whitelisted IPs.
     """
 
-    def __init__(self, ips: set[str], session_info=None, debug=False):
+    def __init__(
+        self,
+        ips: set[str],
+        session_info: Optional[sessioninfo.SessionInfo] = None,
+        debug: bool = False,
+    ):
         super().__init__(ips, session_info, debug)
 
     def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
@@ -198,7 +209,7 @@ class Blacklist(AbstractPacketFilter):
         ips: set[str],
         blocks=None,
         known_allowed=None,
-        session_info=None,
+        session_info: Optional[sessioninfo.SessionInfo] = None,
         debug: bool = False,
     ):
         super().__init__(ips, session_info, debug)
@@ -237,7 +248,11 @@ class Locked(AbstractPacketFilter):
     or more of those players are not directly routed to the Session Host (i.e. you).
     """
 
-    def __init__(self, session_info=None, debug=False):
+    def __init__(
+        self,
+        session_info: Optional[sessioninfo.SessionInfo] = None,
+        debug: bool = False,
+    ):
         super().__init__(set(), session_info, debug)
 
     def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
@@ -259,18 +274,18 @@ class IPSyncer:
         self.process = multiprocessing.Process(target=self.run)
         self.exit = multiprocessing.Event()
 
-    def start(self):
+    def start(self) -> None:
         if self.token:
             self.process.start()
         else:
             logger.warning("IPSyncer cannot start without token")
 
-    def stop(self):
+    def stop(self) -> None:
         if self.token:
             self.exit.set()
             self.process.join()
 
-    def run(self):
+    def run(self) -> None:
         while not self.exit.is_set():
             with contextlib.suppress(KeyboardInterrupt):
                 conn = networkmanager.Cloud(self.token)
@@ -305,18 +320,18 @@ class Debugger:
     Thread to create a log of the ips matching the packet filter
     """
 
-    def __init__(self, ips):
+    def __init__(self, ips: set[str]):
         self.ips = ips
         self.process = multiprocessing.Process(target=self.run)
         self.process.daemon = True
 
-    def start(self):
+    def start(self) -> None:
         self.process.start()
 
-    def stop(self):
+    def stop(self) -> None:
         self.process.terminate()
 
-    def run(self):
+    def run(self) -> None:
         debug_logger.debug("Started debugging")
         with pydivert.WinDivert(packetfilter) as w:
             for packet in w:
@@ -395,7 +410,7 @@ class IPCollector:
     Thread to store all the ip addresses matching the packet filter
     """
 
-    def __init__(self, packet_count_min_threshold=1):
+    def __init__(self, packet_count_min_threshold: int = 1):
         self.process = multiprocessing.Process(target=self.run)
         self.process.daemon = True
         self.ips = multiprocessing.Manager().list()
@@ -409,13 +424,13 @@ class IPCollector:
         # self.ips.append("20.40.183.2")      # DEBUG, forcing an Azure IP to be included
         # self.ips.append("192.81.240.99")    # DEBUG, forcing a T2 US IP to be included
 
-    def add_seen_ip(self, ip):
+    def add_seen_ip(self, ip: str) -> None:
         """
         Keeps a "counter" of how many packets have been seen from this IP.
         """
         self.seen_ips[ip] = self.seen_ips.get(ip, 0) + 1
 
-    def save_ips(self):
+    def save_ips(self) -> None:
         """
         Saves any IP that has been seen at least self.min_packets times.
         """
@@ -423,17 +438,17 @@ class IPCollector:
             if self.seen_ips[ip] >= self.min_packets:
                 self.ips.append(ip)
 
-    def start(self):
+    def start(self) -> None:
         self.process.start()
         logger.info("Dispatched IPCollector process")
 
-    def stop(self):
+    def stop(self) -> None:
         self.process.terminate()
         logger.info("Terminated IPCollector process")
         self.save_ips()
         logger.info("Collected a total of %d IPs", len(self.ips))
 
-    def run(self):
+    def run(self) -> None:
         # TODO: Can you run PyDivert in sniff mode, instead of having to run a filter?
         # TODO: We could also actually check to see *when* the last packet was seen from that IP.
         with contextlib.suppress(KeyboardInterrupt):
