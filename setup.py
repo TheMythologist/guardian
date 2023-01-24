@@ -28,7 +28,8 @@ executables = [
 
 
 def zip_folder(folder_path, output_path):
-    """Zip the contents of an entire folder (with that folder included
+    """
+    Zip the contents of an entire folder (with that folder included
     in the archive). Empty subfolders will be included in the archive
     as well.
     """

@@ -1,17 +1,16 @@
 import contextlib
 import ipaddress
 import json
+import os.path
 import re
 import time
 
 import prsw
 import requests
 
-"""
-This file contains classes and methods to manage acquiring, parsing, and updating a possibly dynamic list of IP ranges
-that Guardian needs to be aware of. Such ranges include R* / T2 official IPs, as well as IPs that can be used for
-miscellaneous R* Services, such as Microsoft Azure.
-"""
+# This file contains classes and methods to manage acquiring, parsing, and updating a possibly dynamic list of IP ranges
+# that Guardian needs to be aware of. Such ranges include R* / T2 official IPs, as well as IPs that can be used for
+# miscellaneous R* Services, such as Microsoft Azure.
 
 
 class ScrapeError(BaseException):
@@ -61,11 +60,32 @@ AZURE_GET_PUBLIC_CLOUD_URL = (
 )
 # The regex pattern to find download files on the page.
 MICROSOFT_DOWNLOAD_REGEX = re.compile(
-    'https://download.microsoft.com/download[^"]*[.]json'
+    r"https://download\.microsoft\.com/download[^\"]*\.json"
 )
 
 
-def get_azure_ip_ranges_download(page_to_search=AZURE_GET_PUBLIC_CLOUD_URL):
+def determine_best_azure_file(urls: list[str]) -> tuple[str, bytes]:
+    """
+    Given multiple azure URLs, identify the best JSON file to return based on the largest changeNumber
+    Returns the URL, and the contents of the JSON file as bytes
+    """
+    # Return only the JSON file with the highest changeNumber
+    highest_change_number = 0
+    best_response = b""
+    best_url = ""
+    for url in urls:
+        content = get_azure_ip_file_from_url(url)
+        change_number = json.loads(content)["changeNumber"]
+        if change_number > highest_change_number:
+            highest_change_number = change_number
+            best_response = content
+            best_url = url
+    return best_url, best_response
+
+
+def get_azure_ip_ranges_download(
+    page_to_search: str = AZURE_GET_PUBLIC_CLOUD_URL,
+) -> tuple[str, bytes]:
     """
     Finds the URL to the most recent JSON file. I looked it up and yes, apparently, there is no actual API that allows
     requesting the most up-to-date ranges. We have to download the human-readable page, then parse / search through the
@@ -75,7 +95,7 @@ def get_azure_ip_ranges_download(page_to_search=AZURE_GET_PUBLIC_CLOUD_URL):
     their pages. When this code was written, the download file occurred multiple times in the HTML page, but it was the
     only URL to match the regular expression.
 
-    If multiple possibly valid files were found on the page, they will all be returned.
+    If multiple possibly valid files were found on the page, only the file with the highest changeNumber will be returned.
     """
 
     # Get the actual page.
@@ -89,18 +109,18 @@ def get_azure_ip_ranges_download(page_to_search=AZURE_GET_PUBLIC_CLOUD_URL):
             )
 
         # Search through the HTML for all download.microsoft.com JSON files.
-        files = re.findall(MICROSOFT_DOWNLOAD_REGEX, str(response.content))
-        if files is None:
+        re_files = re.findall(MICROSOFT_DOWNLOAD_REGEX, str(response.content))
+        if re_files is None:
             raise ScrapeError(
                 "Did not find any valid download URLs while searching the page.",
                 response,
             )
 
-        files = list(set(files))
-        return files
+        files = list(set(re_files))
+        return determine_best_azure_file(files)
 
     except (ScrapeError, requests.exceptions.RequestException) as e:
-        """For whatever reason, we couldn't find a file to download. We can attempt to generate the URL manually."""
+        # For whatever reason, we couldn't find a file to download. We can attempt to generate the URL manually.
         # TODO: Figure out what times (and timezones) Microsoft publish their IP ranges at.
         raise e
 
@@ -239,25 +259,20 @@ def get_dynamic_blacklist(backup_file="db.json"):
     # ranges = set()
 
     try:
-        download_link = get_azure_ip_ranges_download()
-        # TODO: Handle multiple download files!
-        content = get_azure_ip_file_from_url(download_link[0])
+        download_link, content = get_azure_ip_ranges_download()
         ranges = parse_azure_ip_ranges(content)
-        # TODO: If we get multiple files, we can try to find the one with the highest changeNumber.
         # If we got here, then the ranges are *probably* okay.
-        save_azure_file(
-            azure_file_add_timestamp(content, download_link[0]), backup_file
-        )
+        save_azure_file(azure_file_add_timestamp(content, download_link), backup_file)
         ranges.extend(T2_EU)  # add R* EU ranges
         ranges.extend(T2_US)  # add R* US ranges
-        return construct_cidr_block_set(ranges)
     except Exception as e:
         print("ERROR: Could not parse Azure ranges from URL. Reason: ", e)
-        try:
-            ranges = parse_azure_ip_ranges_from_file(backup_file)
-        except FileNotFoundError:
-            print("ERROR: Could not find backup file.")
-            raise
+        if not os.path.isfile(backup_file):
+            raise FileNotFoundError(
+                f"ERROR: Could not find backup file {backup_file}."
+            ) from e
+        ranges = parse_azure_ip_ranges_from_file(backup_file)
+    return construct_cidr_block_set(ranges)
 
 
 def ip_in_cidr_block_set(ip, cidr_block_set, min_cidr_suffix=0):
