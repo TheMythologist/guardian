@@ -19,8 +19,8 @@ class ScrapeError(BaseException):
 
 ripe = prsw.RIPEstat()
 try:
-    T2_EU = {peer.prefix for peer in ripe.announced_prefixes(202021)}
-    T2_US = {peer.prefix for peer in ripe.announced_prefixes(46555)}
+    T2_EU = {peer.prefix.compressed for peer in ripe.announced_prefixes(202021)}
+    T2_US = {peer.prefix.compressed for peer in ripe.announced_prefixes(46555)}
 except ConnectionError:
     # https://whois.ipip.net/AS202021
     T2_EU = {
@@ -144,11 +144,6 @@ CIDR_MASKS = construct_all_cidr_masks()
 # Probably best manipulated using ipaddress.packed attribute?
 
 
-def generate_all_cidr_containing_ip(ip, min_cidr=0):
-    ip_num = int(ipaddress.IPv4Address(ip))
-    return [ip_num & CIDR_MASKS[index] for index in range(min_cidr, len(CIDR_MASKS))]
-
-
 def parse_azure_ip_ranges_from_url(url_to_json_file):
     """
     Given a Microsoft Azure IP .JSON file, parses the file and returns an array of strings of CIDR ranges
@@ -197,8 +192,6 @@ def parse_azure_ip_ranges(azure_file):
     )
     if arr_ranges is None:
         raise ValueError("Could not find AzureCloud category in values array.")
-    # ips = get_all_ips_from_cidr_array(arr_ranges)
-    # return ips
     return arr_ranges
 
 
@@ -207,7 +200,15 @@ def parse_azure_ip_ranges_from_file(location_of_file):
         return parse_azure_ip_ranges(file.read())
 
 
-def cidr_to_tuple(ip_in_cidr):
+def calculate_ip_int(ip: str) -> int:
+    octets = [int(num) for num in ip.split(".")]
+    # Manually perform calculation of suffix_int for speed purposes
+    return (
+        octets[0] * (2**24) + octets[1] * (2**16) + octets[2] * (2**8) + octets[3]
+    )
+
+
+def cidr_to_tuple(ip_in_cidr: str) -> tuple[int, int]:
     """
     Converts a string representing an IP in CIDR notation to two integers,
     the first integer represents the lowest IP in the CIDR block,
@@ -216,16 +217,10 @@ def cidr_to_tuple(ip_in_cidr):
     NOTE: Does *not* check for the validity of a CIDR block. Example, 255.255.255.255/1 would be accepted, but is not
     a valid CIDR block.
     """
-    # Calculating the suffix seems weird, but it's best explained with an example. Let's say you have the CIDR block
-    # 111.22.3.44/9. Here, the suffix is only 1 digit (i.e. 1 character in the string), and we can determine this by
-    # seeing if the second-last character was the slash. If the second-last character isn't a slash, it must be a number,
-    # in which case the IP address is something like 111.22.3.44/29. We then take either those one or two digits, and
-    # convert it to an integer.
-    is_one_digit_suffix = ip_in_cidr[-2] == "/"
-    suffix_int = int(ip_in_cidr[-1:]) if is_one_digit_suffix else int(ip_in_cidr[-2:])
-    ip_str = ip_in_cidr[:-2] if is_one_digit_suffix else ip_in_cidr[:-3]
-    ip_int = int(ipaddress.IPv4Address(ip_str))
-
+    ip_str, _, suffix = ip_in_cidr.partition("/")
+    suffix_int = int(suffix)
+    # Manually perform calculation of suffix_int for speed purposes
+    ip_int = calculate_ip_int(ip_str)
     return ip_int, suffix_int
 
 
@@ -238,10 +233,7 @@ def construct_cidr_block_set(ips_in_cidr):
     """
     ip_set = set()
     for ip_cidr in ips_in_cidr:
-        # IndexError if string too short
-        # ValueError if `int()` conversion failed
-        # AddressValueError if invalid IPv4 address
-        with contextlib.suppress(IndexError, ValueError, ipaddress.AddressValueError):
+        with contextlib.suppress(ValueError):
             # [0] is IP as integer, [1] is subnet mask in /xy notation (only xy)
             ip_tuple = cidr_to_tuple(ip_cidr)
             ip_set.add(ip_tuple)
@@ -279,25 +271,11 @@ def ip_in_cidr_block_set(ip, cidr_block_set, min_cidr_suffix=0):
     """
     Essentially a reverse-search for all possible entries in cidr_block_set that would contain ip.
     """
-    ip_int = int(ipaddress.IPv4Address(ip))
+    ip_int = calculate_ip_int(ip)
     return any(
         (ip_int & CIDR_MASKS[suffix], suffix) in cidr_block_set
         for suffix in range(min_cidr_suffix, len(CIDR_MASKS))
     )
-
-
-def get_all_ips_from_cidr(ip_in_cidr_notation):
-    ip_range = ipaddress.IPv4Network(ip_in_cidr_notation)
-    return [str(ip) for ip in ip_range]
-
-
-def get_all_ips_from_cidr_array(array_of_ip_in_cidr_notation):
-    ips = set()
-    for ip_range in array_of_ip_in_cidr_notation:
-        # Ignore invalid IPv4 addresses
-        with contextlib.suppress(ipaddress.AddressValueError):
-            ips = ips.union(get_all_ips_from_cidr(ip_range))
-    return ips
 
 
 # Tries to find places where an IP occurs in the azure info.
