@@ -19,7 +19,6 @@ from requests import RequestException
 from tqdm import tqdm
 
 import util.data as data
-import util.DynamicBlacklist  # new Azure-blocking functionality
 from network import networkmanager, sessioninfo
 from network.blocker import (
     Blacklist,
@@ -28,6 +27,11 @@ from network.blocker import (
     IPSyncer,
     Locked,
     Whitelist,
+)
+from util.DynamicBlacklist import (
+    ScrapeError,
+    get_dynamic_blacklist,
+    ip_in_cidr_block_set,
 )
 from util.printer import (
     print_invalid_ip,
@@ -459,9 +463,7 @@ def main():
                     print("Checking for potential tunnels in collected IPs...\n")
                     potential_tunnels = set()
                     for ip in ip_set:
-                        if util.DynamicBlacklist.ip_in_cidr_block_set(
-                            ip, dynamic_blacklist, min_cidr_suffix=0
-                        ):
+                        if ip_in_cidr_block_set(ip, dynamic_blacklist):
                             # Ignore if user has this IP in custom whitelist.
                             if ip not in custom_ips:
                                 potential_tunnels.add(ip)
@@ -1444,9 +1446,9 @@ if __name__ == "__main__":
         print_white("Building dynamic blacklist...")
         dynamic_blacklist = set()
         try:
-            dynamic_blacklist = util.DynamicBlacklist.get_dynamic_blacklist("db.json")
+            dynamic_blacklist = get_dynamic_blacklist()
         except (
-            util.DynamicBlacklist.ScrapeError,
+            ScrapeError,
             RequestException,
             json.decoder.JSONDecodeError,
             IndexError,
