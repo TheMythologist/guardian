@@ -1,3 +1,4 @@
+import contextlib
 import ctypes
 import json
 import logging
@@ -12,7 +13,6 @@ from multiprocessing import freeze_support
 
 import pydivert
 from colorama import Fore
-from packaging.version import parse
 from prompt_toolkit.styles import Style
 from questionary import ValidationError, prompt
 from requests import RequestException
@@ -1100,7 +1100,7 @@ def main():
                                         if code == 200:
                                             print_white("Revoked")
                                         else:
-                                            print_white("{}".format(msg.get("error")))
+                                            print_white(str(msg.get("error")))
 
                                 elif answer["option"] == "request":
                                     # My friends who I don't have perms from
@@ -1128,7 +1128,7 @@ def main():
                                         if result:
                                             print_white("Request sent")
                                         else:
-                                            print_white("{}".format(msg))
+                                            print_white(str(msg))
 
                                 elif answer["option"] == "pending":
                                     # friends who requested permission from me
@@ -1231,7 +1231,7 @@ def main():
                         ip_calc = IPValidator.validate_get(ip)
                         ip_set.add(ip_calc)
                     except ValidationError:
-                        logger.warning("Not valid IP or URL: {}".format(ip))
+                        logger.warning("Not valid IP or URL: %s", ip)
                         print_invalid_ip(ip)
                         continue
 
@@ -1353,23 +1353,18 @@ def main():
                 with open("datacheck.json", "w+") as datafile:
                     json.dump(datas, datafile, indent=2)
                 print_white("Packing debug request")
-                compressed = zipfile.ZipFile(
-                    "debugger-{}.zip".format(time.strftime("%Y%m%d-%H%M%S")),
+                with zipfile.ZipFile(
+                    f"debugger-{time.strftime('%Y%m%d-%H%M%S')}.zip",
                     "w",
                     zipfile.ZIP_DEFLATED,
-                )
-                compressed.write("datacheck.json")
-                try:
-                    compressed.write("debugger.log")
-                except FileNotFoundError:
-                    pass
-                os.remove("datacheck.json")
-                try:
-                    os.remove("debugger.log")
-                except FileNotFoundError:
-                    pass
-                print_white("Finished")
-                compressed.close()
+                ) as compressed:
+                    compressed.write("datacheck.json")
+                    with contextlib.suppress(FileNotFoundError):
+                        compressed.write("debugger.log")
+                    os.remove("datacheck.json")
+                    with contextlib.suppress(FileNotFoundError):
+                        os.remove("debugger.log")
+                    print_white("Finished")
                 continue
             else:
                 print_white("Declined")
@@ -1446,7 +1441,7 @@ if __name__ == "__main__":
         print_white("Booting up...")
         if not pydivert.WinDivert.is_registered():
             pydivert.WinDivert.register()
-        ctypes.windll.kernel32.SetConsoleTitleW("Guardian {}".format(version))
+        ctypes.windll.kernel32.SetConsoleTitleW(f"Guardian {version}")
         cloud = networkmanager.Cloud()
         ipsyncer = IPSyncer(None)
         print_white("Building dynamic blacklist...")
@@ -1470,23 +1465,8 @@ if __name__ == "__main__":
         print_white("Checking connections.")
         if cloud.check_connection():
             version = cloud.version()
-            version = version.get("version", None) if version else None
-            if version:
-                if parse(version) > parse(version):
-                    os.system("cls")
-                    print_white("An update was found.")
-                    options = {
-                        "type": "confirm",
-                        "message": "Open browser?",
-                        "name": "option",
-                        "qmark": "@",
-                        "default": True,
-                    }
-                    answer = prompt(options, style=style)
-                    if answer["option"]:
-                        webbrowser.open(
-                            "https://www.thedigitalarc.com/software/Guardian"
-                        )
+            # Checking of version used to be performed here
+            # TODO: Implement checking of latest version
             token = config.get("token")
             if token:
                 cloud.token = token
@@ -1505,6 +1485,6 @@ if __name__ == "__main__":
             continue
         except Exception as e:
             crash_report(e, "Guardian crashed in main()")
-            raise  # still crash the program because it's not recoverable
+            raise
         finally:
             ipsyncer.stop()

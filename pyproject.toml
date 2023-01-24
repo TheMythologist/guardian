@@ -32,6 +32,10 @@ isort = "^5.11.4"
 flake8 = "^6.0.0"
 pyproject-flake8 = "^6.0.0.post1"
 pre-commit = "^2.21.0"
+mypy = "^0.991"
+types-colorama = "^0.4.15.4"
+types-tqdm = "^4.64.7.11"
+types-requests = "^2.28.11.8"
 
 [tool.flake8]
 max-line-length = 88
@@ -39,6 +43,13 @@ extend-ignore = ["E203", "E501"]
 
 [tool.isort]
 profile = "black"
+
+[tool.mypy]
+exclude = ["build/"]
+
+[[tool.mypy.overrides]]
+module = ["cx_Freeze", "pydivert"]
+ignore_missing_imports = true
 
 [build-system]
 requires = ["poetry-core"]
