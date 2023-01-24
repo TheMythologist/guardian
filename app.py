@@ -43,9 +43,6 @@ from util.validator import (
     NameInCustom,
     ValidateToken,
 )
-from util.WorkingDirectoryFix import wd_fix
-
-wd_fix()
 
 logger = logging.getLogger("guardian")
 logger.propagate = False
