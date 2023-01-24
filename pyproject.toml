@@ -35,6 +35,7 @@ extend-ignore = ["E203", "E501"]
 profile = "black"
 
 [tool.mypy]
+platform = "win32"
 exclude = ["build/"]
 
 [[tool.mypy.overrides]]
