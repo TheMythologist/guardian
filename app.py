@@ -13,8 +13,9 @@ from multiprocessing import freeze_support
 
 import pydivert
 from colorama import Fore
+from prompt_toolkit.document import Document
 from prompt_toolkit.styles import Style
-from questionary import ValidationError, prompt
+from questionary import ValidationError, Validator, prompt
 from requests import RequestException
 from tqdm import tqdm
 
@@ -29,6 +30,7 @@ from network.blocker import (
     Solo,
     Whitelist,
 )
+from util.constants import version
 from util.DynamicBlacklist import (
     ScrapeError,
     get_dynamic_blacklist,
@@ -40,14 +42,7 @@ from util.printer import (
     print_stopped_message,
     print_white,
 )
-from util.validator import (
-    IPInBlacklist,
-    IPInCustom,
-    IPValidator,
-    NameInBlacklist,
-    NameInCustom,
-    ValidateToken,
-)
+from util.validator import IPValidator
 
 logger = logging.getLogger("guardian")
 logger.propagate = False
@@ -63,8 +58,6 @@ if not logger.handlers:
 
 LF_FACESIZE = 32
 STD_OUTPUT_HANDLE = -11
-
-version = "3.2.1"
 
 style = Style(
     [
@@ -95,6 +88,59 @@ def get_private_ip():
     local_ip = soc.getsockname()[0]
     soc.close()
     return local_ip
+
+
+class NameInCustom(Validator):
+    def validate(self, document: Document):
+        global custom_ips
+        if custom_ips.has(document.text):
+            raise ValidationError(
+                message="Name already in list", cursor_position=len(document.text)
+            )
+
+
+class NameInBlacklist(Validator):
+    def validate(self, document: Document):
+        global blacklist
+        if blacklist.has(document.text):
+            raise ValidationError(
+                message="Name already in list", cursor_position=len(document.text)
+            )
+
+
+class IPInCustom(IPValidator):
+    def validate(self, document: Document):
+        super().validate(document)
+        global custom_ips
+        if document.text in custom_ips or custom_ips.has(document.text, "value"):
+            raise ValidationError(
+                message="IP already in list", cursor_position=len(document.text)
+            )
+
+
+class IPInBlacklist(Validator):
+    def validate(self, document: Document):
+        super().validate(document)
+        global blacklist
+        if document.text in blacklist or blacklist.has(document.text, "value"):
+            raise ValidationError(
+                message="IP already in list", cursor_position=len(document.text)
+            )
+
+
+class ValidateToken(Validator):
+    def validate(self, document: Document):
+        conn = networkmanager.Cloud(document.text)
+        if not conn.check_connection():
+            raise ValidationError(
+                message="DigitalArc is unavailable, unable to check token",
+                cursor_position=len(document.text),
+            )
+
+        if not conn.check_token():
+            raise ValidationError(
+                message="Token invalid", cursor_position=len(document.text)
+            )
 
 
 def crash_report(exception, additional=None, filename=None):

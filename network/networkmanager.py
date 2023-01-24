@@ -21,7 +21,7 @@ class Cloud:
         params: Optional[dict[str, str]] = None,
         payload=None,
         **kwargs,
-    ) -> tuple[int, dict]:
+    ) -> tuple[int, dict | str]:
         url = self.api_url + endpoint
         headers = {
             "User-Agent": f"Guardian/{version})",
@@ -46,7 +46,11 @@ class Cloud:
         if resp.status_code >= 400:
             raise ConnectionError
 
-        resp_text = resp.json()
+        try:
+            resp_text = resp.json()
+        except ValueError:
+            resp_text = resp.text
+
         return resp.status_code, resp_text
 
     def get_friends(self):
@@ -90,7 +94,7 @@ class Cloud:
         param = {"name": name}
         with contextlib.suppress(ConnectionError):
             code, r = self.__send_request("POST", endpoint, params=param)
-            if r is not None:
+            if isinstance(r, dict):
                 return code == 200, r.get("error", None)
         return False, None
 
