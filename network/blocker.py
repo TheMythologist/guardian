@@ -150,6 +150,22 @@ class AbstractPacketFilter(ABC):
         return f"{prefix} PACKET FROM {packet.src_addr}:{packet.src_port}  Len: {len(packet.payload)}"
 
 
+class Solo(AbstractPacketFilter):
+    """
+    Packet filter that does not allow join requests at all. Previously, Solo Session was actually just
+    "Whitelisted" with an empty list. This variant is technically more secure if you truly don't want anything
+    connecting to your client.
+    """
+
+    def __init__(self, session_info=None, debug=False):
+        super().__init__(set(), session_info, debug)
+
+    def is_packet_allowed(self, packet):
+        size = len(packet.payload)
+
+        return size in heartbeat_sizes
+
+
 class Whitelist(AbstractPacketFilter):
     """
     Packet filter that will allow packets from with source ip present on ips list
@@ -164,8 +180,7 @@ class Whitelist(AbstractPacketFilter):
 
         # The "special sauce" for the new filtering logic. We're using payload sizes to guess if the packet
         # has a behaviour we want to allow through.
-        if ip in self.ips or size in known_sizes:
-            return True
+        return ip in self.ips or size in known_sizes
 
 
 class Blacklist(AbstractPacketFilter):
