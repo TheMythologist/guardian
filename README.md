@@ -6,7 +6,7 @@ This fork uses new methods to drop packets to R*-owned resources that are likely
 
 By simply observing network activity when playing GTA Online, it was discovered that while all packets were encrypted, the "type" of packet can still be determined from simply checking the packet's payload size. Guardian already uses PyDivert which conveniently supports filtering on individual packets, so only a few minor modifications to the filtering rules were necessary to produce this fork which supports Online 1.54 and onwards.
 
-## [Download 3.2.0 (latest)](https://github.com/TheMythologist/guardian/releases/tag/3.2.0)
+## [Download 3.2.1 (latest)](https://github.com/TheMythologist/guardian/releases/tag/3.2.1)
 
 ## Usage
 
