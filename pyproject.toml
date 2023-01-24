@@ -6,24 +6,14 @@ authors = ["TheMythologist <leekaixuan2001@gmail.com>"]
 license = "LGPL-3.0"
 readme = "README.md"
 
-[tool.distutils.build_exe]
-includes = ["idna.idnadata", "codecs", "pydivert"]
-optimize = 2
-zip_exclude_packages = ["certifi", "pydivert"]
-
 [tool.poetry.dependencies]
 python = "^3.9"
 chardet = "^5.1.0"
 colorama = "^0.4.6"
 cx-freeze = "^6.13"
-idna = "^3.4"
-prompt-toolkit = "^3.0.36"
 pydivert = "2.1.0"
 questionary = "^1.10.0"
-six = "^1.16.0"
 tqdm = "^4.64.1"
-urllib3 = "^1.26.14"
-wcwidth = "^0.2.6"
 requests = "^2.28.2"
 
 [tool.poetry.group.dev.dependencies]
