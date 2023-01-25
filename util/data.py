@@ -1,11 +1,8 @@
-from __future__ import annotations
-
 import json
 import os
-from typing import TypedDict
+from typing import Any, Iterable, TypedDict
 
 from questionary import ValidationError, confirm
-from typing_extensions import NotRequired
 
 from network.networkmanager import Cloud
 from util.printer import print_white
@@ -19,11 +16,11 @@ class MigrationRequired(Exception):
     pass
 
 
-class ConfigDataType(TypedDict):
-    token: NotRequired[str | None]
-    blacklist: NotRequired[dict[str, str]]
-    custom_ips: NotRequired[dict[str, str]]
-    friends: NotRequired[dict[str, str]]
+class ConfigDataType(TypedDict, total=False):
+    token: str | None
+    blacklist: dict[str, str]
+    custom_ips: dict[str, str]
+    friends: dict[str, str]
 
 
 # TODO: Use magic methods `__enter__` and `__exit__`
@@ -33,8 +30,6 @@ class ConfigData:
     :var instance: Global instance of the internal class for the data source
     :vartype instance: __DataSource
     """
-
-    instance: __DataSource
 
     class __DataSource:
         def __init__(self, data_file: str):
@@ -48,15 +43,17 @@ class ConfigData:
 
             self.token = self.data.get("token", None)
 
-        def save(self):
+        def save(self) -> None:
             if not os.path.isfile(self.data_file):
                 self.__create()
             with open(self.data_file, "w") as file:
                 json.dump(self.data, file, indent=4)
 
-        def __create(self):
+        def __create(self) -> None:
             with open(self.data_file, "w") as write_file:
                 json.dump(self.data, write_file, indent=4)
+
+    instance: __DataSource
 
     def __init__(self, data_file: str):
         """
@@ -107,24 +104,26 @@ class CustomList(ConfigData):
         """
         super().__init__(name)
         self.name = name
-        self.data = self.instance.data.get(name, None) if self.instance else None
-        if type(self.data) is list:
-            raise MigrationRequired("Need to update to using dicts")
-        if self.data is None:
+        possible_data = self.instance.data.get(name, None)
+        if isinstance(possible_data, dict):
+            self.data = possible_data
+        else:
             self.data = {}
             self.instance.data[self.name] = self.data  # type: ignore[literal-required]
             self.save()
+        if type(self.data) is list:
+            raise MigrationRequired("Need to update to using dicts")
 
     def __contains__(self, key):
         return key in self.data
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[tuple[str, Any]]:
         return iter(self.data.items())
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.data)
 
-    def add(self, key, value):
+    def add(self, key, value) -> None:
         """
         Add item to the list
         :param key: Key to store the data on the list
@@ -142,12 +141,9 @@ class CustomList(ConfigData):
         """
         return self.data.get(key, default)
 
-    def has(self, value, key="name"):
+    def has(self, value, key: str = "name") -> bool:
         """
         Check if item exists from the list by it's key property value
-        :param value:
-        :param key:
-        :return:
         """
         items = self.find_all(value, key)
         return bool(items)
@@ -180,7 +176,7 @@ class CustomList(ConfigData):
         """
         return self.data.pop(key, default)
 
-    def delete(self, key):
+    def delete(self, key) -> None:
         """
         Delete an item from the list
         :param key: Key identifying the item to delete

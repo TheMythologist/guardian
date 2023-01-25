@@ -1351,17 +1351,17 @@ def main():
             if answer.get("agree"):
                 local_list = config.get("custom_ips")
                 cloud_list = config.get("friends")
-                ip_set = []
+                ip_set = set()
                 for friend in local_list:
                     if friend.get("enabled"):
                         try:
                             ip = IPValidator.validate_get(friend.get("ip"))
-                            ip_set.append(ip)
+                            ip_set.add(ip)
                         except ValidationError:
                             continue
                 for friend in cloud_list:
                     if friend.get("enabled"):
-                        ip_set.append(friend.get("ip"))
+                        ip_set.add(friend.get("ip"))
                 debugger = Debugger(ip_set)
                 debugger.start()
                 for _ in tqdm(range(60), ascii=True, desc="Collecting Requests"):
@@ -1515,7 +1515,7 @@ if __name__ == "__main__":
             if token:
                 cloud.token = token  # type: ignore[has-type]
                 if cloud.check_token():
-                    ipsyncer.token = token  # type: ignore[has-type]
+                    ipsyncer.token = token
                     ipsyncer.start()
                     print_white("Starting IP syncer.")
     except Exception as e:

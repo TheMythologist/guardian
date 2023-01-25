@@ -296,7 +296,7 @@ class IPSyncer:
                 for custom_list in lists:
                     outdated = []
                     new = {}
-                    for ip, item in custom_list:
+                    for ip, item in custom_list:  # type: ignore[attr-defined]
                         domain = item.get("value")
                         if domain:
                             try:

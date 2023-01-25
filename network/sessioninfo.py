@@ -1,5 +1,5 @@
 import timeit
-from typing import Optional
+from typing import Any, Optional, TypedDict
 
 from pydivert import packet
 
@@ -119,7 +119,7 @@ class IPTag:
     Container method for storing an IP with an arbitrary String attached.
     """
 
-    def __init__(self, ip, tag=""):
+    def __init__(self, ip, tag: str = ""):
         self.ip = ip
         self.tag = tag
 
@@ -127,7 +127,7 @@ class IPTag:
         return self.ip
 
     def get_tag(self):
-        return "".join(self.tag) if isinstance(self.tag, list) else self.tag
+        return self.tag
 
     def get_tag_raw(self):
         return self.tag
@@ -184,13 +184,13 @@ class SessionInfo:
         # # Terminate this thread if the parent gets terminated.
         # self.processing_thread.daemon = True
 
-    def start(self):
-        self.processing_thread.start()
+    # def start(self) -> None:
+    #     self.processing_thread.start()
 
-    def stop(self):
-        self.processing_thread.terminate()
+    # def stop(self) -> None:
+    #     self.processing_thread.terminate()
 
-    def add_packet(self, packet: packet.Packet, allowed: bool):
+    def add_packet(self, packet: packet.Packet, allowed: bool) -> None:
         """
         A packet was received by the filter and is now being shared with SessionInfo.
 
@@ -201,7 +201,7 @@ class SessionInfo:
         # filtering thread and so processing will happen later (and almost certainly on a different thread).
         self.packet_queue.put((packet, allowed), block=False)
 
-    def process_item(self, block=True):
+    def process_item(self, block=True) -> None:
         """
         Depletes the queue of a single packet that has been added from the filtering thread.
         Note that by default, whatever thread calls this method *will be blocked* until there is an item in the queue.
@@ -210,10 +210,9 @@ class SessionInfo:
         """
         # If there is a packet in the queue, get it (or wait for one)
         packet, allowed = self.packet_queue.get(block)
-        self.process_packet(packet, allowed)  # Actually process the packet.
-        return  # If you want to process another packet, you'll need to call this function again.
+        self.process_packet(packet, allowed)
 
-    def process_packet(self, packet: packet.Packet, allowed):
+    def process_packet(self, packet: packet.Packet, allowed) -> None:
         ip = packet.src_addr if packet.is_inbound else packet.dst_addr
 
         # If we're not aware of this destination, a new ConnectionStat (and conseq. IPTag) is required.
@@ -232,19 +231,17 @@ class SessionInfo:
         # updating con_stat here without saving / 'writing' the new state back into the proxy list wouldn't
         # actually change the data in connection_stats.
 
-    def add_con_stat_from_ip_tag(self, ip_tag: IPTag):
+    def add_con_stat_from_ip_tag(self, ip_tag: IPTag) -> None:
         """
         Adds an IP (with tag) to connection stats.
         """
         this_ip = ip_tag.get_ip()
 
         # If this IP has already been added, don't do it again.
-        if this_ip in self.known_ips:
-            return
-
-        # Add this_ip to dictionary with value of index into
-        self.known_ips[this_ip] = len(self.connection_stats)
-        self.connection_stats.append(ConnectionStats(ip_tag))
+        if this_ip not in self.known_ips:
+            # Add this_ip to dictionary with value of index into
+            self.known_ips[this_ip] = len(self.connection_stats)
+            self.connection_stats.append(ConnectionStats(ip_tag))
 
     def get_con_stat_from_ip(self, ip):
         """
@@ -260,17 +257,17 @@ class ConnectionStats:
     Stores the actual relevant information for a connection.
     """
 
-    def __init__(self, ip_tag):
+    def __init__(self, ip_tag: IPTag):
         self.ip_tag = ip_tag
-        self.packets = []
-        self.last_seen = None
+        self.packets: list[MinimalPacket] = []
+        self.last_seen = 0.0
         self.packets_in = 0
         self.packets_out = 0
         self.packets_allowed = 0
         self.packets_dropped = 0
         self.session_requests = 0
 
-    def add_packet(self, packet, allowed):
+    def add_packet(self, packet, allowed) -> None:
         """
         Give a packet to this connection statistic so the relevant information can be stored.
         """
@@ -294,18 +291,14 @@ class ConnectionStats:
         else:
             self.packets_dropped += 1
 
-    def is_connected(self, threshold=5):
+    def is_connected(self, threshold: int = 5) -> bool:
         # If we haven't seen any activity from this source in the last 'threshold' seconds, then we're not connected.
-        if self.last_seen is None:
-            return False
-        else:
-            return (timeit.default_timer() - self.last_seen) <= threshold
+        return (timeit.default_timer() - self.last_seen) <= threshold
 
     def get_last_seen_str(self):
-        if self.last_seen is None:
+        if self.last_seen == 0:
             return "Never"
-        else:
-            return f"{round((timeit.default_timer() - self.last_seen) * 1000)} ms ago"
+        return f"{round((timeit.default_timer() - self.last_seen) * 1000)} ms ago"
 
     # TODO: Introduce type-safety so we don't have to deal with shallow/deep copy shenanigans
     def get_tag_override(self):
@@ -322,7 +315,7 @@ class ConnectionStats:
         # Local / Public IP tags take precedence.
         if override in {"LOCAL IP", "PUBLIC IP"}:
             # TODO: Check if R* SERVICE
-            return self.ip_tag.get_tag()
+            return self.ip_tag.tag
         if self.is_connected():
             override = "CONNECTED"
         elif self.session_requests > 0:
@@ -337,7 +330,7 @@ class ConnectionStats:
         return tag
         # return override if isinstance(tag, str) else tag[1::].insert(0, override)
 
-    def get_info(self):
+    def get_info(self) -> dict[str, Any]:
         """
         Returns an anonymous dictionary of information about this connection.
         """
@@ -352,6 +345,10 @@ class ConnectionStats:
             "packets_allowed": self.packets_allowed,
             "packets_dropped": self.packets_dropped,
         }
+
+
+class ConnectionStatsData(TypedDict):
+    pass
 
 
 def generate_stats(connection_stats: list[ConnectionStats]) -> str:
