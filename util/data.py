@@ -4,7 +4,6 @@ from typing import Any, Iterable, TypedDict
 
 from questionary import ValidationError, confirm
 
-from network.networkmanager import Cloud
 from util.printer import print_white
 from util.validator import IPValidator
 
@@ -17,7 +16,6 @@ class MigrationRequired(Exception):
 
 
 class ConfigDataType(TypedDict, total=False):
-    token: str | None
     blacklist: dict[str, str]
     custom_ips: dict[str, str]
     friends: dict[str, str]
@@ -34,11 +32,12 @@ class ConfigData:
     class __DataSource:
         def __init__(self, data_file: str):
             self.data_file = data_file
-            self.data: ConfigDataType = {"token": None}
+            self.data: ConfigDataType
             if os.path.isfile(data_file):
                 with open(self.data_file, "r") as file:
                     self.data = json.load(file)
             else:
+                self.data = {}
                 self.__create()
 
             self.token = self.data.get("token", None)
@@ -114,7 +113,7 @@ class CustomList(ConfigData):
         if type(self.data) is list:
             raise MigrationRequired("Need to update to using dicts")
 
-    def __contains__(self, key):
+    def __contains__(self, key) -> bool:
         return key in self.data
 
     def __iter__(self) -> Iterable[tuple[str, Any]]:
@@ -183,38 +182,6 @@ class CustomList(ConfigData):
         :return: None
         """
         self.pop(key, None)
-
-
-def update_cloud_friends() -> CustomList:
-    """
-    Get the list of approved friends from cloud
-    :return: Dict of cloud friends
-    """
-    config = ConfigData(file_name)
-    friends = CustomList("friends")
-    token = config.get("token", None)
-    runner = Cloud(token)
-    cloud_friends_list = runner.get_friends()
-    for friend in cloud_friends_list:
-        ip, f = friends.find(friend.get("name"))
-        friend_item = {"name": friend.get("name"), "enabled": False}
-        if f:
-            friend_item = f
-            friends.delete(ip)
-        friends.add(friend.get("ip"), friend_item)
-    if isinstance(friends.data, dict):
-        missing = [
-            key
-            for key, friend in friends.data.items()
-            if all(
-                cloud_friend.get("name") != friend.get("name")
-                for cloud_friend in cloud_friends_list
-            )
-        ]
-        for key in missing:
-            friends.delete(key)
-    config.save()
-    return friends
 
 
 def migrate_to_dict() -> None:

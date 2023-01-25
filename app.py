@@ -1,4 +1,3 @@
-import contextlib
 import ctypes
 import json
 import logging
@@ -7,6 +6,7 @@ import socket
 import sys
 import time
 import traceback
+from typing import Optional
 import webbrowser
 import zipfile
 from multiprocessing import freeze_support
@@ -16,12 +16,13 @@ from colorama import Fore
 from prompt_toolkit.document import Document
 from prompt_toolkit.styles import Style
 from questionary import ValidationError, Validator, prompt
-from requests import RequestException
+import requests
 from tqdm import tqdm
 
 import util.data as data
-from network import networkmanager, sessioninfo
+from network import sessioninfo
 from network.blocker import (
+    AbstractPacketFilter,
     Blacklist,
     Debugger,
     IPCollector,
@@ -73,7 +74,8 @@ style = Style(
 
 
 def get_public_ip():
-    public_ip = networkmanager.Cloud().get_ip()
+    # Use https://www.ipify.org/
+    public_ip = requests.get('https://api.ipify.org?format=json').text
     if public_ip:
         logger.info("Got a public IP")
         return public_ip
@@ -128,22 +130,11 @@ class IPInBlacklist(Validator):
             )
 
 
-class ValidateToken(Validator):
-    def validate(self, document: Document):
-        conn = networkmanager.Cloud(document.text)
-        if not conn.check_connection():
-            raise ValidationError(
-                message="DigitalArc is unavailable, unable to check token",
-                cursor_position=len(document.text),
-            )
-
-        if not conn.check_token():
-            raise ValidationError(
-                message="Token invalid", cursor_position=len(document.text)
-            )
-
-
-def crash_report(exception, additional=None, filename=None):
+def crash_report(
+    exception: Exception,
+    additional: Optional[str] = None,
+    filename: Optional[str] = None,
+) -> None:
     if filename is None:
         filename = f"crashreport_{hex(int(time.time_ns()))[2:]}.log"
 
@@ -156,67 +147,52 @@ def crash_report(exception, additional=None, filename=None):
 
         if additional is not None:
             handle.write(f"\nAdditional info: {additional}\n")
-    return
 
 
-def main():
-    global cloud, config, custom_ips, blacklist, friends, dynamic_blacklist
+def menu() -> None:
+    global config, custom_ips, blacklist, friends, dynamic_blacklist
     while True:
-        token = config.get("token")
-        if token:
-            cloud.token = token
-            if cloud.check_connection():
-                logger.info("Cloud online.")
-                print_white("Cloud service online")
-
-                if cloud.check_token():
-                    data.update_cloud_friends()
-                else:
-                    logger.info("Invalid token.")
-                    print_white("Token invalid")
-
-            else:
-                logger.info("Cloud offline.")
-                print_white("Cloud service down")
         dynamic_blacklist_checker = (
             "Experimental" if len(dynamic_blacklist) > 0 else "Not working"
         )
-        options = {
-            "type": "list",
-            "name": "option",
-            "message": "What do you want?",
-            "qmark": "@",
-            "choices": [
-                {"name": "Solo session               [Working]", "value": "solo"},
-                {
-                    "name": "Whitelisted session        [Experimental]",
-                    "value": "whitelist",
-                },
-                {
-                    "name": f"Blacklisted session        [{dynamic_blacklist_checker}]",
-                    "value": "blacklist",
-                },
-                {
-                    "name": f"Auto whitelisted session   [{dynamic_blacklist_checker}]",
-                    "value": "auto_whitelist",
-                },
-                {
-                    "name": "Locked session             [Experimental]",
-                    "value": "lock_session",
-                },
-                {"name": "Kick unknowns              [Unstable]", "value": "kick"},
-                {"name": "New session                [Working]", "value": "new"},
-                {"name": "Lists", "value": "lists"},
-                {
-                    "name": "Kick by IP                 [Unstable]",
-                    "value": "kick_by_ip",
-                },
-                {"name": "Token", "value": "token"},
-                {"name": "Discord", "value": "discord"},
-                {"name": "Support zip", "value": "support_zip"},
-                {"name": "Quit", "value": "quit"},
-            ],
-        }
+        options = [
+            {
+                "type": "list",
+                "name": "option",
+                "message": "What do you want?",
+                "qmark": "@",
+                "choices": [
+                    {"name": "Solo session               [Working]", "value": "solo"},
+                    {
+                        "name": "Whitelisted session        [Experimental]",
+                        "value": "whitelist",
+                    },
+                    {
+                        "name": f"Blacklisted session        [{dynamic_blacklist_checker}]",
+                        "value": "blacklist",
+                    },
+                    {
+                        "name": f"Auto whitelisted session   [{dynamic_blacklist_checker}]",
+                        "value": "auto_whitelist",
+                    },
+                    {
+                        "name": "Locked session             [Experimental]",
+                        "value": "lock_session",
+                    },
+                    {"name": "Kick unknowns              [Unstable]", "value": "kick"},
+                    {"name": "New session                [Working]", "value": "new"},
+                    {"name": "Lists", "value": "lists"},
+                    {
+                        "name": "Kick by IP                 [Unstable]",
+                        "value": "kick_by_ip",
+                    },
+                    {"name": "Token", "value": "token"},
+                    {"name": "Discord", "value": "discord"},
+                    {"name": "Support zip", "value": "support_zip"},
+                    {"name": "Quit", "value": "quit"},
+                ],
+            }
+        ]
         answer = prompt(
             options,
             style=style,
@@ -228,6 +204,7 @@ def main():
         os.system("cls")
         option = answer["option"]
 
+        packet_filter: AbstractPacketFilter
         if option == "solo":
             print_white("SOLO SESSION:\n")
             print(
@@ -238,16 +215,18 @@ def main():
                 "they will lose connection to you.\n"
             )
 
-            options = {
-                "type": "list",
-                "name": "option",
-                "message": "Do you want to start this type of session?",
-                "qmark": "@",
-                "choices": [
-                    {"name": "Yes, start", "value": "start"},
-                    {"name": "No, go back", "value": "back"},
-                ],
-            }
+            options = [
+                {
+                    "type": "list",
+                    "name": "option",
+                    "message": "Do you want to start this type of session?",
+                    "qmark": "@",
+                    "choices": [
+                        {"name": "Yes, start", "value": "start"},
+                        {"name": "No, go back", "value": "back"},
+                    ],
+                }
+            ]
 
             answer = prompt(
                 options,
@@ -287,16 +266,18 @@ def main():
                 "list), you will lose connection to everyone else.\n"
             )
 
-            options = {
-                "type": "list",
-                "name": "option",
-                "message": "Do you want to start this type of session?",
-                "qmark": "@",
-                "choices": [
-                    {"name": "Yes, start", "value": "start"},
-                    {"name": "No, go back", "value": "back"},
-                ],
-            }
+            options = [
+                {
+                    "type": "list",
+                    "name": "option",
+                    "message": "Do you want to start this type of session?",
+                    "qmark": "@",
+                    "choices": [
+                        {"name": "Yes, start", "value": "start"},
+                        {"name": "No, go back", "value": "back"},
+                    ],
+                }
+            ]
 
             answer = prompt(
                 options,
@@ -332,13 +313,6 @@ def main():
                                 logger.warning("Not valid IP or URL: %s", ip)
                                 print_invalid_ip(ip)
                                 continue
-
-                    for ip, friend in friends:
-                        if friend.get("enabled"):
-                            ip_set.add(ip)
-                            ip_tags.append(
-                                sessioninfo.IPTag(ip, f"{friend.get('name')} [CLOUD]")
-                            )
 
                     logger.info("Starting whitelisted session with %d IPs", len(ip_set))
                     print_running_message("Whitelisted")
@@ -392,16 +366,18 @@ def main():
                 "IP addresses are blocked.\n"
             )
 
-            options = {
-                "type": "list",
-                "name": "option",
-                "message": "Do you want to start this type of session?",
-                "qmark": "@",
-                "choices": [
-                    {"name": "Yes, start", "value": "start"},
-                    {"name": "No, go back", "value": "back"},
-                ],
-            }
+            options = [
+                {
+                    "type": "list",
+                    "name": "option",
+                    "message": "Do you want to start this type of session?",
+                    "qmark": "@",
+                    "choices": [
+                        {"name": "Yes, start", "value": "start"},
+                        {"name": "No, go back", "value": "back"},
+                    ],
+                }
+            ]
 
             answer = prompt(
                 options,
@@ -420,20 +396,6 @@ def main():
                         allowed_ips.add(public_ip)
                     else:
                         print_white("Failed to get Public IP, running without")
-
-                    for ip, friend in custom_ips:
-                        if friend.get("enabled"):
-                            try:
-                                ip_calc = IPValidator.validate_get(ip)
-                                allowed_ips.add(ip_calc)
-                            except ValidationError:
-                                logger.warning("Not valid IP or URL: %s", ip)
-                                print_invalid_ip(ip)
-                                continue
-
-                    for ip, friend in friends:
-                        if friend.get("enabled"):
-                            allowed_ips.add(ip)
 
                     ip_set = set()
                     for ip, item in blacklist:
@@ -477,16 +439,18 @@ def main():
                 "your session may not properly protected.\n"
             )
 
-            options = {
-                "type": "list",
-                "name": "option",
-                "message": "Do you want to start this type of session?",
-                "qmark": "@",
-                "choices": [
-                    {"name": "Yes, start", "value": "start"},
-                    {"name": "No, go back", "value": "back"},
-                ],
-            }
+            options = [
+                {
+                    "type": "list",
+                    "name": "option",
+                    "message": "Do you want to start this type of session?",
+                    "qmark": "@",
+                    "choices": [
+                        {"name": "Yes, start", "value": "start"},
+                        {"name": "No, go back", "value": "back"},
+                    ],
+                }
+            ]
 
             answer = prompt(
                 options,
@@ -516,25 +480,27 @@ def main():
                                 potential_tunnels.add(ip)
                     if len(potential_tunnels) > 0:
                         c = [{"name": ip, "checked": False} for ip in potential_tunnels]
-                        options = {
-                            "type": "checkbox",
-                            "name": "option",
-                            "qmark": "@",
-                            "message": "",
-                            f"WARNING! Guardian has detected {len(potential_tunnels)} IP"
-                            + ("" if len(potential_tunnels) == 1 else "s")
-                            + " in your current session that may be used for "
-                            + "connection tunnelling, and may break session security if added to the whitelist.\nUnless "
-                            + "you know what you're doing, "
-                            + "it is HIGHLY RECOMMENDED that you DO NOT allow these IPs to be added to the whitelist.\n"
-                            + "Please note that excluding an IP from this list will likely result in players connected "
-                            + "through that IP to be dropped from the session.\nIf this happens, then you may have to "
-                            + "check both you and your friend's Windows Firewall settings to see why they can't directly "
-                            + "connect to you.\nIf this is a false-positive and you are sure an IP is a direct connection, "
-                            + "you can prevent this message from appearing by manually adding them to the Custom whitelist.\n\n"
-                            + "Select the potentially session security breaking IPs you wish to keep whitelisted, if any.\n"
-                            "choices": c,
-                        }
+                        options = [
+                            {
+                                "type": "checkbox",
+                                "name": "option",
+                                "qmark": "@",
+                                "message": "",
+                                f"WARNING! Guardian has detected {len(potential_tunnels)} IP"
+                                + ("" if len(potential_tunnels) == 1 else "s")
+                                + " in your current session that may be used for "
+                                + "connection tunnelling, and may break session security if added to the whitelist.\nUnless "
+                                + "you know what you're doing, "
+                                + "it is HIGHLY RECOMMENDED that you DO NOT allow these IPs to be added to the whitelist.\n"
+                                + "Please note that excluding an IP from this list will likely result in players connected "
+                                + "through that IP to be dropped from the session.\nIf this happens, then you may have to "
+                                + "check both you and your friend's Windows Firewall settings to see why they can't directly "
+                                + "connect to you.\nIf this is a false-positive and you are sure an IP is a direct connection, "
+                                + "you can prevent this message from appearing by manually adding them to the Custom whitelist.\n\n"
+                                + "Select the potentially session security breaking IPs you wish to keep whitelisted, if any.\n"
+                                "choices": c,
+                            }
+                        ]
                         answer = prompt(options, style=style)
                         print(answer)
                         if answer is not None:
@@ -569,10 +535,6 @@ def main():
                                 print_invalid_ip(ip)
                                 continue
 
-                    for ip, friend in friends:
-                        if friend.get("enabled"):
-                            ip_set.add(ip)
-
                     os.system("cls")
                     logger.info("Starting whitelisted session with %d IPs", len(ip_set))
                     print_running_message("Whitelisted")
@@ -602,16 +564,18 @@ def main():
                 "unless you end the Locked session.\n"
             )
 
-            options = {
-                "type": "list",
-                "name": "option",
-                "message": "Do you want to start this type of session?",
-                "qmark": "@",
-                "choices": [
-                    {"name": "Yes, start", "value": "start"},
-                    {"name": "No, go back", "value": "back"},
-                ],
-            }
+            options = [
+                {
+                    "type": "list",
+                    "name": "option",
+                    "message": "Do you want to start this type of session?",
+                    "qmark": "@",
+                    "choices": [
+                        {"name": "Yes, start", "value": "start"},
+                        {"name": "No, go back", "value": "back"},
+                    ],
+                }
+            ]
 
             answer = prompt(
                 options,
@@ -643,20 +607,21 @@ def main():
 
         elif option == "lists":
             while True:
-                options = {
-                    "type": "list",
-                    "name": "option",
-                    "qmark": "@",
-                    "message": "What do you want?",
-                    "choices": [
-                        {"name": "Custom", "value": "custom"},
-                        {"name": "Cloud", "value": "cloud"},
-                        {"name": "Blacklist", "value": "blacklist"},
-                        {"name": "MainMenu", "value": "return"},
-                    ],
-                }
+                options = [
+                    {
+                        "type": "list",
+                        "name": "option",
+                        "qmark": "@",
+                        "message": "What do you want?",
+                        "choices": [
+                            {"name": "Custom", "value": "custom"},
+                            {"name": "Blacklist", "value": "blacklist"},
+                            {"name": "MainMenu", "value": "return"},
+                        ],
+                    }
+                ]
                 if not config.get("token"):
-                    options["choices"][1]["disabled"] = "No token"
+                    options[0]["choices"][1]["disabled"] = "No token"
                 answer = prompt(options, style=style)
                 if not answer or answer["option"] == "return":
                     os.system("cls")
@@ -665,18 +630,20 @@ def main():
                 elif answer["option"] == "custom":
                     os.system("cls")
                     while True:
-                        options = {
-                            "type": "list",
-                            "name": "option",
-                            "qmark": "@",
-                            "message": "Custom list",
-                            "choices": [
-                                {"name": "Select", "value": "select"},
-                                {"name": "Add", "value": "add"},
-                                {"name": "List", "value": "list"},
-                                {"name": "MainMenu", "value": "return"},
-                            ],
-                        }
+                        options = [
+                            {
+                                "type": "list",
+                                "name": "option",
+                                "qmark": "@",
+                                "message": "Custom list",
+                                "choices": [
+                                    {"name": "Select", "value": "select"},
+                                    {"name": "Add", "value": "add"},
+                                    {"name": "List", "value": "list"},
+                                    {"name": "MainMenu", "value": "return"},
+                                ],
+                            }
+                        ]
                         answer = prompt(options, style=style)
 
                         if not answer or answer["option"] == "return":
@@ -686,7 +653,7 @@ def main():
                         elif answer["option"] == "select":
                             os.system("cls")
                             if len(custom_ips) <= 0:
-                                print_white("No friends")
+                                print_white("No custom lists")
                                 continue
                             else:
                                 c = [
@@ -696,13 +663,15 @@ def main():
                                     }
                                     for ip, f in custom_ips
                                 ]
-                                options = {
-                                    "type": "checkbox",
-                                    "name": "option",
-                                    "qmark": "@",
-                                    "message": "Select who to enable",
-                                    "choices": c,
-                                }
+                                options = [
+                                    {
+                                        "type": "checkbox",
+                                        "name": "option",
+                                        "qmark": "@",
+                                        "message": "Select who to enable",
+                                        "choices": c,
+                                    }
+                                ]
                                 answer = prompt(options, style=style)
                                 if not answer:
                                     os.system("cls")
@@ -718,13 +687,6 @@ def main():
                         elif answer["option"] == "add":
                             os.system("cls")
                             options = [
-                                {
-                                    "type": "input",
-                                    "name": "name",
-                                    "message": "Name",
-                                    "qmark": "@",
-                                    "validate": NameInCustom,
-                                },
                                 {
                                     "type": "input",
                                     "name": "ip",
@@ -752,30 +714,31 @@ def main():
                             os.system("cls")
                             while True:
                                 if len(custom_ips) <= 0:
-                                    print_white("No friends")
+                                    print_white("No custom lists")
                                     break
-                                else:
-                                    c = [
-                                        {
-                                            "name": f.get("name"),
-                                            "checked": True
-                                            if f.get("enabled")
-                                            else None,
-                                        }
-                                        for ip, f in custom_ips
-                                    ]
-                                    options = {
+                                c = [
+                                    {
+                                        "name": f.get("name"),
+                                        "checked": True if f.get("enabled") else None,
+                                    }
+                                    for ip, f in custom_ips
+                                ]
+                                options = [
+                                    {
                                         "type": "list",
                                         "name": "name",
                                         "qmark": "@",
-                                        "message": "Select who view",
+                                        "message": "Select which list to view",
                                         "choices": c,
                                     }
-                                    name = prompt(options, style=style)
-                                    if not name:
-                                        os.system("cls")
-                                        break
-                                    options = {
+                                ]
+                                answer = prompt(options, style=style)
+                                if not answer:
+                                    os.system("cls")
+                                    break
+                                list_name = answer["name"]
+                                options = [
+                                    {
                                         "type": "list",
                                         "name": "option",
                                         "qmark": "@",
@@ -786,84 +749,75 @@ def main():
                                             {"name": "Back", "value": "return"},
                                         ],
                                     }
-                                    name = name["name"]
-                                    answer = prompt(options, style=style)
-                                    if not answer or answer["option"] == "return":
-                                        os.system("cls")
-                                        break
+                                ]
+                                answer = prompt(options, style=style)
+                                if not answer or answer["option"] == "return":
+                                    os.system("cls")
+                                    break
 
-                                    elif answer["option"] == "edit":
-                                        while True:
-                                            print(
-                                                "Notice, user deleted. Press enter to go back / Save. Quit and you lose him."
-                                            )
-                                            ip, item = custom_ips.find(name)
-                                            entry = item.get("value", ip)
-                                            custom_ips.delete(ip)
-                                            config.save()
-                                            options = [
-                                                {
-                                                    "type": "input",
-                                                    "name": "name",
-                                                    "message": "Name",
-                                                    "qmark": "@",
-                                                    "validate": NameInCustom,
-                                                    "default": name,
-                                                },
-                                                {
-                                                    "type": "input",
-                                                    "name": "ip",
-                                                    "message": "IP/URL",
-                                                    "qmark": "@",
-                                                    "validate": IPInCustom,
-                                                    "default": entry,
-                                                },
-                                            ]
-
-                                            answer = prompt(options, style=style)
-                                            if not answer:
-                                                os.system("cls")
-                                                break
-                                            try:
-                                                ip = IPValidator.validate_get(
-                                                    answer["ip"]
-                                                )
-                                                item["name"] = answer["name"]
-                                                item["enabled"] = True
-                                                if ip != answer["ip"]:
-                                                    item["value"] = answer["ip"]
-                                                custom_ips.add(ip, item)
-                                                config.save()
-                                                os.system("cls")
-                                            except ValidationError as e:
-                                                custom_ips.add(ip, item)
-                                                config.save()
-                                                print_white(
-                                                    "Original item was restored due to error: "
-                                                    + e.message
-                                                )
-                                            break
-
-                                    elif answer["option"] == "delete":
-                                        ip, item = custom_ips.find(name)
+                                elif answer["option"] == "edit":
+                                    while True:
+                                        print(
+                                            "Notice, user deleted. Press enter to go back / Save. Quit and you lose him."
+                                        )
+                                        ip, item = custom_ips.find(list_name)
+                                        entry = item.get("value", ip)
                                         custom_ips.delete(ip)
                                         config.save()
+                                        options = [
+                                            {
+                                                "type": "input",
+                                                "name": "ip",
+                                                "message": "IP/URL",
+                                                "qmark": "@",
+                                                "validate": IPInCustom,
+                                                "default": entry,
+                                            },
+                                        ]
+
+                                        answer = prompt(options, style=style)
+                                        if not answer:
+                                            os.system("cls")
+                                            break
+                                        try:
+                                            ip = IPValidator.validate_get(answer["ip"])
+                                            item["name"] = answer["name"]
+                                            item["enabled"] = True
+                                            if ip != answer["ip"]:
+                                                item["value"] = answer["ip"]
+                                            custom_ips.add(ip, item)
+                                            config.save()
+                                            os.system("cls")
+                                        except ValidationError as e:
+                                            custom_ips.add(ip, item)
+                                            config.save()
+                                            print_white(
+                                                "Original item was restored due to error: "
+                                                + e.message
+                                            )
+
+                                elif answer["option"] == "delete":
+                                    ip, item = custom_ips.find(list_name)
+                                    custom_ips.delete(ip)
+                                    config.save()
 
                 elif answer["option"] == "blacklist":
                     os.system("cls")
                     while True:
-                        options = {
-                            "type": "list",
-                            "name": "option",
-                            "qmark": "@",
-                            "message": "Blacklist",
-                            "choices": [
-                                {"name": "Select", "value": "select"},
-                                {"name": "Add", "value": "add"},
-                                {"name": "List", "value": "list"},
-                                {"name": "MainMenu", "value": "return"},
-                            ],
-                        }
+                        options = [
+                            {
+                                "type": "list",
+                                "name": "option",
+                                "qmark": "@",
+                                "message": "Blacklist",
+                                "choices": [
+                                    {"name": "Select", "value": "select"},
+                                    {"name": "Add", "value": "add"},
+                                    {"name": "List", "value": "list"},
+                                    {"name": "MainMenu", "value": "return"},
+                                ],
+                            }
+                        ]
                         answer = prompt(options, style=style)
 
                         if not answer or answer["option"] == "return":
@@ -873,32 +827,31 @@ def main():
                         elif answer["option"] == "select":
                             os.system("cls")
                             if len(blacklist) <= 0:
-                                print_white("No ips")
+                                print_white("No blacklist ips")
                                 continue
-                            else:
-                                c = [
-                                    {
-                                        "name": f.get("name"),
-                                        "checked": True if f.get("enabled") else None,
-                                    }
-                                    for ip, f in blacklist
-                                ]
-                                options = {
+                            c = [
+                                {
+                                    "name": f.get("name"),
+                                    "checked": True if f.get("enabled") else None,
+                                }
+                                for ip, f in blacklist
+                            ]
+                            options = [
+                                {
                                     "type": "checkbox",
                                     "name": "option",
                                     "qmark": "@",
                                     "message": "Select who to enable",
                                     "choices": c,
                                 }
-                                answer = prompt(options, style=style)
-                                if not answer:
-                                    os.system("cls")
-                                    continue
-                                for ip, item in blacklist:
-                                    item["enabled"] = (
-                                        item.get("name") in answer["option"]
-                                    )
-                                config.save()
+                            ]
+                            answer = prompt(options, style=style)
+                            if not answer:
+                                os.system("cls")
+                                continue
+                            for ip, item in blacklist:
+                                item["enabled"] = item.get("name") in answer["option"]
+                            config.save()
 
                         elif answer["option"] == "add":
                             os.system("cls")
@@ -937,30 +890,31 @@ def main():
                             os.system("cls")
                             while True:
                                 if len(blacklist) <= 0:
-                                    print_white("No friends")
+                                    print_white("No blacklist ips")
                                     break
-                                else:
-                                    c = [
-                                        {
-                                            "name": f.get("name"),
-                                            "checked": True
-                                            if f.get("enabled")
-                                            else None,
-                                        }
-                                        for ip, f in blacklist
-                                    ]
-                                    options = {
+                                c = [
+                                    {
+                                        "name": f.get("name"),
+                                        "checked": True if f.get("enabled") else None,
+                                    }
+                                    for ip, f in blacklist
+                                ]
+                                options = [
+                                    {
                                         "type": "list",
                                         "name": "name",
                                         "qmark": "@",
-                                        "message": "Select who view",
+                                        "message": "Select who to view",
                                         "choices": c,
                                     }
-                                    name = prompt(options, style=style)
-                                    if not name:
-                                        os.system("cls")
-                                        break
-                                    options = {
+                                ]
+                                answer = prompt(options, style=style)
+                                if not answer:
+                                    os.system("cls")
+                                    break
+                                name = answer["name"]
+                                options = [
+                                    {
                                         "type": "list",
                                         "name": "option",
                                         "qmark": "@",
@@ -971,261 +925,65 @@ def main():
                                             {"name": "Back", "value": "return"},
                                         ],
                                     }
-                                    name = name["name"]
-                                    answer = prompt(options, style=style)
-                                    if not answer or answer["option"] == "return":
-                                        os.system("cls")
-                                        break
-
-                                    elif answer["option"] == "edit":
-                                        while True:
-                                            print(
-                                                "Notice, user deleted. Press enter to go back / Save. Quit and you lose him."
-                                            )
-                                            ip, item = blacklist.find(name)
-                                            blacklist.delete(ip)
-                                            config.save()
-                                            entry = item.get("value", ip)
-                                            options = [
-                                                {
-                                                    "type": "input",
-                                                    "name": "name",
-                                                    "message": "Name",
-                                                    "qmark": "@",
-                                                    "validate": NameInBlacklist,
-                                                    "default": name,
-                                                },
-                                                {
-                                                    "type": "input",
-                                                    "name": "ip",
-                                                    "message": "IP/URL",
-                                                    "qmark": "@",
-                                                    "validate": IPInBlacklist,
-                                                    "default": entry,
-                                                },
-                                            ]
-
-                                            answer = prompt(options, style=style)
-                                            if not answer:
-                                                os.system("cls")
-                                                break
-                                            try:
-                                                ip = IPValidator.validate_get(
-                                                    answer["ip"]
-                                                )
-                                                item["name"] = answer["name"]
-                                                item["enabled"] = True
-                                                if ip != answer["ip"]:
-                                                    item["value"] = answer["ip"]
-                                                blacklist.add(ip, item)
-                                                config.save()
-                                                os.system("cls")
-                                            except ValidationError as e:
-                                                blacklist.add(ip, item)
-                                                config.save()
-                                                print_white(
-                                                    "Original item was restored due to error: "
-                                                    + e.message
-                                                )
-                                            break
-
-                                    elif answer["option"] == "delete":
-                                        ip, item = blacklist.find(name)
-                                        blacklist.delete(ip)
-                                        config.save()
-
-                elif answer["option"] == "cloud":
-                    os.system("cls")
-                    while True:
-                        options = {
-                            "type": "list",
-                            "name": "option",
-                            "qmark": "@",
-                            "message": "Custom list",
-                            "choices": [
-                                {"name": "Select", "value": "select"},
-                                {"name": "Permission", "value": "permission"},
-                                {"name": "Return", "value": "return"},
-                            ],
-                        }
-                        answer = prompt(options, style=style)
-
-                        if not answer or answer["option"] == "return":
-                            os.system("cls")
-                            break
-
-                        elif answer["option"] == "select":
-                            os.system("cls")
-                            data.update_cloud_friends()
-                            if len(friends) <= 0:
-                                print_white("No friends")
-                                break
-                            else:
-                                options = {
-                                    "type": "checkbox",
-                                    "name": "option",
-                                    "qmark": "@",
-                                    "message": "Select who to enable",
-                                    "choices": [
-                                        {
-                                            "name": f.get("name"),
-                                            "value": f.get("name"),
-                                            "checked": True
-                                            if f.get("enabled")
-                                            else None,
-                                        }
-                                        for ip, f in friends
-                                    ],
-                                }
-                                answer = prompt(options, style=style)
-                                if not answer:
-                                    os.system("cls")
-                                    break
-                                for ip, f in friends:
-                                    f["enabled"] = f.get("name") in answer["option"]
-                                config.save()
-
-                        elif answer["option"] == "permission":
-                            os.system("cls")
-                            while True:
-                                token = config.get("token")
-                                cloud = networkmanager.Cloud(token)
-                                if not cloud.check_connection():
-                                    print_white("Cloud service down")
-                                    break
-
-                                options = {
-                                    "type": "list",
-                                    "name": "option",
-                                    "qmark": "@",
-                                    "message": "Custom list",
-                                    "choices": [
-                                        {
-                                            "name": "Revoke permission",
-                                            "value": "revoke",
-                                        },
-                                        {
-                                            "name": "Request permission",
-                                            "value": "request",
-                                        },
-                                        {
-                                            "name": "Pending requests",
-                                            "value": "pending",
-                                        },
-                                        {"name": "Return", "value": "return"},
-                                    ],
-                                }
+                                ]
                                 answer = prompt(options, style=style)
                                 if not answer or answer["option"] == "return":
                                     os.system("cls")
                                     break
 
-                                elif answer["option"] == "revoke":
-                                    # My perms
-                                    os.system("cls")
+                                elif answer["option"] == "edit":
                                     while True:
-                                        allowed_ips = cloud.get_allowed()
-                                        if len(allowed_ips) <= 0:
-                                            print_white("None")
-                                            break
-                                        options = {
-                                            "type": "list",
-                                            "name": "option",
-                                            "qmark": "@",
-                                            "message": "Who to revoke",
-                                            "choices": [
-                                                f.get("name") for f in allowed_ips
-                                            ],
-                                        }
+                                        print(
+                                            "Notice, user deleted. Press enter to go back / Save. Quit and you lose him."
+                                        )
+                                        ip, item = blacklist.find(name)
+                                        blacklist.delete(ip)
+                                        config.save()
+                                        entry = item.get("value", ip)
+                                        options = [
+                                            {
+                                                "type": "input",
+                                                "name": "name",
+                                                "message": "Name",
+                                                "qmark": "@",
+                                                "validate": NameInBlacklist,
+                                                "default": name,
+                                            },
+                                            {
+                                                "type": "input",
+                                                "name": "ip",
+                                                "message": "IP/URL",
+                                                "qmark": "@",
+                                                "validate": IPInBlacklist,
+                                                "default": entry,
+                                            },
+                                        ]
+
                                         answer = prompt(options, style=style)
                                         if not answer:
                                             os.system("cls")
                                             break
-                                        name = answer["option"]
-                                        code, msg = cloud.revoke(name)
-                                        if code == 200:
-                                            print_white("Revoked")
-                                        else:
-                                            print_white(str(msg.get("error")))
-
-                                elif answer["option"] == "request":
-                                    # My friends who I don't have perms from
-                                    os.system("cls")
-                                    while True:
-                                        friends = cloud.get_all()
-                                        if len(friends) <= 0:
-                                            print_white("No friends")
-                                            break
-                                        options = {
-                                            "type": "list",
-                                            "name": "option",
-                                            "qmark": "@",
-                                            "message": "Request from who",
-                                            "choices": [
-                                                f.get("name") for ip, f in friends
-                                            ],
-                                        }
-                                        answer = prompt(options, style=style)
-                                        if not answer:
+                                        try:
+                                            ip = IPValidator.validate_get(answer["ip"])
+                                            item["name"] = answer["name"]
+                                            item["enabled"] = True
+                                            if ip != answer["ip"]:
+                                                item["value"] = answer["ip"]
+                                            blacklist.add(ip, item)
+                                            config.save()
                                             os.system("cls")
-                                            break
-                                        name = answer["option"]
-                                        result, msg = cloud.request(name)
-                                        if result:
-                                            print_white("Request sent")
-                                        else:
-                                            print_white(str(msg))
+                                        except ValidationError as e:
+                                            blacklist.add(ip, item)
+                                            config.save()
+                                            print_white(
+                                                "Original item was restored due to error: "
+                                                + e.message
+                                            )
 
-                                elif answer["option"] == "pending":
-                                    # friends who requested permission from me
-                                    os.system("cls")
-                                    while True:
-                                        pending = cloud.get_pending()
-                                        if len(pending) <= 0:
-                                            print_white("None")
-                                            break
-                                        options = {
-                                            "type": "list",
-                                            "name": "option",
-                                            "qmark": "@",
-                                            "message": "Select user",
-                                            "choices": [f.get("name") for f in pending],
-                                        }
-                                        answer = prompt(options, style=style)
-                                        name = answer["option"]
-                                        if not answer:
-                                            os.system("cls")
-                                            break
-
-                                        options = {
-                                            "type": "list",
-                                            "name": "option",
-                                            "qmark": "@",
-                                            "message": "Option",
-                                            "choices": [
-                                                {"name": "Decline", "value": "decline"},
-                                                {"name": "Accept", "value": "accept"},
-                                                {"name": "Return", "value": "return"},
-                                            ],
-                                        }
-                                        answer = prompt(options, style=style)
-
-                                        if not answer or answer["option"] == "return":
-                                            os.system("cls")
-                                            break
-                                        elif answer["option"] == "accept":
-                                            result, msg = cloud.accept(name)
-                                            if result:
-                                                print_white("Accepted")
-                                            else:
-                                                print_white(str(msg))
-
-                                        elif answer["option"] == "decline":
-                                            result, msg = cloud.revoke(name)
-                                            if result:
-                                                print_white("Request declined")
-                                            else:
-                                                print_white(str(msg))
+                                elif answer["option"] == "delete":
+                                    ip, item = blacklist.find(name)
+                                    blacklist.delete(ip)
+                                    config.save()
 
         elif option == "kick_by_ip":
             collector = IPCollector()
@@ -1238,13 +996,15 @@ def main():
             if len(ip_set) <= 0:
                 print_white("None")
                 break
-            options = {
-                "type": "checkbox",
-                "name": "option",
-                "qmark": "@",
-                "message": "Select IP's to kick",
-                "choices": [ip for ip in ip_set],
-            }
+            options = [
+                {
+                    "type": "checkbox",
+                    "name": "option",
+                    "qmark": "@",
+                    "message": "Select IP's to kick",
+                    "choices": [ip for ip in ip_set],
+                }
+            ]
             answer = prompt(options, style=style)
             if not answer:
                 os.system("cls")
@@ -1281,9 +1041,6 @@ def main():
                         print_invalid_ip(ip)
                         continue
 
-            for ip, friend in friends:
-                if friend.get("enabled"):
-                    ip_set.add(ip)
             print_white("Kicking unknowns")
             time.sleep(2)
             packet_filter = Whitelist(ips=ip_set)
@@ -1295,37 +1052,11 @@ def main():
         elif option == "new":
             print_white("Creating new session")
             time.sleep(2)
-            packet_filter = Whitelist(ips={})
+            packet_filter = Whitelist(ips=set())
             packet_filter.start()
             time.sleep(10)
             packet_filter.stop()
             continue
-
-        elif option == "token":
-            token = config.get("token")
-            options = {
-                "type": "input",
-                "name": "token",
-                "qmark": "@",
-                "message": "Paste your token:",
-                "validate": ValidateToken,
-            }
-            if token:
-                options["default"] = token
-            answer = prompt(options, style=style)
-            if not answer:
-                os.system("cls")
-                continue
-            config.set("token", answer["token"])
-            config.save()
-            os.system("cls")
-            print_white(
-                'New token: "'
-                + Fore.LIGHTCYAN_EX
-                + answer["token"]
-                + Fore.LIGHTWHITE_EX
-                + '"'
-            )
 
         elif option == "discord":
             os.system("cls")
@@ -1338,83 +1069,35 @@ def main():
                 "NOTICE: This program will now log all udp traffic on port 6672 for 1 minute. "
                 "Only run this if you are okay with that."
             )
-            options = {
-                "type": "confirm",
-                "name": "agree",
-                "qmark": "@",
-                "message": "Agree?",
-            }
+            options = [
+                {
+                    "type": "confirm",
+                    "name": "agree",
+                    "qmark": "@",
+                    "message": "Agree?",
+                }
+            ]
             answer = prompt(options, style=style)
             if not answer:
                 os.system("cls")
                 continue
             if answer.get("agree"):
-                local_list = config.get("custom_ips")
-                cloud_list = config.get("friends")
-                ip_set = set()
-                for friend in local_list:
-                    if friend.get("enabled"):
-                        try:
-                            ip = IPValidator.validate_get(friend.get("ip"))
-                            ip_set.add(ip)
-                        except ValidationError:
-                            continue
-                for friend in cloud_list:
-                    if friend.get("enabled"):
-                        ip_set.add(friend.get("ip"))
                 debugger = Debugger(ip_set)
                 debugger.start()
                 for _ in tqdm(range(60), ascii=True, desc="Collecting Requests"):
                     time.sleep(1)
                 debugger.stop()
                 time.sleep(1)
-                print_white("Collecting data")
-                token = config.get("token")
-                print_white("Checking connections")
-                runner = networkmanager.Cloud()
-                if runner.check_connection():
-                    da_status = "Online"
-                else:
-                    da_status = "Offline"
-                if da_status and token:
-                    runner = networkmanager.Cloud(token)
-                    if da_status == "Online":
-                        if runner.check_token():
-                            has_token = "Has a valid token"
-                        else:
-                            has_token = "Has a invalid token"
-                    else:
-                        has_token = "Has token but could not check it"
-                else:
-                    has_token = "Does not have a token"
-
-                datas = {
-                    "token": has_token,
-                    "da_status": da_status,
-                    "customlist": custom_ips,
-                    "cloud": friends,
-                }
-
-                print_white("Writing data")
-                with open("datacheck.json", "w+") as datafile:
-                    json.dump(datas, datafile, indent=2)
                 print_white("Packing debug request")
                 with zipfile.ZipFile(
                     f"debugger-{time.strftime('%Y%m%d-%H%M%S')}.zip",
                     "w",
                     zipfile.ZIP_DEFLATED,
                 ) as compressed:
-                    compressed.write("datacheck.json")
-                    with contextlib.suppress(FileNotFoundError):
-                        compressed.write("debugger.log")
-                    os.remove("datacheck.json")
-                    with contextlib.suppress(FileNotFoundError):
-                        os.remove("debugger.log")
-                    print_white("Finished")
-                continue
+                    compressed.write("debugger.log")
+                print_white("Finished")
             else:
                 print_white("Declined")
-                continue
 
         elif option == "quit":
             if pydivert.WinDivert.is_registered():
@@ -1458,8 +1141,6 @@ if __name__ == "__main__":
                     # ID_ABORT = 0x3, ID_RETRY = 0x4, ID_IGNORE = 0x5
                     if choice == 0x3:
                         sys.exit(-2)
-                    elif choice == 0x4:
-                        pass  # we'll hit the bottom of the loop and try again
                     else:
                         separator = data.file_name.rindex(".")
                         new_name = f"{data.file_name[:separator]}_{hex(int(time.time_ns()))[2:]}{data.file_name[separator:]}"
@@ -1488,7 +1169,6 @@ if __name__ == "__main__":
         if not pydivert.WinDivert.is_registered():
             pydivert.WinDivert.register()
         ctypes.windll.kernel32.SetConsoleTitleW(f"Guardian {version}")
-        cloud = networkmanager.Cloud()
         ipsyncer = IPSyncer(None)
         print_white("Building dynamic blacklist...")
         dynamic_blacklist = set()
@@ -1496,7 +1176,7 @@ if __name__ == "__main__":
             dynamic_blacklist = get_dynamic_blacklist()
         except (
             ScrapeError,
-            RequestException,
+            requests.RequestException,
             json.decoder.JSONDecodeError,
             IndexError,
             ValueError,
@@ -1509,22 +1189,13 @@ if __name__ == "__main__":
             )
             time.sleep(3)
         print_white("Checking connections.")
-        if cloud.check_connection():
-            # TODO: Implement checking of latest version
-            token = config.get("token")
-            if token:
-                cloud.token = token  # type: ignore[has-type]
-                if cloud.check_token():
-                    ipsyncer.token = token
-                    ipsyncer.start()
-                    print_white("Starting IP syncer.")
     except Exception as e:
         crash_report(e, "Guardian crashed before reaching main()")
         raise
 
     while True:
         try:
-            main()
+            menu()
         except KeyboardInterrupt:
             continue
         except Exception as e:

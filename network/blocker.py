@@ -9,7 +9,7 @@ import pydivert
 from questionary import ValidationError
 
 import util.data as data
-from network import networkmanager, sessioninfo
+from network import sessioninfo
 from util.DynamicBlacklist import ip_in_cidr_block_set
 from util.validator import IPValidator
 
@@ -288,9 +288,6 @@ class IPSyncer:
     def run(self) -> None:
         while not self.exit.is_set():
             with contextlib.suppress(KeyboardInterrupt):
-                conn = networkmanager.Cloud(self.token)
-                if conn.check_token() and not conn.set_ip():
-                    logger.warning("Failed to update cloud IP")
                 config = data.ConfigData(data.file_name)
                 lists = (data.CustomList("blacklist"), data.CustomList("custom_ips"))
                 for custom_list in lists:
