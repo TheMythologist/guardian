@@ -1,7 +1,9 @@
-import timeit
-from typing import Any, Optional, TypedDict
+from typing import Optional, TypedDict
 
 from pydivert import packet
+
+from network.connectionstats import ConnectionStats
+from network.iptag import IPTag
 
 # Ok so now that we've finally figured out most of the bugs / problems with pickling packets we can now actually start
 # to curate information from packets (and perhaps even other metrics) that can be displayed. I have a couple ideas:
@@ -87,46 +89,6 @@ from pydivert import packet
 # Can we also add coloured rows to the list? Would be pretty pog to see rows turn green when a packet was accepted, red when a packet was rejected, etc.
 
 
-class MinimalPacket:
-    def __init__(self, packet: packet.Packet):
-        self.payload_length = len(packet.payload)
-        self.src_addr = packet.src_addr
-        self.src_port = packet.src_port
-        self.dst_addr = packet.dst_addr
-        self.dst_port = packet.dst_port
-        self.is_inbound = packet.is_inbound
-        self.is_outbound = packet.is_outbound
-        self.direction = packet.direction
-
-
-def safe_pickle_packet(packet: packet.Packet) -> MinimalPacket:
-    """
-    Returns a variant of a PyDivert packet that:
-    a) can be pickled (typical PyDivert packets use MemoryView which cannot be pickled)
-    b) has had certain untrusted, external information redacted (code execution can occur when unpickling, i.e.
-       certain externally-controllable characteristics like packet content should be removed)
-    """
-    # Delete the raw payload content. We don't need it (it's encrypted anyways) and modded clients can send raw bytes
-    # to other clients, including us, which could allow arbitrary code execution to occur when unpickling packet objects.
-    # (See https://docs.python.org/3/library/pickle.html)
-
-    # TODO: Investigate performance of serialization with JSON instead of pickling to improve program security.
-    return MinimalPacket(packet)
-
-
-class IPTag:
-    """
-    Container method for storing an IP with an arbitrary String attached.
-    """
-
-    def __init__(self, ip: str, tag: str = ""):
-        self.ip = ip
-        self.tag = tag
-
-    def set_tag(self, tag: str):
-        self.tag = tag
-
-
 class SessionInfo:
     """
     Returns human-readable strings that expose session information to the user after being supplied captured packets.
@@ -140,13 +102,13 @@ class SessionInfo:
 
     known_ips: Dictionary of known IPs, used to check if an IP has been seen previously.
         Value stored is the index into an array of ConnectionStats.
-    connection_stats: Array of ConnectionStats, which contain the calculations and statistics of connections. (duh)
+    connection_stats: Array of ConnectionStats, which contain the calculations and statistics of connections.
     """
 
     def __init__(
         self,
         proxy_dict,
-        proxy_list,
+        proxy_list: list[ConnectionStats],
         proxy_queue,
         initial_ips: Optional[list[IPTag]] = None,
     ):
@@ -154,7 +116,7 @@ class SessionInfo:
             initial_ips = []
 
         self.known_ips = proxy_dict
-        self.connection_stats = proxy_list
+        self.connection_stats: list[ConnectionStats] = proxy_list
 
         for ip_tag in initial_ips:
             self.add_con_stat_from_ip_tag(ip_tag)
@@ -241,84 +203,6 @@ class SessionInfo:
         NOTE: Will throw KeyError there is no ConnectionStat for the given ip.
         """
         return self.connection_stats[self.known_ips[ip]]
-
-
-class ConnectionStats:
-    """
-    Stores the actual relevant information for a connection.
-    """
-
-    def __init__(self, ip_tag: IPTag):
-        self.ip_tag = ip_tag
-        self.packets: list[MinimalPacket] = []
-        self.last_seen = 0.0
-        self.packets_in = 0
-        self.packets_out = 0
-        self.packets_allowed = 0
-        self.packets_dropped = 0
-        self.session_requests = 0
-
-    def add_packet(self, packet: MinimalPacket, allowed: bool) -> None:
-        """
-        Give a packet to this connection statistic so the relevant information can be stored.
-        """
-        self.packets.append(packet)
-        if (
-            packet.is_outbound
-            and packet.payload_length == 125
-            and not self.is_connected(3)
-        ):
-            self.session_requests += 1
-        self.last_seen = timeit.default_timer()
-
-        # Generic counters
-        if packet.is_inbound:
-            self.packets_in += 1
-        elif packet.is_outbound:
-            self.packets_out += 1
-
-        if allowed:
-            self.packets_allowed += 1
-        else:
-            self.packets_dropped += 1
-
-    def is_connected(self, threshold: int = 5) -> bool:
-        # If we haven't seen any activity from this source in the last 'threshold' seconds, then we're not connected.
-        return (timeit.default_timer() - self.last_seen) <= threshold
-
-    def get_last_seen_str(self):
-        if self.last_seen == 0:
-            return "Never"
-        return f"{round((timeit.default_timer() - self.last_seen) * 1000)} ms ago"
-
-    def get_tag_override(self):
-        tag = self.ip_tag.tag
-
-        # Local / Public IP tags take precedence.
-        if tag in {"LOCAL IP", "PUBLIC IP"}:
-            # TODO: Check if R* SERVICE
-            return tag
-        if self.is_connected():
-            return "CONNECTED"
-        elif self.session_requests > 0:
-            return f"{self.session_requests}x JOIN REQ"
-        return tag
-
-    def get_info(self) -> dict[str, Any]:
-        """
-        Returns an anonymous dictionary of information about this connection.
-        """
-        return {
-            "ip": self.ip_tag.ip,
-            "tag": self.get_tag_override(),
-            "packet_count": len(self.packets),
-            "is_connected": self.is_connected(3),
-            "last_seen": self.get_last_seen_str(),
-            "packets_in": self.packets_in,
-            "packets_out": self.packets_out,
-            "packets_allowed": self.packets_allowed,
-            "packets_dropped": self.packets_dropped,
-        }
 
 
 class ConnectionStatsData(TypedDict):
