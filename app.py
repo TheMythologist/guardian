@@ -6,17 +6,17 @@ import socket
 import sys
 import time
 import traceback
-from typing import Optional
 import webbrowser
 import zipfile
 from multiprocessing import freeze_support
+from typing import Optional
 
 import pydivert
+import requests
 from colorama import Fore
 from prompt_toolkit.document import Document
 from prompt_toolkit.styles import Style
 from questionary import ValidationError, Validator, prompt
-import requests
 from tqdm import tqdm
 
 import util.data as data
@@ -26,7 +26,6 @@ from network.blocker import (
     Blacklist,
     Debugger,
     IPCollector,
-    IPSyncer,
     Locked,
     Solo,
     Whitelist,
@@ -75,7 +74,7 @@ style = Style(
 
 def get_public_ip():
     # Use https://www.ipify.org/
-    public_ip = requests.get('https://api.ipify.org?format=json').text
+    public_ip = requests.get("https://api.ipify.org?format=json").text
     if public_ip:
         logger.info("Got a public IP")
         return public_ip
@@ -149,7 +148,7 @@ def crash_report(
             handle.write(f"\nAdditional info: {additional}\n")
 
 
-def menu() -> None:
+def menu():
     global config, custom_ips, blacklist, friends, dynamic_blacklist
     while True:
         dynamic_blacklist_checker = (
@@ -1169,7 +1168,6 @@ if __name__ == "__main__":
         if not pydivert.WinDivert.is_registered():
             pydivert.WinDivert.register()
         ctypes.windll.kernel32.SetConsoleTitleW(f"Guardian {version}")
-        ipsyncer = IPSyncer(None)
         print_white("Building dynamic blacklist...")
         dynamic_blacklist = set()
         try:
@@ -1201,5 +1199,3 @@ if __name__ == "__main__":
         except Exception as e:
             crash_report(e, "Guardian crashed in main()")
             raise
-        finally:
-            ipsyncer.stop()

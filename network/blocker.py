@@ -6,12 +6,9 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 import pydivert
-from questionary import ValidationError
 
-import util.data as data
 from network import sessioninfo
 from util.DynamicBlacklist import ip_in_cidr_block_set
-from util.validator import IPValidator
 
 debug_logger = logging.getLogger("debugger")
 debug_logger.setLevel(logging.DEBUG)
@@ -262,54 +259,6 @@ class Locked(AbstractPacketFilter):
         # Seems a bit overkill (and perhaps reckless) to always block these payload sizes but my packet
         # captures show that these payload sizes don't occur in any regular game traffic so...
         return size not in matchmaking_sizes
-
-
-class IPSyncer:
-    """
-    Looper thread to update user ip to the cloud and domain based list items ips
-    """
-
-    def __init__(self, token):
-        self.token = token
-        self.process = multiprocessing.Process(target=self.run)
-        self.exit = multiprocessing.Event()
-
-    def start(self) -> None:
-        if self.token:
-            self.process.start()
-        else:
-            logger.warning("IPSyncer cannot start without token")
-
-    def stop(self) -> None:
-        if self.token:
-            self.exit.set()
-            self.process.join()
-
-    def run(self) -> None:
-        while not self.exit.is_set():
-            with contextlib.suppress(KeyboardInterrupt):
-                config = data.ConfigData(data.file_name)
-                lists = (data.CustomList("blacklist"), data.CustomList("custom_ips"))
-                for custom_list in lists:
-                    outdated = []
-                    new = {}
-                    for ip, item in custom_list:  # type: ignore[attr-defined]
-                        domain = item.get("value")
-                        if domain:
-                            try:
-                                ip_calc = IPValidator.validate_get(domain)
-                                if ip != ip_calc:
-                                    outdated.append(ip)
-                                    new[ip_calc] = item
-                            except ValidationError as e:
-                                logger.warning(e.message)
-                    for old, new, item in zip(outdated, new.keys(), new.values()):
-                        custom_list.delete(old)
-                        custom_list.add(new, item)
-                        logger.info("Updated %s ip", item.get("name", "Unknown"))
-
-                config.save()
-                self.exit.wait(300)
 
 
 class Debugger:
