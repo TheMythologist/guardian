@@ -119,20 +119,11 @@ class IPTag:
     Container method for storing an IP with an arbitrary String attached.
     """
 
-    def __init__(self, ip, tag: str = ""):
+    def __init__(self, ip: str, tag: str = ""):
         self.ip = ip
         self.tag = tag
 
-    def get_ip(self):
-        return self.ip
-
-    def get_tag(self):
-        return self.tag
-
-    def get_tag_raw(self):
-        return self.tag
-
-    def set_tag(self, tag):
+    def set_tag(self, tag: str):
         self.tag = tag
 
 
@@ -235,7 +226,7 @@ class SessionInfo:
         """
         Adds an IP (with tag) to connection stats.
         """
-        this_ip = ip_tag.get_ip()
+        this_ip = ip_tag.ip
 
         # If this IP has already been added, don't do it again.
         if this_ip not in self.known_ips:
@@ -267,7 +258,7 @@ class ConnectionStats:
         self.packets_dropped = 0
         self.session_requests = 0
 
-    def add_packet(self, packet, allowed) -> None:
+    def add_packet(self, packet: MinimalPacket, allowed: bool) -> None:
         """
         Give a packet to this connection statistic so the relevant information can be stored.
         """
@@ -300,42 +291,25 @@ class ConnectionStats:
             return "Never"
         return f"{round((timeit.default_timer() - self.last_seen) * 1000)} ms ago"
 
-    # TODO: Introduce type-safety so we don't have to deal with shallow/deep copy shenanigans
     def get_tag_override(self):
-        # Sometimes, a tag (or part of it) may be temporarily overridden.
-        # Tags are either a string, or an array of strings.
-        # Tag overrides affect the first part of a string.
-        # Tag overrides should not affect the default / original tag for an IP.
-        tag = self.ip_tag.get_tag_raw()
-        override = tag
+        tag = self.ip_tag.tag
 
-        if isinstance(tag, list):
-            tag = list(tag)
-            override = tag[0]  # the thing we might be overriding
         # Local / Public IP tags take precedence.
-        if override in {"LOCAL IP", "PUBLIC IP"}:
+        if tag in {"LOCAL IP", "PUBLIC IP"}:
             # TODO: Check if R* SERVICE
-            return self.ip_tag.tag
+            return tag
         if self.is_connected():
-            override = "CONNECTED"
+            return "CONNECTED"
         elif self.session_requests > 0:
-            override = f"{self.session_requests}x JOIN REQ"
-
-        # If the original tag was a string then is probably overwritten. Otherwise, we replace only the first element.
-        if isinstance(tag, str):
-            tag = override
-        else:
-            tag[0] = override
-
+            return f"{self.session_requests}x JOIN REQ"
         return tag
-        # return override if isinstance(tag, str) else tag[1::].insert(0, override)
 
     def get_info(self) -> dict[str, Any]:
         """
         Returns an anonymous dictionary of information about this connection.
         """
         return {
-            "ip": self.ip_tag.get_ip(),
+            "ip": self.ip_tag.ip,
             "tag": self.get_tag_override(),
             "packet_count": len(self.packets),
             "is_connected": self.is_connected(3),
