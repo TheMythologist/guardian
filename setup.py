@@ -5,7 +5,7 @@ import zipfile
 
 from cx_Freeze import Executable, setup
 
-version = "3.2.1"
+from util.constants import version
 
 build_path = f"build/exe.win-amd64-{sys.version_info.major}.{sys.version_info.minor}"
 
@@ -22,12 +22,10 @@ buildOptions = dict(
     zip_exclude_packages=zip_exclude_packages,
     silent=True,
 )
-executables = [
-    Executable("app.py", target_name="Guardian.exe", icon="logo.ico", uac_admin=True)
-]
+executables = [Executable("app.py", target_name="Guardian.exe", icon="logo.ico")]
 
 
-def zip_folder(folder_path, output_path):
+def zip_folder(folder_path: str, output_path: str) -> None:
     """
     Zip the contents of an entire folder (with that folder included
     in the archive). Empty subfolders will be included in the archive

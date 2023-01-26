@@ -10,7 +10,7 @@ readme = "README.md"
 python = "^3.9"
 chardet = "^5.1.0"
 colorama = "^0.4.6"
-cx-freeze = "^6.13"
+cx-freeze = "<6.14"
 pydivert = "2.1.0"
 questionary = "^1.10.0"
 tqdm = "^4.64.1"
@@ -37,7 +37,7 @@ profile = "black"
 
 [tool.mypy]
 platform = "win32"
-exclude = ["build/"]
+exclude = ["build/", "speed_tests/"]
 
 [[tool.mypy.overrides]]
 module = ["cx_Freeze", "pydivert", "prsw"]

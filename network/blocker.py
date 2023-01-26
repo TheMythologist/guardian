@@ -3,14 +3,12 @@ import logging
 import multiprocessing
 import re
 from abc import ABC, abstractmethod
+from typing import Optional
 
 import pydivert
-from questionary import ValidationError
 
-import util.data as data
-from network import networkmanager, sessioninfo
+from network import sessioninfo
 from util.DynamicBlacklist import ip_in_cidr_block_set
-from util.validator import IPValidator
 
 debug_logger = logging.getLogger("debugger")
 debug_logger.setLevel(logging.DEBUG)
@@ -102,8 +100,12 @@ known_sizes = heartbeat_sizes.union(matchmaking_sizes)
 
 
 class AbstractPacketFilter(ABC):
-    # TODO: Type safety -> should ips be `list` or `set`?
-    def __init__(self, ips, session_info=None, debug=False):
+    def __init__(
+        self,
+        ips: set[str],
+        session_info: Optional[sessioninfo.SessionInfo] = None,
+        debug: bool = False,
+    ):
         self.ips = ips
         self.process = multiprocessing.Process(target=self.run)
         self.process.daemon = True
@@ -112,21 +114,19 @@ class AbstractPacketFilter(ABC):
         if not pydivert.WinDivert.is_registered():
             pydivert.WinDivert.register()
 
-    def start(self):
+    def start(self) -> None:
         self.process.start()
         logger.info("Dispatched %s blocker process", self.__class__.__name__)
 
-    def stop(self):
+    def stop(self) -> None:
         self.process.terminate()
         logger.info("Terminated %s blocker process", self.__class__.__name__)
 
     @abstractmethod
-    def is_packet_allowed(self, packet) -> bool:
+    def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
         pass
 
-    def run(self):
-        logger.info("ips: %s", self.ips)
-
+    def run(self) -> None:
         # To allow termination via CTRL + C
         with contextlib.suppress(KeyboardInterrupt):
             with pydivert.WinDivert(packetfilter) as w:
@@ -144,7 +144,9 @@ class AbstractPacketFilter(ABC):
                         print(self.construct_debug_packet_info(packet, decision))
 
     @staticmethod
-    def construct_debug_packet_info(packet, decision=None):
+    def construct_debug_packet_info(
+        packet: pydivert.Packet, decision: Optional[bool] = None
+    ) -> str:
         prefix = "" if decision is None else ("ALLOWING" if decision else "DROPPING")
 
         return f"{prefix} PACKET FROM {packet.src_addr}:{packet.src_port}  Len: {len(packet.payload)}"
@@ -157,10 +159,14 @@ class Solo(AbstractPacketFilter):
     connecting to your client except the heartbeat.
     """
 
-    def __init__(self, session_info=None, debug=False):
+    def __init__(
+        self,
+        session_info: Optional[sessioninfo.SessionInfo] = None,
+        debug: bool = False,
+    ):
         super().__init__(set(), session_info, debug)
 
-    def is_packet_allowed(self, packet) -> bool:
+    def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
         size = len(packet.payload)
 
         return size in heartbeat_sizes
@@ -170,19 +176,18 @@ class Whitelist(AbstractPacketFilter):
     """
     Packet filter that will allow packets from with source ip present on ips list
 
-    ips: A list of whitelisted IPs.
-    blocks_r: A list of CIDR blocks used by R* / T2.
+    ips: A set of whitelisted IPs.
     """
 
-    def __init__(self, ips, blocks_r=None, session_info=None, debug=False):
+    def __init__(
+        self,
+        ips: set[str],
+        session_info: Optional[sessioninfo.SessionInfo] = None,
+        debug: bool = False,
+    ):
         super().__init__(ips, session_info, debug)
-        if blocks_r is None:
-            blocks_r = set()
-        self.ip_blocks_r = blocks_r
-        self.known_r = set()
-        self.known_b = set()
 
-    def is_packet_allowed(self, packet) -> bool:
+    def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
         ip = packet.ip.src_addr
         size = len(packet.payload)
 
@@ -197,7 +202,12 @@ class Blacklist(AbstractPacketFilter):
     """
 
     def __init__(
-        self, ips, blocks=None, known_allowed=None, session_info=None, debug=False
+        self,
+        ips: set[str],
+        blocks=None,
+        known_allowed=None,
+        session_info: Optional[sessioninfo.SessionInfo] = None,
+        debug: bool = False,
     ):
         super().__init__(ips, session_info, debug)
 
@@ -209,7 +219,7 @@ class Blacklist(AbstractPacketFilter):
         self.ip_blocks = blocks  # set of CIDR blocks
         self.known_allowed = known_allowed  # IPs which are known to not be in blocks
 
-    def is_packet_allowed(self, packet) -> bool:
+    def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
         ip = packet.ip.src_addr
         size = len(packet.payload)
 
@@ -235,10 +245,14 @@ class Locked(AbstractPacketFilter):
     or more of those players are not directly routed to the Session Host (i.e. you).
     """
 
-    def __init__(self, session_info=None, debug=False):
+    def __init__(
+        self,
+        session_info: Optional[sessioninfo.SessionInfo] = None,
+        debug: bool = False,
+    ):
         super().__init__(set(), session_info, debug)
 
-    def is_packet_allowed(self, packet) -> bool:
+    def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
         size = len(packet.payload)
 
         # No new matchmaking requests allowed.
@@ -247,74 +261,23 @@ class Locked(AbstractPacketFilter):
         return size not in matchmaking_sizes
 
 
-class IPSyncer:
-    """
-    Looper thread to update user ip to the cloud and domain based list items ips
-    """
-
-    def __init__(self, token):
-        self.token = token
-        self.process = multiprocessing.Process(target=self.run)
-        self.exit = multiprocessing.Event()
-
-    def start(self):
-        if self.token:
-            self.process.start()
-        else:
-            logger.warning("IPSyncer cannot start without token")
-
-    def stop(self):
-        if self.token:
-            self.exit.set()
-            self.process.join()
-
-    def run(self):
-        while not self.exit.is_set():
-            with contextlib.suppress(KeyboardInterrupt):
-                conn = networkmanager.Cloud(self.token)
-                if conn.check_token() and not conn.set_ip():
-                    logger.warning("Failed to update cloud IP")
-                config = data.ConfigData(data.file_name)
-                lists = [data.CustomList("blacklist"), data.CustomList("custom_ips")]
-                for custom_list in lists:
-                    outdated = []
-                    new = {}
-                    for ip, item in custom_list:
-                        domain = item.get("value")
-                        if domain:
-                            try:
-                                ip_calc = IPValidator.validate_get(domain)
-                                if ip != ip_calc:
-                                    outdated.append(ip)
-                                    new[ip_calc] = item
-                            except ValidationError as e:
-                                logger.warning(e.message)
-                    for old, new, item in zip(outdated, new.keys(), new.values()):
-                        custom_list.delete(old)
-                        custom_list.add(new, item)
-                        logger.info("Updated %s ip", item.get("name", "Unknown"))
-
-                config.save()
-                self.exit.wait(300)
-
-
 class Debugger:
     """
     Thread to create a log of the ips matching the packet filter
     """
 
-    def __init__(self, ips):
+    def __init__(self, ips: set[str]):
         self.ips = ips
         self.process = multiprocessing.Process(target=self.run)
         self.process.daemon = True
 
-    def start(self):
+    def start(self) -> None:
         self.process.start()
 
-    def stop(self):
+    def stop(self) -> None:
         self.process.terminate()
 
-    def run(self):
+    def run(self) -> None:
         debug_logger.debug("Started debugging")
         with pydivert.WinDivert(packetfilter) as w:
             for packet in w:
@@ -393,7 +356,7 @@ class IPCollector:
     Thread to store all the ip addresses matching the packet filter
     """
 
-    def __init__(self, packet_count_min_threshold=1):
+    def __init__(self, packet_count_min_threshold: int = 1):
         self.process = multiprocessing.Process(target=self.run)
         self.process.daemon = True
         self.ips = multiprocessing.Manager().list()
@@ -407,13 +370,13 @@ class IPCollector:
         # self.ips.append("20.40.183.2")      # DEBUG, forcing an Azure IP to be included
         # self.ips.append("192.81.240.99")    # DEBUG, forcing a T2 US IP to be included
 
-    def add_seen_ip(self, ip):
+    def add_seen_ip(self, ip: str) -> None:
         """
         Keeps a "counter" of how many packets have been seen from this IP.
         """
         self.seen_ips[ip] = self.seen_ips.get(ip, 0) + 1
 
-    def save_ips(self):
+    def save_ips(self) -> None:
         """
         Saves any IP that has been seen at least self.min_packets times.
         """
@@ -421,17 +384,17 @@ class IPCollector:
             if self.seen_ips[ip] >= self.min_packets:
                 self.ips.append(ip)
 
-    def start(self):
+    def start(self) -> None:
         self.process.start()
         logger.info("Dispatched IPCollector process")
 
-    def stop(self):
+    def stop(self) -> None:
         self.process.terminate()
         logger.info("Terminated IPCollector process")
         self.save_ips()
         logger.info("Collected a total of %d IPs", len(self.ips))
 
-    def run(self):
+    def run(self) -> None:
         # TODO: Can you run PyDivert in sniff mode, instead of having to run a filter?
         # TODO: We could also actually check to see *when* the last packet was seen from that IP.
         with contextlib.suppress(KeyboardInterrupt):
