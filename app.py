@@ -20,7 +20,8 @@ from questionary import ValidationError, Validator, prompt
 from tqdm import tqdm
 
 import config.ConfigData as data
-from config.CustomList import CustomList
+from config.ConfigData import ConfigData
+from config.CustomList import GlobalList
 from network import sessioninfo
 from network.blocker import (
     AbstractPacketFilter,
@@ -94,20 +95,21 @@ def get_private_ip():
 
 class NameInBlacklist(Validator):
     def validate(self, document: Document):
-        global blacklist
-        if blacklist.has(document.text):
+        blacklist = GlobalList("blacklist")
+        name = document.text
+        if blacklist.has(name):
             raise ValidationError(
-                message="Name already in list", cursor_position=len(document.text)
+                message="Name already in list", cursor_position=len(name)
             )
 
 
-class IPInWhitelist(IPValidator):
+class NameInWhitelist(Validator):
     def validate(self, document: Document):
-        super().validate(document)
-        global whitelist
-        if document.text in whitelist:
+        whitelist = GlobalList("whitelist")
+        name = document.text
+        if whitelist.has(name):
             raise ValidationError(
-                message="IP already in list", cursor_position=len(document.text)
+                message="Name already in list", cursor_position=len(name)
             )
 
 
@@ -115,10 +117,18 @@ class IPInBlacklist(Validator):
     def validate(self, document: Document):
         super().validate(document)
         global blacklist
-        if document.text in blacklist or blacklist.has(document.text, "value"):
-            raise ValidationError(
-                message="IP already in list", cursor_position=len(document.text)
-            )
+        ip = document.text
+        if ip in blacklist:
+            raise ValidationError(message="IP already in list", cursor_position=len(ip))
+
+
+class IPInWhitelist(IPValidator):
+    def validate(self, document: Document):
+        super().validate(document)
+        whitelist = GlobalList("whitelist")
+        ip = document.text
+        if ip in whitelist:
+            raise ValidationError(message="IP already in list", cursor_position=len(ip))
 
 
 def crash_report(
@@ -385,15 +395,14 @@ def menu():
                         print_white("Failed to get Public IP, running without")
 
                     ip_set = set()
-                    for ip, item in blacklist:
-                        if item.get("enabled"):
-                            try:
-                                ip = IPValidator.validate_get(ip)
-                                ip_set.add(ip)
-                            except ValidationError:
-                                logger.warning("Not valid IP or URL: %s", ip)
-                                print_invalid_ip(ip)
-                                continue
+                    for ip in blacklist.ips:
+                        try:
+                            ip = IPValidator.validate_get(ip)
+                            ip_set.add(ip)
+                        except ValidationError:
+                            logger.warning("Not valid IP or URL: %s", ip)
+                            print_invalid_ip(ip)
+                            continue
                     logger.info("Starting blacklisted session with %d IPs", len(ip_set))
                     print_running_message("Blacklist")
 
@@ -611,9 +620,7 @@ def menu():
                     os.system("cls")
                     break
 
-                # ADD OPTION FOR WHITELISTING HERE
-
-                elif answer["option"] == "blacklist":
+                elif answer["option"] == "whitelist":
                     os.system("cls")
                     while True:
                         options = [
@@ -621,7 +628,7 @@ def menu():
                                 "type": "list",
                                 "name": "option",
                                 "qmark": "@",
-                                "message": "Blacklist",
+                                "message": "Whitelist",
                                 "choices": [
                                     {"name": "Select", "value": "select"},
                                     {"name": "Add", "value": "add"},
@@ -636,35 +643,6 @@ def menu():
                             os.system("cls")
                             break
 
-                        elif answer["option"] == "select":
-                            os.system("cls")
-                            if len(blacklist) <= 0:
-                                print_white("No blacklist ips")
-                                continue
-                            c = [
-                                {
-                                    "name": f.get("name"),
-                                    "checked": True if f.get("enabled") else None,
-                                }
-                                for ip, f in blacklist
-                            ]
-                            options = [
-                                {
-                                    "type": "checkbox",
-                                    "name": "option",
-                                    "qmark": "@",
-                                    "message": "Select who to enable",
-                                    "choices": c,
-                                }
-                            ]
-                            answer = prompt(options, style=style)
-                            if not answer:
-                                os.system("cls")
-                                continue
-                            for ip, item in blacklist:
-                                item["enabled"] = item.get("name") in answer["option"]
-                            config.save()
-
                         elif answer["option"] == "add":
                             os.system("cls")
                             options = [
@@ -673,14 +651,14 @@ def menu():
                                     "name": "name",
                                     "message": "Name",
                                     "qmark": "@",
-                                    "validate": NameInBlacklist,
+                                    "validate": NameInWhitelist,
                                 },
                                 {
                                     "type": "input",
                                     "name": "ip",
                                     "message": "IP/URL",
                                     "qmark": "@",
-                                    "validate": IPInBlacklist,
+                                    "validate": IPInWhitelist,
                                 },
                             ]
 
@@ -690,10 +668,8 @@ def menu():
                                 continue
                             try:
                                 ip = IPValidator.validate_get(answer["ip"])
-                                item = {"name": answer["name"], "enabled": True}
-                                if ip != answer["ip"]:
-                                    item["value"] = answer["ip"]
-                                blacklist.add(ip, item)
+                                whitelist.add(ip, answer["name"])
+                                whitelist.save()
                                 config.save()
                             except ValidationError as e:
                                 print_white(e.message)
@@ -701,16 +677,10 @@ def menu():
                         elif answer["option"] == "list":
                             os.system("cls")
                             while True:
-                                if len(blacklist) <= 0:
-                                    print_white("No blacklist ips")
+                                if len(whitelist) <= 0:
+                                    print_white("No whitelist ips")
                                     break
-                                c = [
-                                    {
-                                        "name": f.get("name"),
-                                        "checked": True if f.get("enabled") else None,
-                                    }
-                                    for ip, f in blacklist
-                                ]
+                                c = [{"name": name} for name in whitelist.names]
                                 options = [
                                     {
                                         "type": "list",
@@ -745,20 +715,13 @@ def menu():
 
                                 elif answer["option"] == "edit":
                                     while True:
-                                        print(
-                                            "Notice, user deleted. Press enter to go back / Save. Quit and you lose him."
-                                        )
-                                        ip, item = blacklist.find(name)
-                                        blacklist.delete(ip)
-                                        config.save()
-                                        entry = item.get("value", ip)
+                                        ip = whitelist.find(name)
                                         options = [
                                             {
                                                 "type": "input",
                                                 "name": "name",
                                                 "message": "Name",
                                                 "qmark": "@",
-                                                "validate": NameInBlacklist,
                                                 "default": name,
                                             },
                                             {
@@ -766,8 +729,8 @@ def menu():
                                                 "name": "ip",
                                                 "message": "IP/URL",
                                                 "qmark": "@",
-                                                "validate": IPInBlacklist,
-                                                "default": entry,
+                                                "validate": IPValidator,
+                                                "default": ip,
                                             },
                                         ]
 
@@ -776,25 +739,161 @@ def menu():
                                             os.system("cls")
                                             break
                                         try:
-                                            ip = IPValidator.validate_get(answer["ip"])
-                                            item["name"] = answer["name"]
-                                            item["enabled"] = True
-                                            if ip != answer["ip"]:
-                                                item["value"] = answer["ip"]
-                                            blacklist.add(ip, item)
-                                            config.save()
-                                            os.system("cls")
-                                        except ValidationError as e:
-                                            blacklist.add(ip, item)
-                                            config.save()
-                                            print_white(
-                                                "Original item was restored due to error: "
-                                                + e.message
+                                            new_ip = IPValidator.validate_get(
+                                                answer["ip"]
                                             )
+                                            whitelist.remove(ip)
+                                            whitelist.add(new_ip, answer["name"])
+                                            os.system("cls")
+                                        except ValidationError:
+                                            print_white("Invalid IP, please try again.")
+                                            continue
+                                        whitelist.save()
+                                        config.save()
+                                        break
 
                                 elif answer["option"] == "delete":
-                                    ip, item = blacklist.find(name)
-                                    blacklist.delete(ip)
+                                    ip = whitelist.find(name)
+                                    whitelist.remove(ip)
+                                    whitelist.save()
+                                    config.save()
+
+                elif answer["option"] == "blacklist":
+                    os.system("cls")
+                    while True:
+                        options = [
+                            {
+                                "type": "list",
+                                "name": "option",
+                                "qmark": "@",
+                                "message": "Blacklist",
+                                "choices": [
+                                    {"name": "Select", "value": "select"},
+                                    {"name": "Add", "value": "add"},
+                                    {"name": "List", "value": "list"},
+                                    {"name": "MainMenu", "value": "return"},
+                                ],
+                            }
+                        ]
+                        answer = prompt(options, style=style)
+
+                        if not answer or answer["option"] == "return":
+                            os.system("cls")
+                            break
+
+                        elif answer["option"] == "add":
+                            os.system("cls")
+                            options = [
+                                {
+                                    "type": "input",
+                                    "name": "name",
+                                    "message": "Name",
+                                    "qmark": "@",
+                                    "validate": NameInBlacklist,
+                                },
+                                {
+                                    "type": "input",
+                                    "name": "ip",
+                                    "message": "IP/URL",
+                                    "qmark": "@",
+                                    "validate": IPInBlacklist,
+                                },
+                            ]
+
+                            answer = prompt(options, style=style)
+                            if not answer:
+                                os.system("cls")
+                                continue
+                            try:
+                                ip = IPValidator.validate_get(answer["ip"])
+                                blacklist.add(ip, answer["name"])
+                                blacklist.save()
+                                config.save()
+                            except ValidationError as e:
+                                print_white(e.message)
+
+                        elif answer["option"] == "list":
+                            os.system("cls")
+                            while True:
+                                if len(blacklist) <= 0:
+                                    print_white("No blacklist ips")
+                                    break
+                                c = [{"name": name} for name in blacklist.names]
+                                options = [
+                                    {
+                                        "type": "list",
+                                        "name": "name",
+                                        "qmark": "@",
+                                        "message": "Select who to view",
+                                        "choices": c,
+                                    }
+                                ]
+                                answer = prompt(options, style=style)
+                                if not answer:
+                                    os.system("cls")
+                                    break
+                                name = answer["name"]
+                                options = [
+                                    {
+                                        "type": "list",
+                                        "name": "option",
+                                        "qmark": "@",
+                                        "message": "Select what to do",
+                                        "choices": [
+                                            {"name": "Edit", "value": "edit"},
+                                            {"name": "Delete", "value": "delete"},
+                                            {"name": "Back", "value": "return"},
+                                        ],
+                                    }
+                                ]
+                                answer = prompt(options, style=style)
+                                if not answer or answer["option"] == "return":
+                                    os.system("cls")
+                                    break
+
+                                elif answer["option"] == "edit":
+                                    while True:
+                                        ip = blacklist.find(name)
+                                        options = [
+                                            {
+                                                "type": "input",
+                                                "name": "name",
+                                                "message": "Name",
+                                                "qmark": "@",
+                                                "default": name,
+                                            },
+                                            {
+                                                "type": "input",
+                                                "name": "ip",
+                                                "message": "IP/URL",
+                                                "qmark": "@",
+                                                "validate": IPValidator,
+                                                "default": ip,
+                                            },
+                                        ]
+
+                                        answer = prompt(options, style=style)
+                                        if not answer:
+                                            os.system("cls")
+                                            break
+                                        try:
+                                            new_ip = IPValidator.validate_get(
+                                                answer["ip"]
+                                            )
+                                            blacklist.remove(ip)
+                                            blacklist.add(new_ip, answer["name"])
+                                            os.system("cls")
+                                        except ValidationError:
+                                            print_white("Invalid IP, please try again.")
+                                            continue
+                                        blacklist.save()
+                                        config.save()
+                                        break
+
+                                elif answer["option"] == "delete":
+                                    ip = blacklist.find(name)
+                                    blacklist.remove(ip)
+                                    blacklist.save()
                                     config.save()
 
         elif option == "kick_by_ip":
@@ -911,7 +1010,7 @@ if __name__ == "__main__":
         success = False
         while not success:
             try:
-                config = data.ConfigData(data.file_name)
+                config = ConfigData()
                 success = True
             except Exception as e:
                 # config file could not be loaded. either file creation failed or data.json is corrupt.
@@ -947,8 +1046,8 @@ if __name__ == "__main__":
 
         # at this point the file has been parsed and is valid
         # Any additional exceptions are explicit or programmer error
-        blacklist = CustomList("blacklist")
-        whitelist = CustomList("whitelist")
+        blacklist = GlobalList("blacklist")
+        whitelist = GlobalList("whitelist")
 
         os.system("cls")
         logger.info("Init")
