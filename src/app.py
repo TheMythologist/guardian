@@ -29,7 +29,6 @@ from network.sessions import (
     SoloSession,
     WhitelistSession,
 )
-from util.constants import version
 from util.DynamicBlacklist import (
     ScrapeError,
     get_dynamic_blacklist,
@@ -44,6 +43,8 @@ from util.printer import (
 )
 from validator.ip import IPInBlacklist, IPInWhitelist, IPValidator
 from validator.name import NameInBlacklist, NameInWhitelist
+
+__version__ = "3.3.0"
 
 logger = logging.getLogger("guardian")
 logger.propagate = False
@@ -980,7 +981,7 @@ if __name__ == "__main__":
         print_white("Booting up...")
         if not pydivert.WinDivert.is_registered():
             pydivert.WinDivert.register()
-        ctypes.windll.kernel32.SetConsoleTitleW(f"Guardian {version}")
+        ctypes.windll.kernel32.SetConsoleTitleW(f"Guardian {__version__}")
     except Exception as e:
         crash_report(e, "Guardian crashed before reaching main()")
         raise
