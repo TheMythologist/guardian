@@ -21,7 +21,7 @@ from tqdm import tqdm
 
 import config.ConfigData as data
 from config.ConfigData import ConfigData
-from config.CustomList import GlobalList
+from config.GlobalList import GlobalList
 from network import sessioninfo
 from network.blocker import (
     AbstractPacketFilter,
