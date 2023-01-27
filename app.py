@@ -42,13 +42,8 @@ from util.printer import (
     print_stopped_message,
     print_white,
 )
-from util.validator import (
-    IPInBlacklist,
-    IPInWhitelist,
-    IPValidator,
-    NameInBlacklist,
-    NameInWhitelist,
-)
+from validator.ip import IPInBlacklist, IPInWhitelist, IPValidator
+from validator.name import NameInBlacklist, NameInWhitelist
 
 logger = logging.getLogger("guardian")
 logger.propagate = False
@@ -693,7 +688,7 @@ def menu():
                                                 "name": "ip",
                                                 "message": "IP address",
                                                 "qmark": "@",
-                                                "validate": IPValidator,
+                                                "validate": NameInWhitelist,
                                                 "default": ip,
                                             },
                                         ]
@@ -828,7 +823,7 @@ def menu():
                                                 "name": "ip",
                                                 "message": "IP address",
                                                 "qmark": "@",
-                                                "validate": IPValidator,
+                                                "validate": NameInBlacklist,
                                                 "default": ip,
                                             },
                                         ]
