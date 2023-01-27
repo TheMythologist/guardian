@@ -949,6 +949,7 @@ def menu():
                 ) as compressed:
                     compressed.write("debugger.log")
                     compressed.write("data.json")
+                    compressed.write("db.json")
                 print_white("Finished")
             else:
                 print_white("Declined")
