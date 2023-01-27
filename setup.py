@@ -5,7 +5,7 @@ import zipfile
 
 from cx_Freeze import Executable, setup
 
-from util.constants import version
+version = "3.3.0"
 
 build_path = f"build/exe.win-amd64-{sys.version_info.major}.{sys.version_info.minor}"
 
@@ -21,9 +21,12 @@ buildOptions = dict(
     zip_include_packages="*",
     zip_exclude_packages=zip_exclude_packages,
     silent=True,
+    path=sys.path + [f"{sys.path[0]}/src"],
 )
 executables = [
-    Executable("app.py", target_name="Guardian.exe", icon="logo.ico", uac_admin=True)
+    Executable(
+        "src/app.py", target_name="Guardian.exe", icon="logo.ico", uac_admin=True
+    )
 ]
 
 
