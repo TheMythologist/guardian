@@ -9,7 +9,6 @@ from typing import Optional
 import pydivert
 
 from network import sessioninfo
-from network.minimalpacket import safe_pickle_packet
 from util.DynamicBlacklist import ip_in_cidr_block_set
 
 logger = logging.getLogger("guardian")
@@ -128,7 +127,6 @@ class AbstractPacketFilter(ABC):
         pass
 
     def run(self) -> None:
-        # To allow termination via CTRL + C
         with contextlib.suppress(KeyboardInterrupt):
             with pydivert.WinDivert(PACKET_FILTER) as w:
                 for packet in w:
@@ -137,9 +135,7 @@ class AbstractPacketFilter(ABC):
                         w.send(packet)
 
                     if self.session_info is not None:
-                        self.session_info.add_packet(
-                            safe_pickle_packet(packet), allowed=decision
-                        )
+                        self.session_info.add_packet(packet, allowed=decision)
 
                     if self.debug_print_decisions:
                         print(self.construct_debug_packet_info(packet, decision))
