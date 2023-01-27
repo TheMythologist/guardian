@@ -670,7 +670,6 @@ def menu():
                                 ip = IPValidator.validate_get(answer["ip"])
                                 whitelist.add(ip, answer["name"])
                                 whitelist.save()
-                                config.save()
                             except ValidationError as e:
                                 print_white(e.message)
 
@@ -749,14 +748,12 @@ def menu():
                                             print_white("Invalid IP, please try again.")
                                             continue
                                         whitelist.save()
-                                        config.save()
                                         break
 
                                 elif answer["option"] == "delete":
                                     ip = whitelist.find(name)
                                     whitelist.remove(ip)
                                     whitelist.save()
-                                    config.save()
 
                 elif answer["option"] == "blacklist":
                     os.system("cls")
@@ -808,7 +805,6 @@ def menu():
                                 ip = IPValidator.validate_get(answer["ip"])
                                 blacklist.add(ip, answer["name"])
                                 blacklist.save()
-                                config.save()
                             except ValidationError as e:
                                 print_white(e.message)
 
@@ -887,14 +883,12 @@ def menu():
                                             print_white("Invalid IP, please try again.")
                                             continue
                                         blacklist.save()
-                                        config.save()
                                         break
 
                                 elif answer["option"] == "delete":
                                     ip = blacklist.find(name)
                                     blacklist.remove(ip)
                                     blacklist.save()
-                                    config.save()
 
         elif option == "kick_by_ip":
             collector = IPCollector()
