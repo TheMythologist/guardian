@@ -7,6 +7,8 @@ import time
 import prsw
 import requests
 
+from util.constants import CIDR_MASKS
+
 # This file contains classes and methods to manage acquiring, parsing, and updating a possibly dynamic list of IP ranges
 # that Guardian needs to be aware of. Such ranges include R* / T2 official IPs, as well as IPs that can be used for
 # miscellaneous R* Services, such as Microsoft Azure.
@@ -124,16 +126,6 @@ def get_azure_ip_ranges_download(
         raise e
 
 
-def construct_all_cidr_masks() -> list[int]:
-    all_ones = 0b11111111111111111111111111111111
-    masks = [all_ones]
-    masks.extend(masks[-1] << 1 & all_ones for _ in range(32))
-    masks.reverse()
-    return masks
-
-
-CIDR_MASKS = construct_all_cidr_masks()
-
 # TODO: Convert all CIDR notation into integers (by chopping off the subnet mask part). Then, store all these integers
 # in a set. Then, to see if an IP is within a CIDR range, we will need to construct all CIDR blocks containing that IP.
 # This can be done by converting the IP to an integer and then apply each mask with bitwise AND.
@@ -197,9 +189,9 @@ def parse_azure_ip_ranges_from_file(location_of_file: str) -> list[str]:
         return parse_azure_ip_ranges(file.read())
 
 
-def calculate_ip_int(ip: str) -> int:
+def calculate_ip_to_int(ip: str) -> int:
     octets = [int(num) for num in ip.split(".")]
-    # Manually perform calculation of suffix_int for speed purposes
+    # Manually perform calculation for speed purposes
     return (
         octets[0] * (2**24) + octets[1] * (2**16) + octets[2] * (2**8) + octets[3]
     )
@@ -214,11 +206,9 @@ def cidr_to_tuple(ip_in_cidr: str) -> tuple[int, int]:
     NOTE: Does *not* check for the validity of a CIDR block. Example, 255.255.255.255/1 would be accepted, but is not
     a valid CIDR block.
     """
-    ip_str, _, suffix = ip_in_cidr.partition("/")
+    ip, suffix = ip_in_cidr.split("/")
     suffix_int = int(suffix)
-    # Manually perform calculation of suffix_int for speed purposes
-    ip_int = calculate_ip_int(ip_str)
-    return ip_int, suffix_int
+    return calculate_ip_to_int(ip), suffix_int
 
 
 def construct_cidr_block_set(ips_in_cidr: list[str]) -> set[tuple[int, int]]:
@@ -232,8 +222,7 @@ def construct_cidr_block_set(ips_in_cidr: list[str]) -> set[tuple[int, int]]:
     for ip_cidr in ips_in_cidr:
         with contextlib.suppress(ValueError):
             # [0] is IP as integer, [1] is subnet mask in /xy notation (only xy)
-            ip_tuple = cidr_to_tuple(ip_cidr)
-            ip_set.add(ip_tuple)
+            ip_set.add(cidr_to_tuple(ip_cidr))
     return ip_set
 
 
@@ -268,11 +257,11 @@ def ip_in_cidr_block_set(ip: str, cidr_block_set, min_cidr_suffix: int = 0) -> b
     """
     Essentially a reverse-search for all possible entries in cidr_block_set that would contain ip.
     """
-    ip_int = calculate_ip_int(ip)
-    return any(
-        (ip_int & CIDR_MASKS[suffix], suffix) in cidr_block_set
-        for suffix in range(min_cidr_suffix, len(CIDR_MASKS))
-    )
+    ip_int = calculate_ip_to_int(ip)
+    for suffix in range(len(CIDR_MASKS)):
+        if (ip_int & CIDR_MASKS[suffix], suffix) in cidr_block_set:
+            return True
+    return False
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ from typing import Optional
 import pydivert
 
 from network import sessioninfo
+from network.minimalpacket import safe_pickle_packet
 from util.DynamicBlacklist import ip_in_cidr_block_set
 
 debug_logger = logging.getLogger("debugger")
@@ -137,7 +138,7 @@ class AbstractPacketFilter(ABC):
 
                     if self.session_info is not None:
                         self.session_info.add_packet(
-                            sessioninfo.safe_pickle_packet(packet), allowed=decision
+                            safe_pickle_packet(packet), allowed=decision
                         )
 
                     if self.debug_print_decisions:
@@ -152,7 +153,7 @@ class AbstractPacketFilter(ABC):
         return f"{prefix} PACKET FROM {packet.src_addr}:{packet.src_port}  Len: {len(packet.payload)}"
 
 
-class Solo(AbstractPacketFilter):
+class SoloSession(AbstractPacketFilter):
     """
     Packet filter that does not allow join requests at all. Previously, Solo Session was actually just
     "Whitelisted" with an empty list. This variant is technically more secure if you truly don't want anything
@@ -172,7 +173,7 @@ class Solo(AbstractPacketFilter):
         return size in heartbeat_sizes
 
 
-class Whitelist(AbstractPacketFilter):
+class WhitelistSession(AbstractPacketFilter):
     """
     Packet filter that will allow packets from with source ip present on ips list
 
@@ -196,7 +197,7 @@ class Whitelist(AbstractPacketFilter):
         return ip in self.ips or size in known_sizes
 
 
-class Blacklist(AbstractPacketFilter):
+class BlacklistSession(AbstractPacketFilter):
     """
     Packet filter that will block packets from with source ip present on ips list
     """
@@ -238,7 +239,7 @@ class Blacklist(AbstractPacketFilter):
         return False
 
 
-class Locked(AbstractPacketFilter):
+class LockedSession(AbstractPacketFilter):
     """
     Packet filter to block all join request packets and i.e. any new attempts to connect to your client.
     Any existing connections do not get blocked. Locked is the only way to firewall a session off if one

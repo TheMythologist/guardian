@@ -22,7 +22,9 @@ buildOptions = dict(
     zip_exclude_packages=zip_exclude_packages,
     silent=True,
 )
-executables = [Executable("app.py", target_name="Guardian.exe", icon="logo.ico")]
+executables = [
+    Executable("app.py", target_name="Guardian.exe", icon="logo.ico", uac_admin=True)
+]
 
 
 def zip_folder(folder_path: str, output_path: str) -> None:
@@ -41,8 +43,8 @@ def zip_folder(folder_path: str, output_path: str) -> None:
                 absolute_path = os.path.join(root, folder_name)
                 relative_path = absolute_path.replace(f"{parent_folder}\\", "")
                 zip_file.write(absolute_path, relative_path.replace(build_path, ""))
-            for file_name in files:
-                absolute_path = os.path.join(root, file_name)
+            for file in files:
+                absolute_path = os.path.join(root, file)
                 relative_path = absolute_path.replace(f"{parent_folder}\\", "")
                 zip_file.write(absolute_path, relative_path.replace(build_path, ""))
 
