@@ -3,6 +3,7 @@ import logging
 import multiprocessing
 import re
 from abc import ABC, abstractmethod
+from multiprocessing.managers import DictProxy
 from typing import Optional
 
 import pydivert
@@ -113,8 +114,6 @@ class AbstractPacketFilter(ABC):
         self.process.daemon = True
         self.session_info = session_info
         self.debug_print_decisions = debug
-        if not pydivert.WinDivert.is_registered():
-            pydivert.WinDivert.register()
 
     def start(self) -> None:
         self.process.start()
@@ -361,15 +360,10 @@ class IPCollector:
         self.process = multiprocessing.Process(target=self.run)
         self.process.daemon = True
         self.ips = multiprocessing.Manager().list()
-        self.seen_ips = (
-            multiprocessing.Manager().dict()
-        )  # key is IP address, value is packets seen
+        self.seen_ips: DictProxy[
+            str, int
+        ] = multiprocessing.Manager().dict()  # key is IP address, value is packets seen
         self.min_packets = packet_count_min_threshold  # minimum amount of packets required to be seen to be added
-        if not pydivert.WinDivert.is_registered():
-            pydivert.WinDivert.register()
-
-        # self.ips.append("20.40.183.2")      # DEBUG, forcing an Azure IP to be included
-        # self.ips.append("192.81.240.99")    # DEBUG, forcing a T2 US IP to be included
 
     def add_seen_ip(self, ip: str) -> None:
         """
