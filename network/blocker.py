@@ -8,7 +8,7 @@ from typing import Optional
 import pydivert
 
 from network import sessioninfo
-from network.MinimalPacket import safe_pickle_packet
+from network.minimalpacket import safe_pickle_packet
 from util.DynamicBlacklist import ip_in_cidr_block_set
 
 debug_logger = logging.getLogger("debugger")

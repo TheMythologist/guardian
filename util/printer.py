@@ -17,6 +17,4 @@ def print_stopped_message(session: str) -> None:
 
 
 def print_invalid_ip(address: str) -> None:
-    print_white(
-        f'Not valid IP or URL: "{Fore.LIGHTCYAN_EX}{address}{Fore.LIGHTWHITE_EX}"'
-    )
+    print_white(f'Invalid IP: "{Fore.LIGHTCYAN_EX}{address}{Fore.LIGHTWHITE_EX}"')

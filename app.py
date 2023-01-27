@@ -324,7 +324,7 @@ def menu():
                                 sessioninfo.IPTag(ip_calc, f"{name} [WHITELIST]")
                             )
                         except ValidationError:
-                            logger.warning("Not valid IP or URL: %s", ip)
+                            logger.warning("Invalid IP: %s", ip)
                             print_invalid_ip(ip)
                             continue
 
@@ -417,7 +417,7 @@ def menu():
                             ip = IPValidator.validate_get(ip)
                             ip_set.add(ip)
                         except ValidationError:
-                            logger.warning("Not valid IP or URL: %s", ip)
+                            logger.warning("Invalid IP: %s", ip)
                             print_invalid_ip(ip)
                             continue
                     logger.info("Starting blacklisted session with %d IPs", len(ip_set))
@@ -543,7 +543,7 @@ def menu():
                             ip_calc = IPValidator.validate_get(ip)
                             ip_set.add(ip_calc)
                         except ValidationError:
-                            logger.warning("Not valid IP or URL: %s", ip)
+                            logger.warning("Invalid IP: %s", ip)
                             print_invalid_ip(ip)
                             continue
 
@@ -673,7 +673,7 @@ def menu():
                                 {
                                     "type": "input",
                                     "name": "ip",
-                                    "message": "IP/URL",
+                                    "message": "IP address",
                                     "qmark": "@",
                                     "validate": IPInWhitelist,
                                 },
@@ -743,7 +743,7 @@ def menu():
                                             {
                                                 "type": "input",
                                                 "name": "ip",
-                                                "message": "IP/URL",
+                                                "message": "IP address",
                                                 "qmark": "@",
                                                 "validate": IPValidator,
                                                 "default": ip,
@@ -808,7 +808,7 @@ def menu():
                                 {
                                     "type": "input",
                                     "name": "ip",
-                                    "message": "IP/URL",
+                                    "message": "IP address",
                                     "qmark": "@",
                                     "validate": IPInBlacklist,
                                 },
@@ -878,7 +878,7 @@ def menu():
                                             {
                                                 "type": "input",
                                                 "name": "ip",
-                                                "message": "IP/URL",
+                                                "message": "IP address",
                                                 "qmark": "@",
                                                 "validate": IPValidator,
                                                 "default": ip,

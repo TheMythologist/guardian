@@ -1,9 +1,9 @@
-from typing import Optional, TypedDict
+from typing import Optional
 
 from pydivert import packet
 
-from network.ConnectionStats import ConnectionStats
-from network.IPTag import IPTag
+from network.connectionstats import ConnectionStats
+from network.iptag import IPTag
 
 # Ok so now that we've finally figured out most of the bugs / problems with pickling packets we can now actually start
 # to curate information from packets (and perhaps even other metrics) that can be displayed. I have a couple ideas:
@@ -203,10 +203,6 @@ class SessionInfo:
         NOTE: Will throw KeyError there is no ConnectionStat for the given ip.
         """
         return self.connection_stats[self.known_ips[ip]]
-
-
-class ConnectionStatsData(TypedDict):
-    pass
 
 
 def generate_stats(connection_stats: list[ConnectionStats]) -> str:
