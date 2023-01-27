@@ -60,11 +60,11 @@ class GlobalList:
         self.load()
 
 
-class Whitelist(GlobalList, Singleton):
+class Whitelist(GlobalList, metaclass=Singleton):
     def __init__(self):
         super().__init__("whitelist")
 
 
-class Blacklist(GlobalList, Singleton):
+class Blacklist(GlobalList, metaclass=Singleton):
     def __init__(self):
         super().__init__("blacklist")

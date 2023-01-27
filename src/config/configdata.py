@@ -10,7 +10,7 @@ class ConfigDataType(TypedDict):
     whitelist: dict[str, str]
 
 
-class ConfigData(Singleton):
+class ConfigData(metaclass=Singleton):
     def __init__(self, data_file: str = "data.json"):
         self.data_file = data_file
         self.data: ConfigDataType
