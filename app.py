@@ -20,10 +20,10 @@ from tqdm import tqdm
 from config.configdata import ConfigData
 from config.globallist import Blacklist, Whitelist
 from network import sessioninfo
-from network.blocker import (
+from network.sessions import (
     AbstractPacketFilter,
     BlacklistSession,
-    Debugger,
+    DebugSession,
     IPCollector,
     LockedSession,
     SoloSession,
@@ -935,7 +935,7 @@ def menu():
                 os.system("cls")
                 continue
             if answer.get("agree"):
-                debugger = Debugger(whitelist.ips)
+                debugger = DebugSession(whitelist.ips)
                 debugger.start()
                 for _ in tqdm(range(60), ascii=True, desc="Collecting Requests"):
                     time.sleep(1)

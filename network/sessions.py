@@ -262,7 +262,7 @@ class LockedSession(AbstractPacketFilter):
         return size not in matchmaking_sizes
 
 
-class Debugger:
+class DebugSession:
     """
     Thread to create a log of the ips matching the packet filter
     """
