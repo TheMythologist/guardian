@@ -2,6 +2,8 @@ import json
 import os
 from typing import TypedDict
 
+from util.singleton import Singleton
+
 # TODO: `file_name` variable should be used a class default
 file_name = "data.json"
 
@@ -12,12 +14,7 @@ class ConfigDataType(TypedDict):
 
 
 # TODO: Implement magic methods `__enter__` and `__exit__`
-class ConfigData:
-    def __new__(cls):
-        if not hasattr(cls, "instance"):
-            cls.instance = super().__new__(cls)
-        return cls.instance
-
+class ConfigData(Singleton):
     def __init__(self, data_file: str = "data.json"):
         self.data_file = data_file
         self.data: ConfigDataType

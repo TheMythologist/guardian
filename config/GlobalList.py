@@ -1,6 +1,7 @@
 from typing import Any, Iterable
 
 from config.ConfigData import ConfigData
+from util.singleton import Singleton
 
 
 class GlobalList:
@@ -12,7 +13,7 @@ class GlobalList:
         self.list_name = list_name
         self.config = ConfigData()
         # Sample self.data: {"192.168.0.1", "bad guy"}
-        self.data: dict = self.config.get(list_name, {})
+        self.load()
 
     @property
     def ips(self) -> list[str]:
@@ -52,12 +53,18 @@ class GlobalList:
         self.config.set(self.list_name, self.data)
         self.config.save()
 
+    def load(self) -> None:
+        self.data: dict = self.config.get(self.list_name, {})
 
-class Whitelist(GlobalList):
+    def reload(self) -> None:
+        self.load()
+
+
+class Whitelist(GlobalList, Singleton):
     def __init__(self):
         super().__init__("whitelist")
 
 
-class Blacklist(GlobalList):
+class Blacklist(GlobalList, Singleton):
     def __init__(self):
         super().__init__("blacklist")
