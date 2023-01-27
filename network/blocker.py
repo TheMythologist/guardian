@@ -280,7 +280,7 @@ class Debugger:
 
     def run(self) -> None:
         debug_logger.debug("Started debugging")
-        with pydivert.WinDivert(packetfilter) as w:
+        with pydivert.WinDivert(packetfilter, flags=pydivert.Flag.SNIFF) as w:
             for packet in w:
                 dst = packet.ip.dst_addr
                 src = packet.ip.src_addr
@@ -315,7 +315,6 @@ class Debugger:
                 else:
                     log = f"[{filler}] {src}:{packet.src_port} <-- {dst}:{packet.dst_port}"
                 debug_logger.debug(log)
-                w.send(packet)
 
 
 # Okay, so there's a couple of changes that need to be done to fix auto-whitelisting.
@@ -396,14 +395,12 @@ class IPCollector:
         logger.info("Collected a total of %d IPs", len(self.ips))
 
     def run(self) -> None:
-        # TODO: Can you run PyDivert in sniff mode, instead of having to run a filter?
         # TODO: We could also actually check to see *when* the last packet was seen from that IP.
         with contextlib.suppress(KeyboardInterrupt):
-            with pydivert.WinDivert(packetfilter) as w:
+            with pydivert.WinDivert(packetfilter, flags=pydivert.Flag.SNIFF) as w:
                 for packet in w:
                     size = len(packet.payload)
 
                     if packet.is_inbound and size not in known_sizes:
                         src = packet.ip.src_addr
                         self.add_seen_ip(src)
-                    w.send(packet)
