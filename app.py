@@ -918,7 +918,8 @@ def menu():
         elif option == "support_zip":
             os.system("cls")
             print_white(
-                "NOTICE: This program will now log all udp traffic on port 6672 for 1 minute. "
+                "NOTICE: This program will now log all udp traffic on port 6672 for 1 minute.\n"
+                "This will also include your configuration file (data.json), and any IP addresses inside.\n"
                 "Only run this if you are okay with that."
             )
             options = [
@@ -934,12 +935,12 @@ def menu():
                 os.system("cls")
                 continue
             if answer.get("agree"):
-                debugger = Debugger(ip_set)
+                debugger = Debugger(whitelist.ips)
                 debugger.start()
                 for _ in tqdm(range(60), ascii=True, desc="Collecting Requests"):
                     time.sleep(1)
                 debugger.stop()
-                time.sleep(1)
+
                 print_white("Packing debug request")
                 with zipfile.ZipFile(
                     f"debugger-{time.strftime('%Y%m%d-%H%M%S')}.zip",
@@ -947,6 +948,7 @@ def menu():
                     zipfile.ZIP_DEFLATED,
                 ) as compressed:
                     compressed.write("debugger.log")
+                    compressed.write("data.json")
                 print_white("Finished")
             else:
                 print_white("Declined")

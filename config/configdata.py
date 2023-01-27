@@ -10,7 +10,6 @@ class ConfigDataType(TypedDict):
     whitelist: dict[str, str]
 
 
-# TODO: Implement magic methods `__enter__` and `__exit__`
 class ConfigData(Singleton):
     def __init__(self, data_file: str = "data.json"):
         self.data_file = data_file
