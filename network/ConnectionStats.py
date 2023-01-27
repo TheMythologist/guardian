@@ -1,8 +1,8 @@
 import timeit
 from typing import Any
 
-from network.iptag import IPTag
-from network.minimalpacket import MinimalPacket
+from network.IPTag import IPTag
+from network.MinimalPacket import MinimalPacket
 
 
 class ConnectionStats:

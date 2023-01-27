@@ -19,7 +19,8 @@ from prompt_toolkit.styles import Style
 from questionary import ValidationError, Validator, prompt
 from tqdm import tqdm
 
-import util.data as data
+import config.ConfigData as data
+from config.CustomList import CustomList
 from network import sessioninfo
 from network.blocker import (
     AbstractPacketFilter,
@@ -91,15 +92,6 @@ def get_private_ip():
     return local_ip
 
 
-class NameInCustom(Validator):
-    def validate(self, document: Document):
-        global custom_ips
-        if custom_ips.has(document.text):
-            raise ValidationError(
-                message="Name already in list", cursor_position=len(document.text)
-            )
-
-
 class NameInBlacklist(Validator):
     def validate(self, document: Document):
         global blacklist
@@ -109,11 +101,11 @@ class NameInBlacklist(Validator):
             )
 
 
-class IPInCustom(IPValidator):
+class IPInWhitelist(IPValidator):
     def validate(self, document: Document):
         super().validate(document)
-        global custom_ips
-        if document.text in custom_ips or custom_ips.has(document.text, "value"):
+        global whitelist
+        if document.text in whitelist:
             raise ValidationError(
                 message="IP already in list", cursor_position=len(document.text)
             )
@@ -149,7 +141,7 @@ def crash_report(
 
 
 def menu():
-    global config, custom_ips, blacklist, friends, dynamic_blacklist
+    global config, whitelist, blacklist, dynamic_blacklist
     while True:
         dynamic_blacklist_checker = (
             "Experimental" if len(dynamic_blacklist) > 0 else "Not working"
@@ -185,7 +177,6 @@ def menu():
                         "name": "Kick by IP                 [Unstable]",
                         "value": "kick_by_ip",
                     },
-                    {"name": "Token", "value": "token"},
                     {"name": "Discord", "value": "discord"},
                     {"name": "Support zip", "value": "support_zip"},
                     {"name": "Quit", "value": "quit"},
@@ -298,20 +289,17 @@ def menu():
                     else:
                         print_white("Failed to get Public IP, running without")
 
-                    for ip, friend in custom_ips:
-                        if friend.get("enabled"):
-                            try:
-                                ip_calc = IPValidator.validate_get(ip)
-                                ip_set.add(ip_calc)
-                                ip_tags.append(
-                                    sessioninfo.IPTag(
-                                        ip_calc, f"{friend.get('name')} [WHITELIST]"
-                                    )
-                                )
-                            except ValidationError:
-                                logger.warning("Not valid IP or URL: %s", ip)
-                                print_invalid_ip(ip)
-                                continue
+                    for ip, name in whitelist:
+                        try:
+                            ip_calc = IPValidator.validate_get(ip)
+                            ip_set.add(ip_calc)
+                            ip_tags.append(
+                                sessioninfo.IPTag(ip_calc, f"{name} [WHITELIST]")
+                            )
+                        except ValidationError:
+                            logger.warning("Not valid IP or URL: %s", ip)
+                            print_invalid_ip(ip)
+                            continue
 
                     logger.info("Starting whitelisted session with %d IPs", len(ip_set))
                     print_running_message("Whitelisted")
@@ -475,7 +463,7 @@ def menu():
                     for ip in ip_set:
                         if ip_in_cidr_block_set(ip, dynamic_blacklist):
                             # Ignore if user has this IP in custom whitelist.
-                            if ip not in custom_ips:
+                            if ip not in whitelist:
                                 potential_tunnels.add(ip)
                     if len(potential_tunnels) > 0:
                         c = [{"name": ip, "checked": False} for ip in potential_tunnels]
@@ -524,15 +512,14 @@ def menu():
                     else:
                         print_white("Failed to get Public IP, running without")
 
-                    for ip, friend in custom_ips:
-                        if friend.get("enabled"):
-                            try:
-                                ip_calc = IPValidator.validate_get(ip)
-                                ip_set.add(ip_calc)
-                            except ValidationError:
-                                logger.warning("Not valid IP or URL: %s", ip)
-                                print_invalid_ip(ip)
-                                continue
+                    for ip, name in whitelist:
+                        try:
+                            ip_calc = IPValidator.validate_get(ip)
+                            ip_set.add(ip_calc)
+                        except ValidationError:
+                            logger.warning("Not valid IP or URL: %s", ip)
+                            print_invalid_ip(ip)
+                            continue
 
                     os.system("cls")
                     logger.info("Starting whitelisted session with %d IPs", len(ip_set))
@@ -613,192 +600,18 @@ def menu():
                         "qmark": "@",
                         "message": "What do you want?",
                         "choices": [
-                            {"name": "Custom", "value": "custom"},
+                            {"name": "Whitelist", "value": "whitelist"},
                             {"name": "Blacklist", "value": "blacklist"},
                             {"name": "MainMenu", "value": "return"},
                         ],
                     }
                 ]
-                if not config.get("token"):
-                    options[0]["choices"][1]["disabled"] = "No token"
                 answer = prompt(options, style=style)
                 if not answer or answer["option"] == "return":
                     os.system("cls")
                     break
 
-                elif answer["option"] == "custom":
-                    os.system("cls")
-                    while True:
-                        options = [
-                            {
-                                "type": "list",
-                                "name": "option",
-                                "qmark": "@",
-                                "message": "Custom list",
-                                "choices": [
-                                    {"name": "Select", "value": "select"},
-                                    {"name": "Add", "value": "add"},
-                                    {"name": "List", "value": "list"},
-                                    {"name": "MainMenu", "value": "return"},
-                                ],
-                            }
-                        ]
-                        answer = prompt(options, style=style)
-
-                        if not answer or answer["option"] == "return":
-                            os.system("cls")
-                            break
-
-                        elif answer["option"] == "select":
-                            os.system("cls")
-                            if len(custom_ips) <= 0:
-                                print_white("No custom lists")
-                                continue
-                            else:
-                                c = [
-                                    {
-                                        "name": f.get("name"),
-                                        "checked": True if f.get("enabled") else None,
-                                    }
-                                    for ip, f in custom_ips
-                                ]
-                                options = [
-                                    {
-                                        "type": "checkbox",
-                                        "name": "option",
-                                        "qmark": "@",
-                                        "message": "Select who to enable",
-                                        "choices": c,
-                                    }
-                                ]
-                                answer = prompt(options, style=style)
-                                if not answer:
-                                    os.system("cls")
-                                    continue
-                                for ip, item in custom_ips:
-                                    item["enabled"] = (
-                                        item.get("name") in answer["option"]
-                                    )
-                                config.save()
-
-                        # TODO: Prevent users from accidentally adding R* / T2 IPs to the whitelist.
-                        # Perhaps this could be done by updating the validator?
-                        elif answer["option"] == "add":
-                            os.system("cls")
-                            options = [
-                                {
-                                    "type": "input",
-                                    "name": "ip",
-                                    "message": "IP/URL",
-                                    "qmark": "@",
-                                    "validate": IPInCustom,
-                                },
-                            ]
-
-                            answer = prompt(options, style=style)
-                            if not answer:
-                                os.system("cls")
-                                continue
-                            try:
-                                ip = IPValidator.validate_get(answer["ip"])
-                                item = {"name": answer["name"], "enabled": True}
-                                if ip != answer["ip"]:
-                                    item["value"] = answer["ip"]
-                                custom_ips.add(ip, item)
-                                config.save()
-                            except ValidationError as e:
-                                print_white(e.message)
-
-                        elif answer["option"] == "list":
-                            os.system("cls")
-                            while True:
-                                if len(custom_ips) <= 0:
-                                    print_white("No custom lists")
-                                    break
-                                c = [
-                                    {
-                                        "name": f.get("name"),
-                                        "checked": True if f.get("enabled") else None,
-                                    }
-                                    for ip, f in custom_ips
-                                ]
-                                options = [
-                                    {
-                                        "type": "list",
-                                        "name": "name",
-                                        "qmark": "@",
-                                        "message": "Select which list to view",
-                                        "choices": c,
-                                    }
-                                ]
-                                answer = prompt(options, style=style)
-                                if not answer:
-                                    os.system("cls")
-                                    break
-                                list_name = answer["name"]
-                                options = [
-                                    {
-                                        "type": "list",
-                                        "name": "option",
-                                        "qmark": "@",
-                                        "message": "Select what to do",
-                                        "choices": [
-                                            {"name": "Edit", "value": "edit"},
-                                            {"name": "Delete", "value": "delete"},
-                                            {"name": "Back", "value": "return"},
-                                        ],
-                                    }
-                                ]
-                                answer = prompt(options, style=style)
-                                if not answer or answer["option"] == "return":
-                                    os.system("cls")
-                                    break
-
-                                elif answer["option"] == "edit":
-                                    while True:
-                                        print(
-                                            "Notice, user deleted. Press enter to go back / Save. Quit and you lose him."
-                                        )
-                                        ip, item = custom_ips.find(list_name)
-                                        entry = item.get("value", ip)
-                                        custom_ips.delete(ip)
-                                        config.save()
-                                        options = [
-                                            {
-                                                "type": "input",
-                                                "name": "ip",
-                                                "message": "IP/URL",
-                                                "qmark": "@",
-                                                "validate": IPInCustom,
-                                                "default": entry,
-                                            },
-                                        ]
-
-                                        answer = prompt(options, style=style)
-                                        if not answer:
-                                            os.system("cls")
-                                            break
-                                        try:
-                                            ip = IPValidator.validate_get(answer["ip"])
-                                            item["name"] = answer["name"]
-                                            item["enabled"] = True
-                                            if ip != answer["ip"]:
-                                                item["value"] = answer["ip"]
-                                            custom_ips.add(ip, item)
-                                            config.save()
-                                            os.system("cls")
-                                        except ValidationError as e:
-                                            custom_ips.add(ip, item)
-                                            config.save()
-                                            print_white(
-                                                "Original item was restored due to error: "
-                                                + e.message
-                                            )
-
-                                elif answer["option"] == "delete":
-                                    ip, item = custom_ips.find(list_name)
-                                    custom_ips.delete(ip)
-                                    config.save()
+                # ADD OPTION FOR WHITELISTING HERE
 
                 elif answer["option"] == "blacklist":
                     os.system("cls")
@@ -1000,7 +813,7 @@ def menu():
                     "type": "checkbox",
                     "name": "option",
                     "qmark": "@",
-                    "message": "Select IP's to kick",
+                    "message": "Select IPs to kick",
                     "choices": [ip for ip in ip_set],
                 }
             ]
@@ -1010,13 +823,7 @@ def menu():
                 break
 
             ips = answer["option"]
-            print_white(
-                'Running: "'
-                + Fore.LIGHTBLACK_EX
-                + "Blacklist"
-                + Fore.LIGHTWHITE_EX
-                + '"'
-            )
+            print_white(f'Running: "{Fore.LIGHTBLACK_EX}Blacklist{Fore.LIGHTWHITE_EX}"')
             packet_filter = Blacklist(ips=ips)
             packet_filter.start()
             time.sleep(10)
@@ -1030,15 +837,8 @@ def menu():
                 ip_set.add(public_ip)
             else:
                 print_white("Failed to get Public IP, running without")
-            for ip, friend in custom_ips:
-                if friend.get("enabled"):
-                    try:
-                        ip_calc = IPValidator.validate_get(ip)
-                        ip_set.add(ip_calc)
-                    except ValidationError:
-                        logger.warning("Not valid IP or URL: %s", ip)
-                        print_invalid_ip(ip)
-                        continue
+
+            # ADD WHITELISTS HERE AS WELL
 
             print_white("Kicking unknowns")
             time.sleep(2)
@@ -1147,14 +947,8 @@ if __name__ == "__main__":
 
         # at this point the file has been parsed and is valid
         # Any additional exceptions are explicit or programmer error
-        try:
-            blacklist = data.CustomList("blacklist")
-            custom_ips = data.CustomList("custom_ips")
-            friends = data.CustomList("friends")
-        except data.MigrationRequired:
-            data.migrate_to_dict()
-            time.sleep(5)
-            sys.exit()
+        blacklist = CustomList("blacklist")
+        whitelist = CustomList("whitelist")
 
         os.system("cls")
         logger.info("Init")

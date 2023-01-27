@@ -2,8 +2,8 @@ from typing import Optional, TypedDict
 
 from pydivert import packet
 
-from network.connectionstats import ConnectionStats
-from network.iptag import IPTag
+from network.ConnectionStats import ConnectionStats
+from network.IPTag import IPTag
 
 # Ok so now that we've finally figured out most of the bugs / problems with pickling packets we can now actually start
 # to curate information from packets (and perhaps even other metrics) that can be displayed. I have a couple ideas:
