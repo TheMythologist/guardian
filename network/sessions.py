@@ -3,13 +3,15 @@ import logging
 import multiprocessing
 import re
 from abc import ABC, abstractmethod
+from multiprocessing.managers import DictProxy
 from typing import Optional
 
 import pydivert
 
 from network import sessioninfo
-from network.minimalpacket import safe_pickle_packet
 from util.DynamicBlacklist import ip_in_cidr_block_set
+
+logger = logging.getLogger("guardian")
 
 debug_logger = logging.getLogger("debugger")
 debug_logger.setLevel(logging.DEBUG)
@@ -18,7 +20,7 @@ if not debug_logger.handlers:
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(
         logging.Formatter(
-            "%(asctime)s|%(levelname)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+            "[%(asctime)s][%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
         )
     )
     debug_logger.addHandler(fh)
@@ -54,7 +56,6 @@ if not debug_logger.handlers:
 # still be useful to compare how the new rules can drop tunnels while still letting heartbeats and matchmaking through.
 
 ipfilter = re.compile(r"^(185\.56\.6[4-7]\.\d{1,3})$")
-logger = logging.getLogger("guardian")
 
 # I decided to filter only on packets inbound to 6672 because most of the new filtering logic only checks inbound packets,
 # and I don't think it makes much sense to add extra load by checking outbound packets when we're not doing
@@ -67,8 +68,8 @@ logger = logging.getLogger("guardian")
 # NOTE: If R* ever updates Online to support IPv6, then "and ip" should be removed from packetfilter,
 # and parts of the filter logic (in the Whitelist class) that use the packet.ip attribute should be changed.
 
-# packetfilter = "(udp.SrcPort == 6672 or udp.DstPort == 6672) and ip"
-packetfilter = "(udp.DstPort == 6672 and udp.PayloadLength > 0) and ip"
+# PACKET_FILTER = "udp.SrcPort == 6672 or udp.DstPort == 6672 and ip"
+PACKET_FILTER = "udp.DstPort == 6672 and udp.PayloadLength > 0 and ip"
 
 # Based on network observation, the payload sizes of packets which are probably some sort of heartbeat (and therefore
 # should be let through so the session stays online), or a matchmaking request (and therefore should be let through so we
@@ -76,15 +77,15 @@ packetfilter = "(udp.DstPort == 6672 and udp.PayloadLength > 0) and ip"
 
 # Interesting note: All the matchmaker requests have payload sizes that may be 16 bytes apart.
 
-heartbeat_sizes = {12, 18}
-matchmaking_sizes = {
+HEARTBEAT_SIZES = {12, 18}
+MATCHMAKING_SIZES = {
     245,
     261,
     277,
     293,
 }  # probably a player looking to join the session.
 
-known_sizes = heartbeat_sizes.union(matchmaking_sizes)
+KNOWN_SIZES = HEARTBEAT_SIZES.union(MATCHMAKING_SIZES)
 
 # Matchmaking response sizes might be: 45, 125, 205?
 # The size 45 payload definitely cannot be blocked as it pops up frequently in normal gameplay.
@@ -112,8 +113,6 @@ class AbstractPacketFilter(ABC):
         self.process.daemon = True
         self.session_info = session_info
         self.debug_print_decisions = debug
-        if not pydivert.WinDivert.is_registered():
-            pydivert.WinDivert.register()
 
     def start(self) -> None:
         self.process.start()
@@ -128,18 +127,15 @@ class AbstractPacketFilter(ABC):
         pass
 
     def run(self) -> None:
-        # To allow termination via CTRL + C
         with contextlib.suppress(KeyboardInterrupt):
-            with pydivert.WinDivert(packetfilter) as w:
+            with pydivert.WinDivert(PACKET_FILTER) as w:
                 for packet in w:
                     decision = self.is_packet_allowed(packet)
                     if decision:
                         w.send(packet)
 
                     if self.session_info is not None:
-                        self.session_info.add_packet(
-                            safe_pickle_packet(packet), allowed=decision
-                        )
+                        self.session_info.add_packet(packet, allowed=decision)
 
                     if self.debug_print_decisions:
                         print(self.construct_debug_packet_info(packet, decision))
@@ -170,7 +166,7 @@ class SoloSession(AbstractPacketFilter):
     def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
         size = len(packet.payload)
 
-        return size in heartbeat_sizes
+        return size in HEARTBEAT_SIZES
 
 
 class WhitelistSession(AbstractPacketFilter):
@@ -194,7 +190,7 @@ class WhitelistSession(AbstractPacketFilter):
 
         # The "special sauce" for the new filtering logic. We're using payload sizes to guess if the packet
         # has a behaviour we want to allow through.
-        return ip in self.ips or size in known_sizes
+        return ip in self.ips or size in KNOWN_SIZES
 
 
 class BlacklistSession(AbstractPacketFilter):
@@ -224,7 +220,7 @@ class BlacklistSession(AbstractPacketFilter):
         ip = packet.ip.src_addr
         size = len(packet.payload)
 
-        if ip in self.known_allowed or size in known_sizes:
+        if ip in self.known_allowed or size in KNOWN_SIZES:
             return True
         elif ip not in self.ips:
             # If it's not directly blacklisted it might be in a blacklisted range
@@ -259,10 +255,10 @@ class LockedSession(AbstractPacketFilter):
         # No new matchmaking requests allowed.
         # Seems a bit overkill (and perhaps reckless) to always block these payload sizes but my packet
         # captures show that these payload sizes don't occur in any regular game traffic so...
-        return size not in matchmaking_sizes
+        return size not in MATCHMAKING_SIZES
 
 
-class Debugger:
+class DebugSession:
     """
     Thread to create a log of the ips matching the packet filter
     """
@@ -280,7 +276,7 @@ class Debugger:
 
     def run(self) -> None:
         debug_logger.debug("Started debugging")
-        with pydivert.WinDivert(packetfilter) as w:
+        with pydivert.WinDivert(PACKET_FILTER, flags=pydivert.Flag.SNIFF) as w:
             for packet in w:
                 dst = packet.ip.dst_addr
                 src = packet.ip.src_addr
@@ -290,13 +286,13 @@ class Debugger:
                 reserved_block = False  # Packet from a reserved IP was blocked.
                 service = False  # Packet allowed because it could be heartbeat / matchmaker but not from a reserved IP.
                 if ipfilter.match(dst) or ipfilter.match(src):
-                    if size in known_sizes:
+                    if size in KNOWN_SIZES:
                         reserved_allow = True
                     else:
                         reserved_block = True  # Came from a "reserved" IP but was blocked under the new rules.
                 elif dst in self.ips or src in self.ips:
                     whitelisted = True
-                elif size in known_sizes:
+                elif size in KNOWN_SIZES:
                     service = True  # Was allowed because it may be service-related, but wasn't from a reserved IP.
 
                 if whitelisted:
@@ -315,7 +311,6 @@ class Debugger:
                 else:
                     log = f"[{filler}] {src}:{packet.src_port} <-- {dst}:{packet.dst_port}"
                 debug_logger.debug(log)
-                w.send(packet)
 
 
 # Okay, so there's a couple of changes that need to be done to fix auto-whitelisting.
@@ -361,15 +356,10 @@ class IPCollector:
         self.process = multiprocessing.Process(target=self.run)
         self.process.daemon = True
         self.ips = multiprocessing.Manager().list()
-        self.seen_ips = (
-            multiprocessing.Manager().dict()
-        )  # key is IP address, value is packets seen
+        self.seen_ips: DictProxy[
+            str, int
+        ] = multiprocessing.Manager().dict()  # key is IP address, value is packets seen
         self.min_packets = packet_count_min_threshold  # minimum amount of packets required to be seen to be added
-        if not pydivert.WinDivert.is_registered():
-            pydivert.WinDivert.register()
-
-        # self.ips.append("20.40.183.2")      # DEBUG, forcing an Azure IP to be included
-        # self.ips.append("192.81.240.99")    # DEBUG, forcing a T2 US IP to be included
 
     def add_seen_ip(self, ip: str) -> None:
         """
@@ -396,14 +386,12 @@ class IPCollector:
         logger.info("Collected a total of %d IPs", len(self.ips))
 
     def run(self) -> None:
-        # TODO: Can you run PyDivert in sniff mode, instead of having to run a filter?
         # TODO: We could also actually check to see *when* the last packet was seen from that IP.
         with contextlib.suppress(KeyboardInterrupt):
-            with pydivert.WinDivert(packetfilter) as w:
+            with pydivert.WinDivert(PACKET_FILTER, flags=pydivert.Flag.SNIFF) as w:
                 for packet in w:
                     size = len(packet.payload)
 
-                    if packet.is_inbound and size not in known_sizes:
+                    if packet.is_inbound and size not in KNOWN_SIZES:
                         src = packet.ip.src_addr
                         self.add_seen_ip(src)
-                    w.send(packet)

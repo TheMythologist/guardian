@@ -162,3 +162,4 @@ cython_debug/
 # JSON files generated during testing
 data.json
 db.json
+*.zip
