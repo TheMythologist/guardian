@@ -21,7 +21,7 @@ from tqdm import tqdm
 
 import config.ConfigData as data
 from config.ConfigData import ConfigData
-from config.GlobalList import GlobalList
+from config.GlobalList import Blacklist, Whitelist
 from network import sessioninfo
 from network.blocker import (
     AbstractPacketFilter,
@@ -95,7 +95,7 @@ def get_private_ip():
 
 class NameInBlacklist(Validator):
     def validate(self, document: Document):
-        blacklist = GlobalList("blacklist")
+        blacklist = Blacklist()
         name = document.text
         if blacklist.has(name):
             raise ValidationError(
@@ -105,7 +105,7 @@ class NameInBlacklist(Validator):
 
 class NameInWhitelist(Validator):
     def validate(self, document: Document):
-        whitelist = GlobalList("whitelist")
+        whitelist = Whitelist()
         name = document.text
         if whitelist.has(name):
             raise ValidationError(
@@ -125,7 +125,7 @@ class IPInBlacklist(Validator):
 class IPInWhitelist(IPValidator):
     def validate(self, document: Document):
         super().validate(document)
-        whitelist = GlobalList("whitelist")
+        whitelist = Whitelist()
         ip = document.text
         if ip in whitelist:
             raise ValidationError(message="IP already in list", cursor_position=len(ip))
@@ -1040,8 +1040,8 @@ if __name__ == "__main__":
 
         # at this point the file has been parsed and is valid
         # Any additional exceptions are explicit or programmer error
-        blacklist = GlobalList("blacklist")
-        whitelist = GlobalList("whitelist")
+        blacklist = Blacklist()
+        whitelist = Whitelist()
 
         os.system("cls")
         logger.info("Init")

@@ -51,3 +51,13 @@ class GlobalList:
     def save(self) -> None:
         self.config.set(self.list_name, self.data)
         self.config.save()
+
+
+class Whitelist(GlobalList):
+    def __init__(self):
+        super().__init__("whitelist")
+
+
+class Blacklist(GlobalList):
+    def __init__(self):
+        super().__init__("blacklist")
