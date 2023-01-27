@@ -25,12 +25,12 @@ from config.GlobalList import GlobalList
 from network import sessioninfo
 from network.blocker import (
     AbstractPacketFilter,
-    Blacklist,
+    BlacklistSession,
     Debugger,
     IPCollector,
-    Locked,
-    Solo,
-    Whitelist,
+    LockedSession,
+    SoloSession,
+    WhitelistSession,
 )
 from util.constants import version
 from util.DynamicBlacklist import (
@@ -241,7 +241,7 @@ def menu():
                     logger.info("Starting solo session")
                     print_running_message("Solo")
 
-                    packet_filter = Solo()
+                    packet_filter = SoloSession()
                     try:
                         packet_filter.start()
                         while True:
@@ -320,7 +320,7 @@ def menu():
                     # session_info = sessioninfo.SessionInfo(manager.dict(), connection_stats, manager.Queue(), ip_tags)
 
                     # Set up packet_filter outside the try-catch so it can be safely referenced inside KeyboardInterrupt.
-                    packet_filter = Whitelist(ips=ip_set)
+                    packet_filter = WhitelistSession(ips=ip_set)
 
                     print("Experimental support for Online 1.54+ developed by Speyedr.")
 
@@ -406,7 +406,7 @@ def menu():
                     logger.info("Starting blacklisted session with %d IPs", len(ip_set))
                     print_running_message("Blacklist")
 
-                    packet_filter = Blacklist(
+                    packet_filter = BlacklistSession(
                         ips=ip_set, blocks=dynamic_blacklist, known_allowed=allowed_ips
                     )
                     try:
@@ -534,7 +534,7 @@ def menu():
                     logger.info("Starting whitelisted session with %d IPs", len(ip_set))
                     print_running_message("Whitelisted")
 
-                    packet_filter = Whitelist(ips=ip_set)
+                    packet_filter = WhitelistSession(ips=ip_set)
                     try:
                         packet_filter.start()
                         while True:
@@ -590,7 +590,7 @@ def menu():
                         f'Running: "{Fore.LIGHTCYAN_EX}Locked session{Fore.LIGHTWHITE_EX}" Press "{Fore.LIGHTCYAN_EX}CTRL + C{Fore.LIGHTWHITE_EX}" to unlock session.'
                     )
 
-                    packet_filter = Locked()
+                    packet_filter = LockedSession()
                     try:
                         packet_filter.start()
                         while True:
@@ -917,7 +917,7 @@ def menu():
 
             ips = answer["option"]
             print_white(f'Running: "{Fore.LIGHTBLACK_EX}Blacklist{Fore.LIGHTWHITE_EX}"')
-            packet_filter = Blacklist(ips=ips)
+            packet_filter = BlacklistSession(ips=ips)
             packet_filter.start()
             time.sleep(10)
             packet_filter.stop()
@@ -935,7 +935,7 @@ def menu():
 
             print_white("Kicking unknowns")
             time.sleep(2)
-            packet_filter = Whitelist(ips=ip_set)
+            packet_filter = WhitelistSession(ips=ip_set)
             packet_filter.start()
             time.sleep(10)
             packet_filter.stop()
@@ -944,7 +944,7 @@ def menu():
         elif option == "new":
             print_white("Creating new session")
             time.sleep(2)
-            packet_filter = Whitelist(ips=set())
+            packet_filter = WhitelistSession(ips=set())
             packet_filter.start()
             time.sleep(10)
             packet_filter.stop()
