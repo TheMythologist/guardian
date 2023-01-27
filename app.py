@@ -17,8 +17,8 @@ from prompt_toolkit.styles import Style
 from questionary import ValidationError, prompt
 from tqdm import tqdm
 
-from config.ConfigData import ConfigData
-from config.GlobalList import Blacklist, Whitelist
+from config.configdata import ConfigData
+from config.globallist import Blacklist, Whitelist
 from network import sessioninfo
 from network.blocker import (
     AbstractPacketFilter,

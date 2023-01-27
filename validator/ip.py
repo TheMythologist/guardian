@@ -6,7 +6,7 @@ from typing import Callable
 from prompt_toolkit.document import Document
 from questionary import ValidationError, Validator
 
-from config.GlobalList import Blacklist, GlobalList, Whitelist
+from config.globallist import Blacklist, GlobalList, Whitelist
 
 ipv4 = re.compile(r"((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}")
 

@@ -3,7 +3,7 @@ from typing import Callable
 from prompt_toolkit.document import Document
 from questionary import ValidationError, Validator
 
-from config.GlobalList import Blacklist, GlobalList, Whitelist
+from config.globallist import Blacklist, GlobalList, Whitelist
 
 
 class NameValidator(Validator):

@@ -1,6 +1,6 @@
 from typing import Any, Iterable
 
-from config.ConfigData import ConfigData
+from config.configdata import ConfigData
 from util.singleton import Singleton
 
 
