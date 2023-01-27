@@ -2,7 +2,6 @@ import ctypes
 import json
 import logging
 import os
-import socket
 import sys
 import time
 import traceback
@@ -14,9 +13,8 @@ from typing import Optional
 import pydivert
 import requests
 from colorama import Fore
-from prompt_toolkit.document import Document
 from prompt_toolkit.styles import Style
-from questionary import ValidationError, Validator, prompt
+from questionary import ValidationError, prompt
 from tqdm import tqdm
 
 from config.ConfigData import ConfigData
@@ -37,13 +35,20 @@ from util.DynamicBlacklist import (
     get_dynamic_blacklist,
     ip_in_cidr_block_set,
 )
+from util.network import get_private_ip, get_public_ip
 from util.printer import (
     print_invalid_ip,
     print_running_message,
     print_stopped_message,
     print_white,
 )
-from util.validator import IPValidator
+from util.validator import (
+    IPInBlacklist,
+    IPInWhitelist,
+    IPValidator,
+    NameInBlacklist,
+    NameInWhitelist,
+)
 
 logger = logging.getLogger("guardian")
 logger.propagate = False
@@ -71,63 +76,6 @@ style = Style(
         ("instruction", ""),  # user instructions for select, rawselect, checkbox
     ]
 )
-
-
-def get_public_ip():
-    # Use https://www.ipify.org/
-    public_ip = requests.get("https://api.ipify.org?format=json").text
-    if public_ip:
-        logger.info("Got a public IP")
-        return public_ip
-    else:
-        logger.warning("Failed to get public IP")
-        return False
-
-
-def get_private_ip():
-    soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    soc.connect(("8.8.8.8", 80))
-    local_ip = soc.getsockname()[0]
-    soc.close()
-    return local_ip
-
-
-class NameInBlacklist(Validator):
-    def validate(self, document: Document):
-        blacklist = Blacklist()
-        name = document.text
-        if blacklist.has(name):
-            raise ValidationError(
-                message="Name already in list", cursor_position=len(name)
-            )
-
-
-class NameInWhitelist(Validator):
-    def validate(self, document: Document):
-        whitelist = Whitelist()
-        name = document.text
-        if whitelist.has(name):
-            raise ValidationError(
-                message="Name already in list", cursor_position=len(name)
-            )
-
-
-class IPInBlacklist(Validator):
-    def validate(self, document: Document):
-        super().validate(document)
-        blacklist = Blacklist()
-        ip = document.text
-        if ip in blacklist:
-            raise ValidationError(message="IP already in list", cursor_position=len(ip))
-
-
-class IPInWhitelist(IPValidator):
-    def validate(self, document: Document):
-        super().validate(document)
-        whitelist = Whitelist()
-        ip = document.text
-        if ip in whitelist:
-            raise ValidationError(message="IP already in list", cursor_position=len(ip))
 
 
 def crash_report(
