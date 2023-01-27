@@ -4,9 +4,6 @@ from typing import TypedDict
 
 from util.singleton import Singleton
 
-# TODO: `file_name` variable should be used a class default
-file_name = "data.json"
-
 
 class ConfigDataType(TypedDict):
     blacklist: dict[str, str]

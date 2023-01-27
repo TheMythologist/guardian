@@ -19,7 +19,6 @@ from prompt_toolkit.styles import Style
 from questionary import ValidationError, Validator, prompt
 from tqdm import tqdm
 
-import config.ConfigData as data
 from config.ConfigData import ConfigData
 from config.GlobalList import Blacklist, Whitelist
 from network import sessioninfo
@@ -116,7 +115,7 @@ class NameInWhitelist(Validator):
 class IPInBlacklist(Validator):
     def validate(self, document: Document):
         super().validate(document)
-        global blacklist
+        blacklist = Blacklist()
         ip = document.text
         if ip in blacklist:
             raise ValidationError(message="IP already in list", cursor_position=len(ip))
@@ -151,7 +150,25 @@ def crash_report(
 
 
 def menu():
-    global config, whitelist, blacklist, dynamic_blacklist
+    print_white("Building dynamic blacklist...")
+    dynamic_blacklist = set()
+    try:
+        dynamic_blacklist = get_dynamic_blacklist()
+    except (
+        ScrapeError,
+        requests.RequestException,
+        json.decoder.JSONDecodeError,
+        IndexError,
+        ValueError,
+        TypeError,
+        KeyError,
+        FileNotFoundError,
+    ) as e:
+        print_white(
+            f"ERROR: Could not construct dynamic blacklist: {e}\nAuto-Whitelist and Blacklist will not work correctly."
+        )
+        time.sleep(3)
+
     while True:
         dynamic_blacklist_checker = (
             "Experimental" if len(dynamic_blacklist) > 0 else "Not working"
@@ -1001,45 +1018,8 @@ if __name__ == "__main__":
     freeze_support()
 
     try:
-        success = False
-        while not success:
-            try:
-                config = ConfigData()
-                success = True
-            except Exception as e:
-                # config file could not be loaded. either file creation failed or data.json is corrupt.
-                if not os.path.isfile(data.file_name):
-                    # could not create config. fatal error. MB_OK is 0x0, MB_ICON_ERROR is 0x10
-                    ctypes.windll.user32.MessageBoxW(
-                        None,
-                        f"FATAL: Guardian could not create the config file {data.file_name}.\n\n"
-                        f"Press 'Ok' to close the program.",
-                        "Fatal Error",
-                        0x0 | 0x10,
-                    )
-                    raise e
-                else:
-                    # MB_ABORTRETRYIGNORE is 0x2, MB_ICON_ERROR is 0x10
-                    choice = ctypes.windll.user32.MessageBoxW(
-                        None,
-                        f"Guardian could not load the config file {data.file_name}.\n\n"
-                        f"The most common reason for this error is that the file is corrupt.\n\n"
-                        f"Press 'Abort' to close Guardian, press 'Retry' to load the config again, "
-                        f"or press 'Ignore' to \"Refresh\" Guardian by renaming the corrupt "
-                        f"config file and creating a new one.",
-                        "Error",
-                        0x2 | 0x10,
-                    )
-                    # ID_ABORT = 0x3, ID_RETRY = 0x4, ID_IGNORE = 0x5
-                    if choice == 0x3:
-                        sys.exit(-2)
-                    else:
-                        separator = data.file_name.rindex(".")
-                        new_name = f"{data.file_name[:separator]}_{hex(int(time.time_ns()))[2:]}{data.file_name[separator:]}"
-                        os.rename(data.file_name, new_name)
-
-        # at this point the file has been parsed and is valid
-        # Any additional exceptions are explicit or programmer error
+        # Initialise singleton objects for thread-safety
+        config = ConfigData()
         blacklist = Blacklist()
         whitelist = Whitelist()
 
@@ -1055,34 +1035,14 @@ if __name__ == "__main__":
         if not pydivert.WinDivert.is_registered():
             pydivert.WinDivert.register()
         ctypes.windll.kernel32.SetConsoleTitleW(f"Guardian {version}")
-        print_white("Building dynamic blacklist...")
-        dynamic_blacklist = set()
-        try:
-            dynamic_blacklist = get_dynamic_blacklist()
-        except (
-            ScrapeError,
-            requests.RequestException,
-            json.decoder.JSONDecodeError,
-            IndexError,
-            ValueError,
-            TypeError,
-            KeyError,
-            FileNotFoundError,
-        ) as e:
-            print_white(
-                f"ERROR: Could not construct dynamic blacklist: {e}\nAuto-Whitelist and Blacklist will not work correctly."
-            )
-            time.sleep(3)
-        print_white("Checking connections.")
     except Exception as e:
         crash_report(e, "Guardian crashed before reaching main()")
         raise
 
-    while True:
-        try:
-            menu()
-        except KeyboardInterrupt:
-            continue
-        except Exception as e:
-            crash_report(e, "Guardian crashed in main()")
-            raise
+    try:
+        menu()
+    except KeyboardInterrupt:
+        pass
+    except Exception as e:
+        crash_report(e, "Guardian crashed in main()")
+        raise
