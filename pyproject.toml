@@ -38,7 +38,7 @@ profile = "black"
 
 [tool.mypy]
 platform = "win32"
-exclude = ["build/", "speed_tests/"]
+exclude = ["build/", "speed_tests/", "tests"]
 
 [[tool.mypy.overrides]]
 module = ["cx_Freeze", "pydivert", "prsw"]
