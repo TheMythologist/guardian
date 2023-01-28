@@ -2,9 +2,10 @@ name: python
 
 on:
   push:
-    branches: main
+    branches: [ main ]
+    tags: [ "*" ]
   pull_request:
-    branches: main
+    branches: [ main ]
 
 jobs:
   format:
@@ -41,7 +42,7 @@ jobs:
     timeout-minutes: 5
     strategy:
       matrix:
-        python-version: ["3.10"]
+        python-version: [ "3.10" ]
 
     steps:
       - uses: actions/checkout@v3
@@ -61,5 +62,5 @@ jobs:
           poetry run pflake8 . --count --exit-zero --max-complexity=10 --statistics
       - name: Type-check with mypy
         run: poetry run mypy .
-      # - name: Test with pytest
-      #   run: poetry run python -m pytest
+      - name: Test with pytest
+        run: poetry run python -m pytest
