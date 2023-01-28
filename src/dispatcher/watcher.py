@@ -5,6 +5,10 @@ from network.sessions import AbstractPacketFilter
 
 
 class Watcher:
+    """Watches on `self.queue` for messages indicating new filter is up and ready.
+    Upon receiving such messages, it will refer to `self.filters` to retrieve the old filter
+    (based on priority number) and terminate it."""
+
     def __init__(
         self,
         queue: multiprocessing.Queue,
