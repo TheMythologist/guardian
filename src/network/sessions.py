@@ -13,18 +13,6 @@ from util.DynamicBlacklist import ip_in_cidr_block_set
 
 logger = logging.getLogger("guardian")
 
-debug_logger = logging.getLogger("debugger")
-debug_logger.setLevel(logging.DEBUG)
-if not debug_logger.handlers:
-    fh = logging.FileHandler("debugger.log")
-    fh.setLevel(logging.DEBUG)
-    fh.setFormatter(
-        logging.Formatter(
-            "[%(asctime)s][%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
-        )
-    )
-    debug_logger.addHandler(fh)
-
 # It appears that there is *ONE* more problem we may need to take care of which was missed during testing of the prototype.
 # Apparently, it's not only R* tunnels, but also client tunnels! If the circumstances are right, then it turns out that
 # people in your session can also tunnel players if they could not connect to you directly. Such is the joy of P2P
@@ -275,6 +263,22 @@ class DebugSession:
         self.priority = priority
         self.process = multiprocessing.Process(target=self.run)
         self.process.daemon = True
+        self.init_debugging_log()
+
+    def init_debugging_log(self) -> None:
+        debug_logger = logging.getLogger("debugger")
+        debug_logger.setLevel(logging.DEBUG)
+        if not debug_logger.handlers:
+            fh = logging.FileHandler("debugger.log")
+            fh.setLevel(logging.DEBUG)
+            fh.setFormatter(
+                logging.Formatter(
+                    "[%(asctime)s][%(levelname)s] %(message)s",
+                    datefmt="%Y-%m-%d %H:%M:%S",
+                )
+            )
+        debug_logger.addHandler(fh)
+        self.logger = debug_logger
 
     def start(self) -> None:
         self.process.start()
@@ -283,7 +287,7 @@ class DebugSession:
         self.process.terminate()
 
     def run(self) -> None:
-        debug_logger.debug("Started debugging")
+        self.logger.debug("Started debugging")
         with pydivert.WinDivert(
             PACKET_FILTER, priority=self.priority, flags=pydivert.Flag.SNIFF
         ) as w:
@@ -320,7 +324,7 @@ class DebugSession:
                     log = f"[{filler}] {src}:{packet.src_port} --> {dst}:{packet.dst_port}"
                 else:
                     log = f"[{filler}] {src}:{packet.src_port} <-- {dst}:{packet.dst_port}"
-                debug_logger.debug(log)
+                self.logger.debug(log)
 
 
 # Okay, so there's a couple of changes that need to be done to fix auto-whitelisting.
