@@ -112,7 +112,6 @@ def menu():
             f"ERROR: Could not construct dynamic blacklist: {e}\nAuto-Whitelist and Blacklist will not work correctly."
         )
         dynamic_blacklist = set()
-        time.sleep(3)
     context = Context()
 
     while True:
@@ -298,12 +297,7 @@ def menu():
                             # packets in its' memory queue to disk (or perhaps it should be sequentially writing to a file) and
                             # save that file for investigation later.
                             time.sleep(10)
-                            # input()
-                            # if we reach here then the user pressed ENTER
-                            # webbrowser.open("https://gitlab.com/Speyedr/guardian-fastload-fix/-/issues")
-                            # time.sleep(1)      # prevents the user from opening the page a ludicrous amount of times?
 
-                            # time.sleep(0.01)
                             # print(session_info)
                             # print(sessioninfo.generate_stats(connection_stats))
                             # session_info.process_item()
@@ -431,7 +425,7 @@ def menu():
                     logger.info("Starting to collect IPs")
                     collector.start()
                     for _ in tqdm(range(10), ascii=True, desc="Collecting session"):
-                        time.sleep(0.5)
+                        time.sleep(1)
                     collector.stop()
                     ip_set = set(collector.ips)
                     logger.info("Collected %d IPs", len(ip_set))
@@ -902,7 +896,6 @@ def menu():
             # ADD WHITELISTS HERE AS WELL
 
             print_white("Kicking unknowns")
-            time.sleep(2)
             packet_filter = WhitelistSession(ip_set, context.priority)
             packet_filter.start()
             time.sleep(10)
@@ -911,7 +904,6 @@ def menu():
 
         elif option == "new":
             print_white("Creating new session")
-            time.sleep(2)
             packet_filter = SoloSession(context.priority)
             packet_filter.start()
             time.sleep(10)
