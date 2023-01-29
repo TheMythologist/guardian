@@ -4,7 +4,14 @@ from network.sessions import AbstractPacketFilter
 
 
 class Context:
+    _current_priority = 0
     filters: dict[int, Process] = {}
+
+    @property
+    def priority(self) -> int:
+        priority = self._current_priority
+        self._current_priority += 1
+        return priority
 
     def set_filter(
         self, filter: AbstractPacketFilter, start_immediately: bool = True

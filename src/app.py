@@ -19,6 +19,7 @@ from tqdm import tqdm
 
 from config.configdata import ConfigData
 from config.globallist import Blacklist, Whitelist
+from dispatcher.context import Context
 from network import sessioninfo
 from network.sessions import (
     AbstractPacketFilter,
@@ -95,7 +96,6 @@ def crash_report(
 
 def menu():
     print_white("Building dynamic blacklist...")
-    dynamic_blacklist = set()
     try:
         dynamic_blacklist = get_dynamic_blacklist()
     except (
@@ -111,7 +111,9 @@ def menu():
         print_white(
             f"ERROR: Could not construct dynamic blacklist: {e}\nAuto-Whitelist and Blacklist will not work correctly."
         )
+        dynamic_blacklist = set()
         time.sleep(3)
+    context = Context()
 
     while True:
         dynamic_blacklist_checker = (
@@ -202,7 +204,7 @@ def menu():
                     logger.info("Starting solo session")
                     print_running_message("Solo")
 
-                    packet_filter = SoloSession()
+                    packet_filter = SoloSession(context.priority)
                     try:
                         packet_filter.start()
                         while True:
@@ -281,7 +283,7 @@ def menu():
                     # session_info = sessioninfo.SessionInfo(manager.dict(), connection_stats, manager.Queue(), ip_tags)
 
                     # Set up packet_filter outside the try-catch so it can be safely referenced inside KeyboardInterrupt.
-                    packet_filter = WhitelistSession(ips=ip_set)
+                    packet_filter = WhitelistSession(ip_set, context.priority)
 
                     print("Experimental support for Online 1.54+ developed by Speyedr.")
 
@@ -368,7 +370,10 @@ def menu():
                     print_running_message("Blacklist")
 
                     packet_filter = BlacklistSession(
-                        ips=ip_set, blocks=dynamic_blacklist, known_allowed=allowed_ips
+                        ip_set,
+                        context.priority,
+                        blocks=dynamic_blacklist,
+                        known_allowed=allowed_ips,
                     )
                     try:
                         packet_filter.start()
@@ -495,7 +500,7 @@ def menu():
                     logger.info("Starting whitelisted session with %d IPs", len(ip_set))
                     print_running_message("Whitelisted")
 
-                    packet_filter = WhitelistSession(ips=ip_set)
+                    packet_filter = WhitelistSession(ip_set, context.priority)
                     try:
                         packet_filter.start()
                         while True:
@@ -551,7 +556,7 @@ def menu():
                         f'Running: "{Fore.LIGHTCYAN_EX}Locked session{Fore.LIGHTWHITE_EX}" Press "{Fore.LIGHTCYAN_EX}CTRL + C{Fore.LIGHTWHITE_EX}" to unlock session.'
                     )
 
-                    packet_filter = LockedSession()
+                    packet_filter = LockedSession(context.priority)
                     try:
                         packet_filter.start()
                         while True:
@@ -878,7 +883,7 @@ def menu():
 
             ips = answer["option"]
             print_white(f'Running: "{Fore.LIGHTBLACK_EX}Blacklist{Fore.LIGHTWHITE_EX}"')
-            packet_filter = BlacklistSession(ips=ips)
+            packet_filter = BlacklistSession(ips, context.priority)
             packet_filter.start()
             time.sleep(10)
             packet_filter.stop()
@@ -896,7 +901,7 @@ def menu():
 
             print_white("Kicking unknowns")
             time.sleep(2)
-            packet_filter = WhitelistSession(ips=ip_set)
+            packet_filter = WhitelistSession(ip_set, context.priority)
             packet_filter.start()
             time.sleep(10)
             packet_filter.stop()
@@ -905,7 +910,7 @@ def menu():
         elif option == "new":
             print_white("Creating new session")
             time.sleep(2)
-            packet_filter = WhitelistSession(ips=set())
+            packet_filter = SoloSession(context.priority)
             packet_filter.start()
             time.sleep(10)
             packet_filter.stop()
