@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "Guardian"
-version = "3.3.0"
+version = "3.3.1"
 description = "Custom firewall used to create private lobbies for GTA5 Online"
 authors = ["TheMythologist <leekaixuan2001@gmail.com>"]
 license = "LGPL-3.0"

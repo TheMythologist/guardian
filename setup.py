@@ -5,7 +5,7 @@ import zipfile
 
 from cx_Freeze import Executable, setup
 
-version = "3.3.0"
+version = "3.3.1"
 
 build_path = f"build/exe.win-amd64-{sys.version_info.major}.{sys.version_info.minor}"
 

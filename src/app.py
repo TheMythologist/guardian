@@ -45,7 +45,7 @@ from util.printer import (
 from validator.ip import IPInBlacklist, IPInWhitelist, IPValidator
 from validator.name import NameInBlacklist, NameInWhitelist
 
-__version__ = "3.3.0"
+__version__ = "3.3.1"
 
 logger = logging.getLogger("guardian")
 logger.propagate = False
