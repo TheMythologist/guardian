@@ -105,10 +105,12 @@ class AbstractPacketFilter(ABC):
     def __init__(
         self,
         ips: set[str],
+        priority: int,
         session_info: Optional[sessioninfo.SessionInfo] = None,
         debug: bool = False,
     ):
         self.ips = ips
+        self.priority = priority
         self.process = multiprocessing.Process(target=self.run)
         self.process.daemon = True
         self.session_info = session_info
@@ -128,7 +130,7 @@ class AbstractPacketFilter(ABC):
 
     def run(self) -> None:
         with contextlib.suppress(KeyboardInterrupt):
-            with pydivert.WinDivert(PACKET_FILTER) as w:
+            with pydivert.WinDivert(PACKET_FILTER, priority=self.priority) as w:
                 for packet in w:
                     decision = self.is_packet_allowed(packet)
                     if decision:
@@ -158,10 +160,11 @@ class SoloSession(AbstractPacketFilter):
 
     def __init__(
         self,
+        priority: int,
         session_info: Optional[sessioninfo.SessionInfo] = None,
         debug: bool = False,
     ):
-        super().__init__(set(), session_info, debug)
+        super().__init__(set(), priority, session_info, debug)
 
     def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
         size = len(packet.payload)
@@ -179,10 +182,11 @@ class WhitelistSession(AbstractPacketFilter):
     def __init__(
         self,
         ips: set[str],
+        priority: int,
         session_info: Optional[sessioninfo.SessionInfo] = None,
         debug: bool = False,
     ):
-        super().__init__(ips, session_info, debug)
+        super().__init__(ips, priority, session_info, debug)
 
     def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
         ip = packet.ip.src_addr
@@ -201,12 +205,13 @@ class BlacklistSession(AbstractPacketFilter):
     def __init__(
         self,
         ips: set[str],
+        priority: int,
         blocks=None,
         known_allowed=None,
         session_info: Optional[sessioninfo.SessionInfo] = None,
         debug: bool = False,
     ):
-        super().__init__(ips, session_info, debug)
+        super().__init__(ips, priority, session_info, debug)
 
         if blocks is None:
             blocks = set()
@@ -244,10 +249,11 @@ class LockedSession(AbstractPacketFilter):
 
     def __init__(
         self,
+        priority: int,
         session_info: Optional[sessioninfo.SessionInfo] = None,
         debug: bool = False,
     ):
-        super().__init__(set(), session_info, debug)
+        super().__init__(set(), priority, session_info, debug)
 
     def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
         size = len(packet.payload)
@@ -258,13 +264,15 @@ class LockedSession(AbstractPacketFilter):
         return size not in MATCHMAKING_SIZES
 
 
+# TODO: Convert this to AbstractPacketFilter
 class DebugSession:
     """
     Thread to create a log of the ips matching the packet filter
     """
 
-    def __init__(self, ips: set[str]):
+    def __init__(self, ips: set[str], priority: int):
         self.ips = ips
+        self.priority = priority
         self.process = multiprocessing.Process(target=self.run)
         self.process.daemon = True
 
@@ -276,7 +284,9 @@ class DebugSession:
 
     def run(self) -> None:
         debug_logger.debug("Started debugging")
-        with pydivert.WinDivert(PACKET_FILTER, flags=pydivert.Flag.SNIFF) as w:
+        with pydivert.WinDivert(
+            PACKET_FILTER, priority=self.priority, flags=pydivert.Flag.SNIFF
+        ) as w:
             for packet in w:
                 dst = packet.ip.dst_addr
                 src = packet.ip.src_addr
@@ -352,7 +362,8 @@ class IPCollector:
     Thread to store all the ip addresses matching the packet filter
     """
 
-    def __init__(self, packet_count_min_threshold: int = 1):
+    def __init__(self, priority: int, packet_count_min_threshold: int = 1):
+        self.priority = priority
         self.process = multiprocessing.Process(target=self.run)
         self.process.daemon = True
         self.ips = multiprocessing.Manager().list()
@@ -388,7 +399,9 @@ class IPCollector:
     def run(self) -> None:
         # TODO: We could also actually check to see *when* the last packet was seen from that IP.
         with contextlib.suppress(KeyboardInterrupt):
-            with pydivert.WinDivert(PACKET_FILTER, flags=pydivert.Flag.SNIFF) as w:
+            with pydivert.WinDivert(
+                PACKET_FILTER, priority=self.priority, flags=pydivert.Flag.SNIFF
+            ) as w:
                 for packet in w:
                     size = len(packet.payload)
 

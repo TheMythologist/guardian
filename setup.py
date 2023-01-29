@@ -13,11 +13,14 @@ zip_exclude_packages = [
     "certifi",
     "pydivert",
 ]
+include_files = ["SOURCE", "LICENSE"]
+if os.path.isfile("db.json"):
+    include_files.append("db.json")
 buildOptions = dict(
     packages=[],
     replace_paths=[("*", "")],
     optimize=2,
-    include_files=["SOURCE", "LICENSE"],
+    include_files=include_files,
     zip_include_packages="*",
     zip_exclude_packages=zip_exclude_packages,
     silent=True,

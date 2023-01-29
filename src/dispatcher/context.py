@@ -1,0 +1,30 @@
+from multiprocessing import Process
+
+from network.sessions import AbstractPacketFilter
+
+
+class Context:
+    _current_priority = 0
+    filters: dict[int, Process] = {}
+
+    @property
+    def priority(self) -> int:
+        priority = self._current_priority
+        self._current_priority += 1
+        return priority
+
+    def set_filter(
+        self, filter: AbstractPacketFilter, start_immediately: bool = True
+    ) -> None:
+        self.filters[filter.priority] = filter.process
+        if start_immediately:
+            self.reload()
+
+    def reload(self) -> None:
+        if len(self.filters) > 1:
+            # Start latest filter
+            self.filters[list(self.filters)[-1]].start()
+
+            # Kill other filters
+            for priority_identifier in list(self.filters)[:-1]:
+                self.filters.pop(priority_identifier).terminate()
