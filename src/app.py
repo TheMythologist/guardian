@@ -425,7 +425,9 @@ def menu():
                 if option == "start":
 
                     logger.info("Starting auto whitelisted session")
-                    collector = IPCollector(packet_count_min_threshold=15)
+                    collector = IPCollector(
+                        context.priority, packet_count_min_threshold=15
+                    )
                     logger.info("Starting to collect IPs")
                     collector.start()
                     for _ in tqdm(range(10), ascii=True, desc="Collecting session"):
@@ -857,7 +859,7 @@ def menu():
                                     blacklist.save()
 
         elif option == "kick_by_ip":
-            collector = IPCollector()
+            collector = IPCollector(context.priority)
             collector.start()
             for _ in tqdm(range(10), ascii=True, desc="Collecting session"):
                 time.sleep(1)
