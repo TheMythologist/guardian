@@ -8,7 +8,6 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-chardet = "^5.1.0"
 colorama = "^0.4.6"
 cx-freeze = "^6.14.1"
 pydivert = "2.1.0"
