@@ -14,5 +14,7 @@ if __name__ == "__main__":
             f"Guardian-{version}",
             "--version-file",
             "version.txt",
+            "--specpath",
+            "spec",
         )
     )

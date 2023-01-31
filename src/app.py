@@ -20,7 +20,7 @@ from tqdm import tqdm
 from config.configdata import ConfigData
 from config.globallist import Blacklist, Whitelist
 from dispatcher.context import Context
-from network import sessioninfo
+from network.iptag import IPTag
 from network.sessions import (
     AbstractPacketFilter,
     BlacklistSession,
@@ -30,12 +30,8 @@ from network.sessions import (
     SoloSession,
     WhitelistSession,
 )
-from util.DynamicBlacklist import (
-    ScrapeError,
-    get_dynamic_blacklist,
-    ip_in_cidr_block_set,
-)
-from util.network import get_private_ip, get_public_ip
+from util.dynamicblacklist import ScrapeError, get_dynamic_blacklist
+from util.network import get_private_ip, get_public_ip, ip_in_cidr_block_set
 from util.printer import (
     print_invalid_ip,
     print_running_message,
@@ -253,11 +249,11 @@ def menu():
 
                     local_ip = get_private_ip()
                     ip_set = {local_ip}
-                    ip_tags = [sessioninfo.IPTag(local_ip, "LOCAL IP")]
+                    ip_tags = [IPTag(local_ip, "LOCAL IP")]
                     public_ip = get_public_ip()
                     if public_ip:
                         ip_set.add(public_ip)
-                        ip_tags.append(sessioninfo.IPTag(public_ip, "PUBLIC IP"))
+                        ip_tags.append(IPTag(public_ip, "PUBLIC IP"))
                     else:
                         print_white("Failed to get Public IP, running without")
 
@@ -265,9 +261,7 @@ def menu():
                         try:
                             ip_calc = IPValidator.validate_get(ip)
                             ip_set.add(ip_calc)
-                            ip_tags.append(
-                                sessioninfo.IPTag(ip_calc, f"{name} [WHITELIST]")
-                            )
+                            ip_tags.append(IPTag(ip_calc, f"{name} [WHITELIST]"))
                         except ValidationError:
                             logger.warning("Invalid IP: %s", ip)
                             print_invalid_ip(ip)

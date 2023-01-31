@@ -8,8 +8,8 @@ from typing import Optional
 
 import pydivert
 
-from network import sessioninfo
-from util.DynamicBlacklist import ip_in_cidr_block_set
+from network.sessioninfo import SessionInfo
+from util.network import ip_in_cidr_block_set
 
 logger = logging.getLogger("guardian")
 
@@ -94,7 +94,7 @@ class AbstractPacketFilter(ABC):
         self,
         ips: set[str],
         priority: int,
-        session_info: Optional[sessioninfo.SessionInfo] = None,
+        session_info: Optional[SessionInfo] = None,
         debug: bool = False,
     ):
         self.ips = ips
@@ -149,7 +149,7 @@ class SoloSession(AbstractPacketFilter):
     def __init__(
         self,
         priority: int,
-        session_info: Optional[sessioninfo.SessionInfo] = None,
+        session_info: Optional[SessionInfo] = None,
         debug: bool = False,
     ):
         super().__init__(set(), priority, session_info, debug)
@@ -171,7 +171,7 @@ class WhitelistSession(AbstractPacketFilter):
         self,
         ips: set[str],
         priority: int,
-        session_info: Optional[sessioninfo.SessionInfo] = None,
+        session_info: Optional[SessionInfo] = None,
         debug: bool = False,
     ):
         super().__init__(ips, priority, session_info, debug)
@@ -196,7 +196,7 @@ class BlacklistSession(AbstractPacketFilter):
         priority: int,
         blocks=None,
         known_allowed=None,
-        session_info: Optional[sessioninfo.SessionInfo] = None,
+        session_info: Optional[SessionInfo] = None,
         debug: bool = False,
     ):
         super().__init__(ips, priority, session_info, debug)
@@ -238,7 +238,7 @@ class LockedSession(AbstractPacketFilter):
     def __init__(
         self,
         priority: int,
-        session_info: Optional[sessioninfo.SessionInfo] = None,
+        session_info: Optional[SessionInfo] = None,
         debug: bool = False,
     ):
         super().__init__(set(), priority, session_info, debug)

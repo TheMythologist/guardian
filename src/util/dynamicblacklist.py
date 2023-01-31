@@ -1,4 +1,3 @@
-import contextlib
 import json
 import os.path
 import re
@@ -7,7 +6,7 @@ import time
 import prsw
 import requests
 
-from util.constants import CIDR_MASKS
+from util.network import construct_cidr_block_set
 
 # This file contains classes and methods to manage acquiring, parsing, and updating a possibly dynamic list of IP ranges
 # that Guardian needs to be aware of. Such ranges include R* / T2 official IPs, as well as IPs that can be used for
@@ -75,7 +74,9 @@ def determine_best_azure_file(urls: list[str]) -> tuple[str, bytes]:
     best_response = b""
     best_url = ""
     for url in urls:
-        content = get_azure_ip_file_from_url(url)
+        response = requests.get(url)
+        response.raise_for_status()
+        content = response.content
         change_number = json.loads(content)["changeNumber"]
         if change_number > highest_change_number:
             highest_change_number = change_number
@@ -102,7 +103,7 @@ def get_azure_ip_ranges_download(
     # Get the actual page.
     try:
         response = requests.get(page_to_search)
-        response.raise_for_status()  # If there was an error code, raise it.
+        response.raise_for_status()
         if response.status_code != 200:
             raise ScrapeError(
                 f"URL to scrape returned {response.status_code} instead of 200.",
@@ -121,50 +122,16 @@ def get_azure_ip_ranges_download(
         return determine_best_azure_file(files)
 
     except (ScrapeError, requests.exceptions.RequestException) as e:
-        # For whatever reason, we couldn't find a file to download. We can attempt to generate the URL manually.
+        # TODO: attempt to generate the URL manually.
         # TODO: Figure out what times (and timezones) Microsoft publish their IP ranges at.
         raise e
 
 
-# TODO: Convert all CIDR notation into integers (by chopping off the subnet mask part). Then, store all these integers
-# in a set. Then, to see if an IP is within a CIDR range, we will need to construct all CIDR blocks containing that IP.
-# This can be done by converting the IP to an integer and then apply each mask with bitwise AND.
-
-# To generate all CIDR blocks containing a certain IP, we must zero the right-most bit, append /32, then zero the next
-# right-most bit (move one bit left), append /31, and so on.
-
-
-def parse_azure_ip_ranges_from_url(url_to_json_file: str) -> list[str]:
-    """
-    Given a Microsoft Azure IP .JSON file, parses the file and returns an array of strings of CIDR ranges
-    that may be used by R* Services.
-    """
-    response = requests.get(url_to_json_file)
-    response.raise_for_status()  # Can't handle anything here. If we can't download the file, it's game over.
-
-    # Parse the response and return it to be saved
-    return parse_azure_ip_ranges(response.content)
-
-
-def get_azure_ip_file_from_url(url_to_json_file: str) -> bytes:
-    # TODO: Provide some sanity checks to see if the file contains the content we expect.
-    response = requests.get(url_to_json_file)
-    response.raise_for_status()
-    return response.content
-
-
-def save_azure_file(data_to_save: bytes, where_to_save: str = "db.json") -> None:
-    with open(where_to_save, mode="wb") as file:
-        file.write(data_to_save)
-
-
 def azure_file_add_timestamp(azure_file_contents: bytes, filename: str) -> bytes:
-    # keep the line breaks
     as_list = azure_file_contents.splitlines(True)
-    now = str(time.time())
     # add timestamp and filename (should be formatted the same as the actual file)
     as_list.insert(1, f'  "acquiredFrom": "{filename}",\n'.encode())
-    as_list.insert(1, f'  "acquiredWhen": "{now}",\n'.encode())
+    as_list.insert(1, f'  "acquiredWhen": "{time.time()}",\n'.encode())
     return b"".join(as_list)
 
 
@@ -184,63 +151,16 @@ def parse_azure_ip_ranges(azure_file_contents: bytes) -> list[str]:
     return arr_ranges
 
 
-def parse_azure_ip_ranges_from_file(location_of_file: str) -> list[str]:
-    with open(location_of_file, mode="rb") as file:
-        return parse_azure_ip_ranges(file.read())
-
-
-def calculate_ip_to_int(ip: str) -> int:
-    octets = [int(num) for num in ip.split(".")]
-    # Manually perform calculation for speed purposes
-    return (
-        octets[0] * (2**24) + octets[1] * (2**16) + octets[2] * (2**8) + octets[3]
-    )
-
-
-def cidr_to_tuple(ip_in_cidr: str) -> tuple[int, int]:
-    """
-    Converts a string representing an IP in CIDR notation to two integers,
-    the first integer represents the lowest IP in the CIDR block,
-    and the second integer represents the mask (just the suffix)
-
-    NOTE: Does *not* check for the validity of a CIDR block. Example, 255.255.255.255/1 would be accepted, but is not
-    a valid CIDR block.
-    """
-    ip, suffix = ip_in_cidr.split("/")
-    suffix_int = int(suffix)
-    return calculate_ip_to_int(ip), suffix_int
-
-
-def construct_cidr_block_set(ips_in_cidr: list[str]) -> set[tuple[int, int]]:
-    """
-    Construct a set of IPs in CIDR notation. This set is specifically optimised to only work with the
-    ip_in_cidr_block_set() function.
-
-    Ignores any element which is not valid IPv4 CIDR notation (as long as it was still a string).
-    """
-    ip_set = set()
-    for ip_cidr in ips_in_cidr:
-        with contextlib.suppress(ValueError):
-            # [0] is IP as integer, [1] is subnet mask in /xy notation (only xy)
-            ip_set.add(cidr_to_tuple(ip_cidr))
-    return ip_set
-
-
 def get_dynamic_blacklist(backup_file: str = "db.json") -> set[tuple[int, int]]:
-    # TODO: It seems like we can determine if a range has changed by looking at the 'changeNumber' attribute
-    # for a given category, however, there unfortunately doesn't appear to be any sort of timestamp included
-    # in the actual JSON file. We'll probably need to save the timestamp manually by adding it to the JSON?
-    # TL;DR the problem is that we can tell if the file has been updated by checking `changeNumber`, but that requires
-    # attempting to download the file anyways. Ideally, we want to be able to skip trying to download all together
-    # because the method isn't entirely reliable, and also fallback to the previously saved version if the download
-    # fails.
-    # ranges = set()
+    # TODO: We can tell if the file has been updated by checking `changeNumber`, but that requires attempting
+    # to download the file anyways. Ideally, we want to be able to skip trying to download all together because
+    # the method isn't entirely reliable, and also fallback to the previously saved version if the download fails.
 
     try:
         download_link, content = get_azure_ip_ranges_download()
         ranges = parse_azure_ip_ranges(content)
-        # If we got here, then the ranges are *probably* okay.
-        save_azure_file(azure_file_add_timestamp(content, download_link), backup_file)
+        with open(backup_file, mode="wb") as file:
+            file.write(azure_file_add_timestamp(content, download_link))
         ranges.extend(T2_EU)  # add R* EU ranges
         ranges.extend(T2_US)  # add R* US ranges
     except Exception as e:
@@ -249,22 +169,6 @@ def get_dynamic_blacklist(backup_file: str = "db.json") -> set[tuple[int, int]]:
             raise FileNotFoundError(
                 f"ERROR: Could not find backup file {backup_file}."
             ) from e
-        ranges = parse_azure_ip_ranges_from_file(backup_file)
+        with open(backup_file, mode="rb") as file:
+            ranges = parse_azure_ip_ranges(file.read())
     return construct_cidr_block_set(ranges)
-
-
-def ip_in_cidr_block_set(ip: str, cidr_block_set, min_cidr_suffix: int = 0) -> bool:
-    """
-    Essentially a reverse-search for all possible entries in cidr_block_set that would contain ip.
-    """
-    ip_int = calculate_ip_to_int(ip)
-    for suffix in range(len(CIDR_MASKS)):
-        if (ip_int & CIDR_MASKS[suffix], suffix) in cidr_block_set:
-            return True
-    return False
-
-
-if __name__ == "__main__":
-    # dl = get_azure_ip_ranges_download()
-    # ips_test = parse_azure_ip_ranges_from_url(dl[0])
-    get_dynamic_blacklist("db_test.json")
