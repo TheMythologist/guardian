@@ -208,7 +208,7 @@ class Menu:
         raise KeyboardInterrupt
 
     @staticmethod
-    def collect_active_ips(duration_seconds) -> set[str]:
+    def collect_active_ips(duration_seconds: int = 60) -> set[str]:
         collector = IPCollector(Menu.context.priority, packet_count_min_threshold=15)
         collector.start()
         for _ in tqdm(
