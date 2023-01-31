@@ -3,7 +3,7 @@ import webbrowser
 from multiprocessing import Pipe
 
 import questionary
-from tqdm import tqdm
+from tqdm import trange
 
 from config.configdata import ConfigData
 from config.globallist import Blacklist, Whitelist
@@ -211,9 +211,7 @@ class Menu:
     def collect_active_ips(duration_seconds: int = 60) -> set[str]:
         collector = IPCollector(Menu.context.priority, packet_count_min_threshold=15)
         collector.start()
-        for _ in tqdm(
-            range(duration_seconds), ascii=True, desc="Collecting session IPs"
-        ):
+        for _ in trange(duration_seconds, ascii=True, desc="Collecting session IPs"):
             time.sleep(1)
         collector.stop()
         return set(collector.ips)
