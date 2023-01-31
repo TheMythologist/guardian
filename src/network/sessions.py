@@ -1,8 +1,9 @@
 import contextlib
 import logging
-import multiprocessing
 import re
 from abc import ABC, abstractmethod
+from multiprocessing import Manager, Process
+from multiprocessing.connection import PipeConnection
 from multiprocessing.managers import DictProxy
 from typing import Optional
 
@@ -11,7 +12,8 @@ import pydivert
 from network.sessioninfo import SessionInfo
 from util.network import ip_in_cidr_block_set
 
-logger = logging.getLogger("guardian")
+logger = logging.getLogger(__name__)
+debug_logger = logging.getLogger("debugger")
 
 # It appears that there is *ONE* more problem we may need to take care of which was missed during testing of the prototype.
 # Apparently, it's not only R* tunnels, but also client tunnels! If the circumstances are right, then it turns out that
@@ -94,15 +96,20 @@ class AbstractPacketFilter(ABC):
         self,
         ips: set[str],
         priority: int,
+        connection: PipeConnection,
         session_info: Optional[SessionInfo] = None,
         debug: bool = False,
     ):
         self.ips = ips
         self.priority = priority
-        self.process = multiprocessing.Process(target=self.run)
+        self.queue = connection
+        self.process = Process(target=self.run)
         self.process.daemon = True
         self.session_info = session_info
         self.debug_print_decisions = debug
+
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__} with priority {self.priority}"
 
     def start(self) -> None:
         self.process.start()
@@ -118,6 +125,7 @@ class AbstractPacketFilter(ABC):
 
     def run(self) -> None:
         with contextlib.suppress(KeyboardInterrupt):
+            self.queue.send(True)
             with pydivert.WinDivert(PACKET_FILTER, priority=self.priority) as w:
                 for packet in w:
                     decision = self.is_packet_allowed(packet)
@@ -149,10 +157,11 @@ class SoloSession(AbstractPacketFilter):
     def __init__(
         self,
         priority: int,
+        connection: PipeConnection,
         session_info: Optional[SessionInfo] = None,
         debug: bool = False,
     ):
-        super().__init__(set(), priority, session_info, debug)
+        super().__init__(set(), priority, connection, session_info, debug)
 
     def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
         size = len(packet.payload)
@@ -171,10 +180,11 @@ class WhitelistSession(AbstractPacketFilter):
         self,
         ips: set[str],
         priority: int,
+        connection: PipeConnection,
         session_info: Optional[SessionInfo] = None,
         debug: bool = False,
     ):
-        super().__init__(ips, priority, session_info, debug)
+        super().__init__(ips, priority, connection, session_info, debug)
 
     def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
         ip = packet.ip.src_addr
@@ -194,12 +204,13 @@ class BlacklistSession(AbstractPacketFilter):
         self,
         ips: set[str],
         priority: int,
+        connection: PipeConnection,
         blocks: Optional[set] = None,
         known_allowed: Optional[set[str]] = None,
         session_info: Optional[SessionInfo] = None,
         debug: bool = False,
     ) -> None:
-        super().__init__(ips, priority, session_info, debug)
+        super().__init__(ips, priority, connection, session_info, debug)
 
         if blocks is None:
             blocks = set()
@@ -238,10 +249,11 @@ class LockedSession(AbstractPacketFilter):
     def __init__(
         self,
         priority: int,
+        connection: PipeConnection,
         session_info: Optional[SessionInfo] = None,
         debug: bool = False,
     ):
-        super().__init__(set(), priority, session_info, debug)
+        super().__init__(set(), priority, connection, session_info, debug)
 
     def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
         size = len(packet.payload)
@@ -261,24 +273,8 @@ class DebugSession:
     def __init__(self, ips: set[str], priority: int):
         self.ips = ips
         self.priority = priority
-        self.process = multiprocessing.Process(target=self.run)
+        self.process = Process(target=self.run)
         self.process.daemon = True
-        self.init_debugging_log()
-
-    def init_debugging_log(self) -> None:
-        debug_logger = logging.getLogger("debugger")
-        debug_logger.setLevel(logging.DEBUG)
-        if not debug_logger.handlers:
-            fh = logging.FileHandler("debugger.log")
-            fh.setLevel(logging.DEBUG)
-            fh.setFormatter(
-                logging.Formatter(
-                    "[%(asctime)s][%(levelname)s] %(message)s",
-                    datefmt="%Y-%m-%d %H:%M:%S",
-                )
-            )
-        debug_logger.addHandler(fh)
-        self.logger = debug_logger
 
     def start(self) -> None:
         self.process.start()
@@ -287,7 +283,7 @@ class DebugSession:
         self.process.terminate()
 
     def run(self) -> None:
-        self.logger.debug("Started debugging")
+        debug_logger.debug("Started debugging")
         with pydivert.WinDivert(
             PACKET_FILTER, priority=self.priority, flags=pydivert.Flag.SNIFF
         ) as w:
@@ -324,7 +320,7 @@ class DebugSession:
                     log = f"[{filler}] {src}:{packet.src_port} --> {dst}:{packet.dst_port}"
                 else:
                     log = f"[{filler}] {src}:{packet.src_port} <-- {dst}:{packet.dst_port}"
-                self.logger.debug(log)
+                debug_logger.debug(log)
 
 
 # Okay, so there's a couple of changes that need to be done to fix auto-whitelisting.
@@ -368,12 +364,12 @@ class IPCollector:
 
     def __init__(self, priority: int, packet_count_min_threshold: int = 1):
         self.priority = priority
-        self.process = multiprocessing.Process(target=self.run)
+        self.process = Process(target=self.run)
         self.process.daemon = True
-        self.ips = multiprocessing.Manager().list()
+        self.ips = Manager().list()
         self.seen_ips: DictProxy[
             str, int
-        ] = multiprocessing.Manager().dict()  # key is IP address, value is packets seen
+        ] = Manager().dict()  # key is IP address, value is packets seen
         self.min_packets = packet_count_min_threshold  # minimum amount of packets required to be seen to be added
 
     def add_seen_ip(self, ip: str) -> None:

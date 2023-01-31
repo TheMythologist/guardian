@@ -1,7 +1,10 @@
+import logging
 from multiprocessing import Process
-from multiprocessing.connection import Connection
+from multiprocessing.connection import PipeConnection
 
 from network.sessions import AbstractPacketFilter
+
+debug_logger = logging.getLogger("debugger")
 
 
 class OverrideFilterNotAllowed(Exception):
@@ -12,8 +15,8 @@ class Context:
     _current_priority = 0
     filters: dict[int, AbstractPacketFilter] = {}
 
-    def __init__(self, queue: Connection):
-        self.queue = queue
+    def __init__(self, connection: PipeConnection):
+        self.queue = connection
         self.process = Process(target=self.run)
         self.process.daemon = True
 
@@ -32,11 +35,13 @@ class Context:
     def run(self) -> None:
         while True:
             self.queue.recv()
+            debug_logger.debug("Received signal")
             self.kill_old_filters()
 
     def add_filter(
         self, filter: AbstractPacketFilter, start_immediately: bool = False
     ) -> None:
+        debug_logger.debug(f"Adding {filter}")
         if filter.priority in self.filters:
             raise OverrideFilterNotAllowed(f"Duplicate priority {filter.priority}")
         self.filters[filter.priority] = filter
@@ -45,10 +50,12 @@ class Context:
 
     def kill_old_filters(self) -> None:
         if len(self.filters) > 1:
+            debug_logger.debug(f"Killing {len(self.filters) - 1} filters")
             # Kill other filters
             for priority_identifier in list(self.filters)[:-1]:
+                debug_logger.debug(f"Killing {self.filters[priority_identifier]}")
                 self.filters.pop(priority_identifier).stop()
 
     def start_latest_filter(self) -> None:
         self.filters[list(self.filters)[-1]].start()
-        self.kill_old_filters
+        self.kill_old_filters()

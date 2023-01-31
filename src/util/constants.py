@@ -33,3 +33,5 @@ CIDR_MASKS = [
     4294967294,
     4294967295,
 ]
+
+DISCORD_URL = "https://discord.gg/6FzKCh4j4v"
