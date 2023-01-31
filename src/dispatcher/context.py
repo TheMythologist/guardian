@@ -41,7 +41,7 @@ class Context:
     def add_filter(
         self, filter: AbstractPacketFilter, start_immediately: bool = False
     ) -> None:
-        debug_logger.debug(f"Adding {filter}")
+        debug_logger.debug("Adding %s", filter)
         if filter.priority in self.filters:
             raise OverrideFilterNotAllowed(f"Duplicate priority {filter.priority}")
         self.filters[filter.priority] = filter
@@ -50,12 +50,22 @@ class Context:
 
     def kill_old_filters(self) -> None:
         if len(self.filters) > 1:
-            debug_logger.debug(f"Killing {len(self.filters) - 1} filters")
+            debug_logger.debug("Killing %d filters", len(self.filters) - 1)
             # Kill other filters
             for priority_identifier in list(self.filters)[:-1]:
-                debug_logger.debug(f"Killing {self.filters[priority_identifier]}")
+                debug_logger.debug("Killing %s", self.filters[priority_identifier])
                 self.filters.pop(priority_identifier).stop()
 
-    def start_latest_filter(self) -> None:
+    def start_latest_filter(self, kill_others: bool = True) -> None:
         self.filters[list(self.filters)[-1]].start()
-        self.kill_old_filters()
+        if kill_others:
+            self.kill_old_filters()
+
+    def kill_latest_filter(self) -> None:
+        if self.filters:
+            latest_priority = list(self.filters)[-1]
+            debug_logger.debug(
+                "Killing latest filter %s", self.filters[latest_priority]
+            )
+            self.filters.pop(latest_priority).stop()
+            self._current_priority -= 1

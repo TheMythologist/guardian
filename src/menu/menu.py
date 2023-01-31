@@ -1,3 +1,4 @@
+import logging
 import time
 import webbrowser
 from multiprocessing import Pipe
@@ -21,6 +22,8 @@ from util.dynamicblacklist import get_dynamic_blacklist
 from util.network import get_private_ip, get_public_ip, ip_in_cidr_block_set
 from util.printer import print_invalid_ip
 from validator.ip import IPValidator
+
+debug_logger = logging.getLogger("debugger")
 
 UI_STYLE = questionary.Style(
     [
@@ -47,30 +50,25 @@ class Menu:
 
     @staticmethod
     def main_menu() -> None:
-        try:
-            while True:
+        while True:
+            try:
                 answer = questionary.select(
                     "What do you want?", Prompts.MAIN_MENU, style=UI_STYLE
                 ).ask()
 
                 if callable(answer):
                     answer()
-
-        except KeyboardInterrupt:
-            return
+            except KeyboardInterrupt:
+                return
 
     @staticmethod
-    def confirm(prompt: list[dict[str, str]]):
+    def confirm_session(session_type: type[AbstractPacketFilter] | str):
+        print(Prompts.EXPLANATIONS[session_type])
         return questionary.select(
             "What do you want?",
-            prompt,
+            Prompts.CONFIRM_SESSION_OPTIONS,
             style=UI_STYLE,
         ).ask()
-
-    @staticmethod
-    def confirm_session(session_type: type[AbstractPacketFilter]):
-        print(Prompts.EXPLANATIONS[session_type])
-        return Menu.confirm(Prompts.CONFIRM_SESSION_OPTIONS)
 
     @staticmethod
     def launch_session(session_type: type[AbstractPacketFilter], *args, **kwargs):
@@ -89,6 +87,7 @@ class Menu:
     @staticmethod
     def launch_whitelisted_session():
         ip_set = set()
+        debug_logger.debug("Validating whitelisted IPs")
         for ip, name in Menu.whitelist:
             try:
                 ip_calc = IPValidator.validate_get(ip)
@@ -105,6 +104,7 @@ class Menu:
     @staticmethod
     def launch_blacklisted_session():
         ip_set = set()
+        debug_logger.debug("Validating blacklisted IPs")
         for ip, name in Menu.blacklist:
             try:
                 ip_calc = IPValidator.validate_get(ip)
@@ -128,16 +128,17 @@ class Menu:
 
     @staticmethod
     def launch_new_session():
-        print(Prompts.NEW_SESSION_EXPLANATION)
-        answer = Menu.confirm(Prompts.CONFIRM_SESSION_OPTIONS)
+        answer = Menu.confirm_session("New Session")
         if answer == Prompts.CONFIRM_SESSION_ANSWER_YES:
-            SoloSession(Menu.context.priority, connection=Menu.child_conn)
+            session = SoloSession(Menu.context.priority, connection=Menu.child_conn)
+            Menu.context.add_filter(session)
+            Menu.context.start_latest_filter()
 
     @staticmethod
     def launch_auto_whitelisted_session():
-        print(Prompts.AUTO_WHITELISTED_EXPLANATION)
-        answer = Menu.confirm(Prompts.CONFIRM_SESSION_OPTIONS)
+        answer = Menu.confirm_session("Auto-Whitelisted")
         if answer == Prompts.CONFIRM_SESSION_ANSWER_YES:
+            print("Collecting active IPs...")
             ip_set = Menu.collect_active_ips()
             print("Checking for potential tunnels in collected IPs...")
             potential_tunnels = {
@@ -167,12 +168,17 @@ class Menu:
                     potential_tunnels.remove(ip)
                 for ip in potential_tunnels:
                     ip_set.remove(ip)
-            WhitelistSession(ip_set, Menu.context.priority, connection=Menu.child_conn)
+            else:
+                print("No potential tunnels identified")
+            session = WhitelistSession(
+                ip_set, Menu.context.priority, connection=Menu.child_conn
+            )
+            Menu.context.add_filter(session)
+            Menu.context.start_latest_filter()
 
     @staticmethod
     def kick_unknowns():
-        print(Prompts.KICK_UNKNOWNS_EXPLANATION)
-        answer = Menu.confirm(Prompts.CONFIRM_SESSION_OPTIONS)
+        answer = Menu.confirm_session("Kick Unknowns")
         if answer == Prompts.CONFIRM_SESSION_ANSWER_YES:
             ip_set = set()
             for ip, name in Menu.whitelist:
@@ -181,13 +187,18 @@ class Menu:
                     ip_set.add(ip_calc)
                 except questionary.ValidationError:
                     print_invalid_ip(ip)
-            WhitelistSession(ip_set, Menu.context.priority, connection=Menu.child_conn)
-            # TODO: Terminate after 10 seconds
+            session = WhitelistSession(
+                ip_set, Menu.context.priority, connection=Menu.child_conn
+            )
+            Menu.context.add_filter(session)
+            Menu.context.start_latest_filter()
+            for _ in trange(10, ascii=True, desc="Kicking unknowns..."):
+                time.sleep(1)
+            Menu.context.kill_latest_filter()
 
     @staticmethod
     def kick_by_ip():
-        print(Prompts.KICK_BY_IP_EXPLANATION)
-        answer = Menu.confirm(Prompts.CONFIRM_SESSION_OPTIONS)
+        answer = Menu.confirm_session("Kick by IP")
         if answer == Prompts.CONFIRM_SESSION_ANSWER_YES:
             ip_set = Menu.collect_active_ips()
             choices = questionary.checkbox(
@@ -195,8 +206,14 @@ class Menu:
             ).ask()
             for ip in choices:
                 ip_set.remove(ip)
-            WhitelistSession(ip_set, Menu.context.priority, connection=Menu.child_conn)
-            # TODO: Terminate after 10 seconds
+            session = WhitelistSession(
+                ip_set, Menu.context.priority, connection=Menu.child_conn
+            )
+            Menu.context.add_filter(session)
+            Menu.context.start_latest_filter()
+            for _ in trange(10, ascii=True, desc="Kicking unknowns..."):
+                time.sleep(1)
+            Menu.context.kill_latest_filter()
 
     @staticmethod
     def open_discord():
@@ -266,7 +283,7 @@ class Prompts:
     #     {"name": "Go back", "value": "return"},
     # ]
 
-    EXPLANATIONS: dict[type[AbstractPacketFilter], str] = {
+    EXPLANATIONS = {
         SoloSession: (
             "No one can connect to your game session,\n"
             "but critical R* and SocialClub activity\n"
@@ -305,42 +322,38 @@ class Prompts:
             "However, if a player leaves the session\n"
             "they will not be able to join again.\n"
         ),
+        "Auto-Whitelisted": (
+            "Similar to Whitelisted session, except\n"
+            "everybody currently in the session is\n"
+            "temporarily added to your whitelist,\n"
+            "which prevents them from being kicked.\n\n"
+            "Any automatically collected IPs will be\n"
+            "lost once the session ends.\n\n"
+            "If Guardian detects that a player in your\n"
+            "session is being routed through R* servers,\n"
+            "you will be warned whether you wish to add\n"
+            "this IP to the temporary whitelist.\n\n"
+            "If you do decide to allow those IPs,\n"
+            "your session may not properly protected.\n"
+        ),
+        "Kick Unknowns": (
+            "Attempts to kick any IP that is not\n"
+            "on your Whitelist out of the session.\n\n"
+            "Keeping your sessions safe in this manner\n"
+            "is NOT RECOMMENDED, as clients may try to\n"
+            "route unknown player traffic through IPs\n"
+            "that are on your Custom list.\n"
+        ),
+        "New Session": (
+            "Splits you from the current session so you are alone.\n"
+            "Being the only player in a session ensures that\n"
+            "you are the session Host."
+        ),
+        "Kick by IP": (
+            "Captures IPs in your session, then\n"
+            "allows you to select an IP to kick.\n\n"
+            "This mode is NOT RECOMMENDED for the\n"
+            "same reason that kicking unknowns may\n"
+            "not work."
+        ),
     }
-
-    AUTO_WHITELISTED_EXPLANATION = (
-        "Similar to Whitelisted session, except\n"
-        "everybody currently in the session is\n"
-        "temporarily added to your whitelist,\n"
-        "which prevents them from being kicked.\n\n"
-        "Any automatically collected IPs will be\n"
-        "lost once the session ends.\n\n"
-        "If Guardian detects that a player in your\n"
-        "session is being routed through R* servers,\n"
-        "you will be warned whether you wish to add\n"
-        "this IP to the temporary whitelist.\n\n"
-        "If you do decide to allow those IPs,\n"
-        "your session may not properly protected.\n"
-    )
-
-    KICK_UNKNOWNS_EXPLANATION = (
-        "Attempts to kick any IP that is not\n"
-        "on your Whitelist out of the session.\n\n"
-        "Keeping your sessions safe in this manner\n"
-        "is NOT RECOMMENDED, as clients may try to\n"
-        "route unknown player traffic through IPs\n"
-        "that are on your Custom list.\n"
-    )
-
-    NEW_SESSION_EXPLANATION = (
-        "Splits you from the current session so you are alone.\n"
-        "Being the only player in a session ensures that\n"
-        "you are the session Host."
-    )
-
-    KICK_BY_IP_EXPLANATION = (
-        "Captures IPs in your session, then\n"
-        "allows you to select an IP to kick.\n\n"
-        "This mode is NOT RECOMMENDED for the\n"
-        "same reason that kicking unknowns may\n"
-        "not work."
-    )
