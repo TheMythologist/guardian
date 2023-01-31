@@ -26,6 +26,14 @@ def calculate_ip_to_int(ip: str) -> int:
     )
 
 
+# TODO: Convert all CIDR notation into integers (by chopping off the subnet mask part). Then, store all these integers
+# in a set. Then, to see if an IP is within a CIDR range, we will need to construct all CIDR blocks containing that IP.
+# This can be done by converting the IP to an integer and then apply each mask with bitwise AND.
+
+# To generate all CIDR blocks containing a certain IP, we must zero the right-most bit, append /32, then zero the next
+# right-most bit (move one bit left), append /31, and so on.
+
+
 def ip_in_cidr_block_set(ip: str, cidr_block_set, min_cidr_suffix: int = 0) -> bool:
     """
     Essentially a reverse-search for all possible entries in cidr_block_set that would contain ip.
