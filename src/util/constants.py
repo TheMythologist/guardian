@@ -1,3 +1,5 @@
+import questionary
+
 CIDR_MASKS = [
     0,
     2147483648,
@@ -33,3 +35,16 @@ CIDR_MASKS = [
     4294967294,
     4294967295,
 ]
+
+DISCORD_URL = "https://discord.gg/6FzKCh4j4v"
+UI_STYLE = questionary.Style(
+    [
+        ("qmark", "fg:#00FFFF bold"),  # token in front of the question
+        ("question", "bold"),  # question text
+        ("answer", "fg:#00FFFF bold"),  # submitted answer text behind the question
+        ("pointer", "fg:#00FFFF bold"),  # pointer used in select and checkbox prompts
+        ("selected", "fg:#FFFFFF bold"),  # style for a selected item of a checkbox
+        ("separator", "fg:#00FFFF"),  # separator in lists
+        ("instruction", ""),  # user instructions for select, rawselect, checkbox
+    ]
+)

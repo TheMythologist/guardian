@@ -19,7 +19,7 @@ To increase the chance of a successful session, it is recommended that you follo
 3. Run `Guardian.exe` as Administrator
 4. Start a **Solo Session** with Guardian
 5. Launch GTA online and enjoy 🎉
-\- If you want to let your friends in and have added their IP addresses `Lists -> Whitelist`, stop the **Solo Session** and start a **Whitelisted Session**.
+\- If you want to let your friends in and have added their IP addresses `Whitelist`, stop the **Solo Session** and start a **Whitelisted Session**.
 \- Your session should now be secure, and your friends can join you! 🎉
 6. If you don't know your friends' IPs, you'll have to stop the **Solo Session** and tell them to join as quick as possible.
 \- Note that the session is vulnerable to randoms during this time.
@@ -38,16 +38,16 @@ The most important requirement for securing a session with Guardian is that you 
   - The strictest firewall, intended for use when you plan to only play by yourself. No one can connect to your game session, but critical R* related services and anything SocialClub related will still be let through. If you are in a session with any other player, they will lose connection to you.
 
 - *Whitelisted Session*
-  - Only IP addresses in your Custom list Lists -> Whitelist will be allowed to connect to you. If you are the host of a session, anyone not in your whitelist will likely lose connection to the session. If you are not the host of your current session and other players in your current session are not on your whitelist (whether already in the session or joining sometime later), you will lose connection to everyone else when you enable this type of session. Ths is because your client will not be able to communicate with these players and you do not have host privileges to kick them out of the session.
+  - Only IP addresses in your `Whitelist` will be allowed to connect to you. If you are the host of a session, anyone not in your whitelist will likely lose connection to the session. If you are not the host of your current session and other players in your current session are not on your whitelist (whether already in the session or joining sometime later), you will lose connection to everyone else when you enable this type of session. Ths is because your client will not be able to communicate with these players and you do not have host privileges to kick them out of the session.
 
 - *Blacklisted Session*
-  - IP addresses in your Blacklist list Lists -> Blacklist will not be allowed to connect to you. If a connection is routed through R\* servers, that connection will also be blocked as a security measure. This mode is *not recommended* as GTA Online has custom routing if only a handful of IP addresses are blocked.
+  - IP addresses in your `Blacklist` will not be allowed to connect to you. If a connection is routed through R\* servers, that connection will also be blocked as a security measure. This mode is *not recommended* as GTA Online has custom routing if only a handful of IP addresses are blocked.
 
 - *Auto Whitelisted Session*
-  - Similar to *Whitelisted Session*, but everybody in your current session is temporarily added to your whitelist, which means they will not be kicked. Any automatically collected IP addresses will be lost once the session ends, and there is (currently) no way to save them. Any connection that is believed to be a custom route (also known as a "Rockstar Tunnel") will be flagged, and you will be asked if you want to save these IPs to the temporary whitelist or not. If you do decide to save these IPs, players attempting to connect to you may be routed through these tunnels and may bypass your intended whitelist.
+  - Similar to *Whitelisted Session*, but everybody in your current session is temporarily added to your whitelist, which prevents them from getting kicked. Any automatically collected IP addresses will be lost once the session ends, and there is (currently) no way to save them. Any connection that is believed to be a custom route (also known as a "Rockstar Tunnel") will be flagged, and you will be asked if you want to save these IPs to the temporary whitelist or not. If you do decide to save these IPs, players attempting to connect to you may be routed through these tunnels and may bypass your intended whitelist.
 
 - *Locked Session*
-  - This mode blocks all new connections, preventing new players from entering the game session. Anyone already in the game session remains. This mode prevents people from entering the session through a "Rockstar Tunnel" while allowing anyone currently being tunnelled to remain in the game session. However, if a player leaves, they will not be able to join again. Enabling this mode as a non-host does _not drop you from a session.
+  - This mode blocks all new connections, preventing new players from entering the session. Anyone already in the game session remains. This mode prevents people from entering the session through a "Rockstar Tunnel" while allowing anyone currently being tunnelled to remain in the game session. However, if a player leaves, they will not be able to join again. Enabling this mode as a non-host does not drop you from a session.
 
 ## Motivation
 

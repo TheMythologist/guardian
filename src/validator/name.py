@@ -10,7 +10,7 @@ class NameValidator(Validator):
     def __init__(self, global_list: Callable[[], GlobalList]):
         self.list = global_list()
 
-    def validate(self, document: Document):
+    def validate(self, document: Document) -> None:
         name = document.text
         if self.list.has(name):
             raise ValidationError(
@@ -19,10 +19,10 @@ class NameValidator(Validator):
 
 
 class NameInBlacklist(NameValidator):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(Blacklist)
 
 
 class NameInWhitelist(NameValidator):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(Whitelist)

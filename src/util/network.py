@@ -7,10 +7,10 @@ from util.constants import CIDR_MASKS
 
 
 def get_public_ip() -> str:
-    return requests.get("https://api.ipify.org?format=json").text
+    return requests.get("https://api.ipify.org").text
 
 
-def get_private_ip():
+def get_private_ip() -> str:
     soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     soc.connect(("8.8.8.8", 80))
     local_ip = soc.getsockname()[0]
@@ -34,7 +34,7 @@ def calculate_ip_to_int(ip: str) -> int:
 # right-most bit (move one bit left), append /31, and so on.
 
 
-def ip_in_cidr_block_set(ip: str, cidr_block_set, min_cidr_suffix: int = 0) -> bool:
+def ip_in_cidr_block_set(ip: str, cidr_block_set: set[tuple[int, int]]) -> bool:
     """
     Essentially a reverse-search for all possible entries in cidr_block_set that would contain ip.
     """

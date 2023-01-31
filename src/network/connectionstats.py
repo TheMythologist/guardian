@@ -48,12 +48,12 @@ class ConnectionStats:
         # If we haven't seen any activity from this source in the last 'threshold' seconds, then we're not connected.
         return (timeit.default_timer() - self.last_seen) <= threshold
 
-    def get_last_seen_str(self):
+    def get_last_seen_str(self) -> str:
         if self.last_seen == 0:
             return "Never"
         return f"{round((timeit.default_timer() - self.last_seen) * 1000)} ms ago"
 
-    def get_tag_override(self):
+    def get_tag_override(self) -> str:
         tag = self.ip_tag.tag
 
         # Local / Public IP tags take precedence.

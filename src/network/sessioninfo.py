@@ -111,7 +111,7 @@ class SessionInfo:
         proxy_list: list[ConnectionStats],
         proxy_queue,
         initial_ips: Optional[list[IPTag]] = None,
-    ):
+    ) -> None:
         if initial_ips is None:
             initial_ips = []
 
@@ -133,9 +133,7 @@ class SessionInfo:
 
         self.packet_queue = proxy_queue
 
-        # self.processing_thread = Process(target=self.run)
-        # # Terminate this thread if the parent gets terminated.
-        # self.processing_thread.daemon = True
+        # self.processing_thread = Process(target=self.run, daemon=True)
 
     # def start(self) -> None:
     #     self.processing_thread.start()
