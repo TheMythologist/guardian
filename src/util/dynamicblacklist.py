@@ -13,7 +13,7 @@ from util.network import construct_cidr_block_set
 # miscellaneous R* Services, such as Microsoft Azure.
 
 
-class ScrapeError(BaseException):
+class ScrapeError(Exception):
     """Could not scrape the HTML for data for some reason."""
 
 
