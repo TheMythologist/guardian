@@ -214,14 +214,14 @@ def menu():
         elif option == "whitelist":
             print_white("WHITELISTED SESSION:\n")
             print(
-                "Only IP addresses in your Custom list\n"
+                "Only IP addresses in your Whitelist\n"
                 "will be allowed to connect to you.\n\n"
                 "If you are the host of a session,\n"
-                "anyone not on your Custom list will\n"
+                "anyone not on your Whitelist will\n"
                 "likely lose connection to the session.\n\n"
-                "If you are non-host (and any player\n"
-                "in the session is not on your Custom\n"
-                "list), you will lose connection to everyone else.\n"
+                "If you are not the host (and any player\n"
+                "in the session is not on your Whitelist)\n"
+                "you will lose connection to everyone else.\n"
             )
 
             options = [
@@ -304,7 +304,7 @@ def menu():
         elif option == "blacklist":
             print_white("BLACKLISTED SESSION:\n")
             print(
-                "IP addresses in your Blacklist list\n"
+                "IP addresses in your Blacklist\n"
                 "will not be allowed to connect to you.\n\n"
                 "If a connection is routed through R* servers,\n"
                 "that connection will also be blocked\n"
@@ -375,9 +375,9 @@ def menu():
         elif option == "auto_whitelist":
             print_white("AUTO WHITELISTED SESSION:\n")
             print(
-                "Same as a Whitelisted session, except\n"
+                "Similar to Whitelisted session, except\n"
                 "everybody currently in the session is\n"
-                "temporarily added to the whitelist,\n"
+                "temporarily added to your whitelist,\n"
                 "which prevents them from being kicked.\n\n"
                 "Any automatically collected IPs will be\n"
                 "lost once the session ends.\n\n"
@@ -506,13 +506,12 @@ def menu():
                 "This mode blocks all join requests,\n"
                 "preventing new players from entering\n"
                 "the session.\n\n"
-                "Anyone already in the session remains,\n"
-                "and this mode prevents people from entering\n"
+                "Anyone already in the session remains.\n"
+                "This mode prevents people from entering\n"
                 "the session through R* servers if someone\n"
                 "is being tunnelled through a R* IP.\n\n"
-                "However, if someone leaves the session\n"
-                "they will not be able to get back in\n"
-                "unless you end the Locked session.\n"
+                "However, if a player leaves the session\n"
+                "they will not be able to join again.\n"
             )
 
             options = [
