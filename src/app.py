@@ -41,14 +41,12 @@ if __name__ == "__main__":
     freeze_support()
 
     try:
-        logger.info("Init")
         if not ctypes.windll.shell32.IsUserAnAdmin():
             print_white("Please restart as administrator")
             logger.info("Started without admin")
             input("Press enter to exit.")
             sys.exit()
-        logger.info("Booting up")
-        print_white("Booting up...")
+        print_white("Initialising...")
         if not pydivert.WinDivert.is_registered():
             pydivert.WinDivert.register()
         ctypes.windll.kernel32.SetConsoleTitleW(f"Guardian {__version__}")

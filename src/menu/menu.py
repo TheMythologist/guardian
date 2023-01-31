@@ -21,7 +21,7 @@ from network.sessions import (
 from util.constants import DISCORD_URL, UI_STYLE
 from util.dynamicblacklist import get_dynamic_blacklist
 from util.network import get_private_ip, get_public_ip, ip_in_cidr_block_set
-from util.printer import print_invalid_ip
+from util.printer import pretty_print, print_invalid_ip
 from validator.ip import IPValidator
 
 debug_logger = logging.getLogger("debugger")
@@ -53,9 +53,12 @@ class Menu:
 
     @staticmethod
     def confirm_session(session_type: type[AbstractPacketFilter] | str):
-        print(Prompts.EXPLANATIONS[session_type])
+        pretty_print(Prompts.EXPLANATIONS[session_type])
+        session_type = (
+            session_type if isinstance(session_type, str) else session_type.__name__
+        )
         return questionary.select(
-            "What do you want?",
+            f"Session type: {session_type}, are you sure?",
             Prompts.CONFIRM_SESSION_OPTIONS,
             style=UI_STYLE,
         ).ask()
@@ -256,68 +259,47 @@ class Prompts:
     EXPLANATIONS = {
         SoloSession: (
             "No one can connect to your game session, but critical R* and SocialClub activity "
-            "will still get through.\nIf you are in a session with any other player, they will "
+            "will still go through.\nIf you are in a session with any other players, they will "
             "lose connection to you."
         ),
         WhitelistSession: (
             "Only IP addresses in your Whitelist will be allowed to connect to you.\nIf you are "
-            "the host of a session, anyone not on your Whitelist will likely lose connection to "
-            "the session.\nIf you are not the host (and any player in the session is not on your "
+            "the host of a session, anyone not in your Whitelist will likely lose connection to "
+            "the session.\nIf you are not the host (and any player in the session is not in your "
             "Whitelist), you will lose connection to everyone else."
         ),
         BlacklistSession: (
-            "IP addresses in your Blacklist\n"
-            "will not be allowed to connect to you.\n\n"
-            "If a connection is routed through R* servers,\n"
-            "that connection will also be blocked\n"
-            "as a security measure.\n\n"
-            "This mode is NOT RECOMMENDED as GTA Online\n"
-            "has custom routing if only a handful of\n"
-            "IP addresses are blocked.\n"
+            "IP addresses in your Blacklist will not be allowed to connect to you.\nIf a "
+            "connection is routed through R* servers, that connection will also be blocked as a "
+            "security measure.\nThis mode is NOT RECOMMENDED as GTA Online has custom routing if "
+            "only a handful of IP addresses are blocked."
         ),
         LockedSession: (
-            "This mode blocks all join requests,\n"
-            "preventing new players from entering\n"
-            "the session.\n\n"
-            "Anyone already in the session remains.\n"
-            "This mode prevents people from entering\n"
-            "the session through R* servers if someone\n"
-            "is being tunnelled through a R* IP.\n\n"
-            "However, if a player leaves the session\n"
-            "they will not be able to join again.\n"
+            "This mode blocks all join requests, preventing new players from entering the "
+            "session.\nAnyone already in the session will not be kicked out. This mode prevents "
+            "people from entering the session through R* servers if someone is being tunnelled "
+            "through a R* IP.\nHowever, if a player leaves the session, they will not be able to "
+            "join again."
         ),
         "Auto-Whitelisted": (
-            "Similar to Whitelisted session, except\n"
-            "everybody currently in the session is\n"
-            "temporarily added to your whitelist,\n"
-            "which prevents them from being kicked.\n\n"
-            "Any automatically collected IPs will be\n"
-            "lost once the session ends.\n\n"
-            "If Guardian detects that a player in your\n"
-            "session is being routed through R* servers,\n"
-            "you will be warned whether you wish to add\n"
-            "this IP to the temporary whitelist.\n\n"
-            "If you do decide to allow those IPs,\n"
-            "your session may not properly protected.\n"
+            "Similar to Whitelisted session, except everybody currently in the session is "
+            "temporarily added to your whitelist, which prevents them from being kicked.\nAny "
+            "automatically collected IPs will be lost once the session ends.\nIf Guardian detects "
+            "that a player in your session is being routed through R* servers, you will be warned "
+            "and prompted whether you wish to add this IP to the temporary whitelist.\nIf you do "
+            "decide to allow these IPs, your session may not properly protected."
         ),
         "Kick Unknowns": (
-            "Attempts to kick any IP that is not\n"
-            "on your Whitelist out of the session.\n\n"
-            "Keeping your sessions safe in this manner\n"
-            "is NOT RECOMMENDED, as clients may try to\n"
-            "route unknown player traffic through IPs\n"
-            "that are on your Custom list.\n"
+            "Attempts to kick any IP that is not on your Whitelist out of the session.\nKeeping "
+            "your sessions safe in this manner is NOT RECOMMENDED, as clients may try to route "
+            "unknown player traffic through IPs that are on your Whitelist."
         ),
         "New Session": (
-            "Splits you from the current session so you are alone.\n"
-            "Being the only player in a session ensures that\n"
-            "you are the session Host."
+            "Splits you from the current session so you are alone. Being the only player in a "
+            "session ensures that you are the session Host."
         ),
         "Kick by IP": (
-            "Captures IPs in your session, then\n"
-            "allows you to select an IP to kick.\n\n"
-            "This mode is NOT RECOMMENDED for the\n"
-            "same reason that kicking unknowns may\n"
-            "not work."
+            "Captures IPs in your session, then allows you to choose which IPs to kick.\nThis "
+            "mode is NOT RECOMMENDED for the same reason that kicking unknowns may not work."
         ),
     }
