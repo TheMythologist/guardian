@@ -7,7 +7,7 @@ from util.constants import CIDR_MASKS
 
 
 def get_public_ip() -> str:
-    return requests.get("https://api.ipify.org?format=json").text
+    return requests.get("https://api.ipify.org").text
 
 
 def get_private_ip() -> str:
