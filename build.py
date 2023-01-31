@@ -1,5 +1,7 @@
 import PyInstaller.__main__
 
+version = "3.3.1"
+
 if __name__ == "__main__":
     PyInstaller.__main__.run(
         (
@@ -9,7 +11,7 @@ if __name__ == "__main__":
             "logo.ico",
             "--uac-admin",
             "--name",
-            "Guardian",
+            f"Guardian-{version}",
             "--version-file",
             "version.txt",
         )
