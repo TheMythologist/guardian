@@ -8,7 +8,7 @@ def print_white(msg: str) -> None:
 
 
 def print_invalid_ip(address: str) -> None:
-    print_white(f'Invalid IP: "{Fore.LIGHTCYAN_EX}{address}{Fore.LIGHTWHITE_EX}"')
+    print_white(f'Invalid IP: "{Fore.LIGHTCYAN_EX}{address}{Fore.RESET}"')
 
 
 def pretty_print(string: str) -> None:

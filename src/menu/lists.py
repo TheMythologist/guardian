@@ -79,7 +79,7 @@ class Lists:
             new_ip = questionary.text(
                 "IP address",
                 style=UI_STYLE,
-                default=ip,
+                default=ip,  # type: ignore[arg-type]
                 validate=Lists.ip_validators[global_list_type],
             ).ask()
             global_list.remove(ip)  # type: ignore[arg-type]
