@@ -9,6 +9,7 @@ from tqdm import trange
 from config.configdata import ConfigData
 from config.globallist import Blacklist, Whitelist
 from dispatcher.context import Context
+from menu.lists import Lists
 from network.sessions import (
     AbstractPacketFilter,
     BlacklistSession,
@@ -17,7 +18,7 @@ from network.sessions import (
     SoloSession,
     WhitelistSession,
 )
-from util.constants import DISCORD_URL
+from util.constants import DISCORD_URL, UI_STYLE
 from util.dynamicblacklist import get_dynamic_blacklist
 from util.network import get_private_ip, get_public_ip, ip_in_cidr_block_set
 from util.printer import print_invalid_ip
@@ -25,17 +26,6 @@ from validator.ip import IPValidator
 
 debug_logger = logging.getLogger("debugger")
 
-UI_STYLE = questionary.Style(
-    [
-        ("qmark", "fg:#00FFFF bold"),  # token in front of the question
-        ("question", "bold"),  # question text
-        ("answer", "fg:#00FFFF bold"),  # submitted answer text behind the question
-        ("pointer", "fg:#00FFFF bold"),  # pointer used in select and checkbox prompts
-        ("selected", "fg:#FFFFFF bold"),  # style for a selected item of a checkbox
-        ("separator", "fg:#00FFFF"),  # separator in lists
-        ("instruction", ""),  # user instructions for select, rawselect, checkbox
-    ]
-)
 PRIVATE_IP = get_private_ip()
 PUBLIC_IP = get_public_ip()
 
@@ -73,7 +63,7 @@ class Menu:
     @staticmethod
     def launch_session(session_type: type[AbstractPacketFilter], *args, **kwargs):
         answer = Menu.confirm_session(session_type)
-        if answer == Prompts.CONFIRM_SESSION_ANSWER_YES:
+        if answer and answer == Prompts.CONFIRM_SESSION_ANSWER_YES:
             session = session_type(*args, **kwargs)
             Menu.context.add_filter(session)
             Menu.context.start_latest_filter()
@@ -129,7 +119,7 @@ class Menu:
     @staticmethod
     def launch_new_session():
         answer = Menu.confirm_session("New Session")
-        if answer == Prompts.CONFIRM_SESSION_ANSWER_YES:
+        if answer and answer == Prompts.CONFIRM_SESSION_ANSWER_YES:
             session = SoloSession(Menu.context.priority, connection=Menu.child_conn)
             Menu.context.add_filter(session)
             Menu.context.start_latest_filter()
@@ -137,7 +127,7 @@ class Menu:
     @staticmethod
     def launch_auto_whitelisted_session():
         answer = Menu.confirm_session("Auto-Whitelisted")
-        if answer == Prompts.CONFIRM_SESSION_ANSWER_YES:
+        if answer and answer == Prompts.CONFIRM_SESSION_ANSWER_YES:
             print("Collecting active IPs...")
             ip_set = Menu.collect_active_ips()
             print("Checking for potential tunnels in collected IPs...")
@@ -150,17 +140,17 @@ class Menu:
             if potential_tunnels:
                 questionary.checkbox(
                     f"WARNING! Guardian has detected {len(potential_tunnels)} IP"
-                    + ("" if len(potential_tunnels) == 1 else "s")
-                    + " in your current session that may be used for "
-                    + "connection tunnelling, and may break session security if added to the whitelist.\nUnless "
-                    + "you know what you're doing, "
-                    + "it is HIGHLY RECOMMENDED that you DO NOT allow these IPs to be added to the whitelist.\n"
-                    + "Please note that excluding an IP from this list will likely result in players connected "
-                    + "through that IP to be dropped from the session.\nIf this happens, then you may have to "
-                    + "check both you and your friend's Windows Firewall settings to see why they can't directly "
-                    + "connect to you.\nIf this is a false-positive and you are sure an IP is a direct connection, "
-                    + "you can prevent this message from appearing by manually adding them to your Whitelist.\n\n"
-                    + "Select the potentially session security breaking IPs you wish to keep whitelisted, if any.\n",
+                    f"{'' if len(potential_tunnels) == 1 else 's'} in your current session that "
+                    "may be used for connection tunnelling, and may break session security if added "
+                    "to the whitelist.\nUnless you know what you're doing, it is HIGHLY RECOMMENDED "
+                    "that you DO NOT allow these IPs to be added to the whitelist.\nPlease note that "
+                    "excluding an IP from this list will likely result in players connected through "
+                    "that IP to be dropped from the session.\nIf this happens, then you may have to "
+                    "check both you and your friend's Windows Firewall settings to see why they can't "
+                    "directly connect to you.\nIf this is a false-positive and you are sure an IP is a "
+                    "direct connection, you can prevent this message from appearing by manually adding "
+                    "them to your Whitelist.\n\nSelect the potentially session-security-breaking IPs "
+                    "you wish to keep whitelisted, if any.",
                     choices=potential_tunnels,
                     style=UI_STYLE,
                 ).ask()
@@ -179,7 +169,7 @@ class Menu:
     @staticmethod
     def kick_unknowns():
         answer = Menu.confirm_session("Kick Unknowns")
-        if answer == Prompts.CONFIRM_SESSION_ANSWER_YES:
+        if answer and answer == Prompts.CONFIRM_SESSION_ANSWER_YES:
             ip_set = set()
             for ip, name in Menu.whitelist:
                 try:
@@ -199,7 +189,7 @@ class Menu:
     @staticmethod
     def kick_by_ip():
         answer = Menu.confirm_session("Kick by IP")
-        if answer == Prompts.CONFIRM_SESSION_ANSWER_YES:
+        if answer and answer == Prompts.CONFIRM_SESSION_ANSWER_YES:
             ip_set = Menu.collect_active_ips()
             choices = questionary.checkbox(
                 "Select IPs to kick", ip_set, style=UI_STYLE
@@ -250,6 +240,7 @@ class Prompts:
             "value": Menu.launch_new_session,
         },
         {"name": "Kick by IP", "value": Menu.kick_by_ip},
+        {"name": "Edit lists", "value": Lists.choose_list},
         {"name": "Discord", "value": Menu.open_discord},
         {"name": "Quit", "value": Menu.quit},
     ]
@@ -262,44 +253,17 @@ class Prompts:
         {"name": "No, go back", "value": CONFIRM_SESSION_ANSWER_NO},
     ]
 
-    # LISTS_MENU = [
-    #     {"name": "Whitelist", "value": Menu.Settings.Lists.Whitelist.main},
-    #     {"name": "Blacklist", "value": Menu.Settings.Lists.Blacklist.main},
-    #     {"name": "Delegate Mode", "value": Menu.Settings.Lists.DelegateMode.main},
-    #     {"name": "Go back", "value": "return"},
-    # ]
-
-    # WHITELIST_MENU = [
-    #     {"name": "Toggle", "value": Menu.Settings.Lists.Whitelist.toggle},
-    #     {"name": "Add", "value": Menu.Settings.Lists.Whitelist.add},
-    #     {"name": "Edit", "value": Menu.Settings.Lists.Whitelist.edit},
-    #     {"name": "Go back", "value": "return"},
-    # ]
-
-    # BLACKLIST_MENU = [
-    #     {"name": "Toggle", "value": Menu.Settings.Lists.Blacklist.toggle},
-    #     {"name": "Add", "value": Menu.Settings.Lists.Blacklist.add},
-    #     {"name": "Edit", "value": Menu.Settings.Lists.Blacklist.edit},
-    #     {"name": "Go back", "value": "return"},
-    # ]
-
     EXPLANATIONS = {
         SoloSession: (
-            "No one can connect to your game session,\n"
-            "but critical R* and SocialClub activity\n"
-            "will still get through.\n\n"
-            "If you are in a session with any other player,\n"
-            "they will lose connection to you.\n"
+            "No one can connect to your game session, but critical R* and SocialClub activity "
+            "will still get through.\nIf you are in a session with any other player, they will "
+            "lose connection to you."
         ),
         WhitelistSession: (
-            "Only IP addresses in your Whitelist\n"
-            "will be allowed to connect to you.\n\n"
-            "If you are the host of a session,\n"
-            "anyone not on your Whitelist will\n"
-            "likely lose connection to the session.\n\n"
-            "If you are not the host (and any player\n"
-            "in the session is not on your Whitelist)\n"
-            "you will lose connection to everyone else.\n"
+            "Only IP addresses in your Whitelist will be allowed to connect to you.\nIf you are "
+            "the host of a session, anyone not on your Whitelist will likely lose connection to "
+            "the session.\nIf you are not the host (and any player in the session is not on your "
+            "Whitelist), you will lose connection to everyone else."
         ),
         BlacklistSession: (
             "IP addresses in your Blacklist\n"

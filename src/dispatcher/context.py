@@ -69,3 +69,6 @@ class Context:
             )
             self.filters.pop(latest_priority).stop()
             self._current_priority -= 1
+
+    def is_filter_running(self) -> bool:
+        return bool(self.filters)
