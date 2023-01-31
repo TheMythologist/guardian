@@ -30,7 +30,7 @@ from network.sessions import (
     SoloSession,
     WhitelistSession,
 )
-from util.dynamicblacklist import DynamicBlacklist, ScrapeError
+from util.dynamicblacklist import ScrapeError, get_dynamic_blacklist
 from util.network import get_private_ip, get_public_ip, ip_in_cidr_block_set
 from util.printer import (
     print_invalid_ip,
@@ -93,7 +93,7 @@ def crash_report(
 def menu():
     print_white("Building dynamic blacklist...")
     try:
-        dynamic_blacklist = DynamicBlacklist.get_dynamic_blacklist()
+        dynamic_blacklist = get_dynamic_blacklist()
     except (
         ScrapeError,
         requests.RequestException,
