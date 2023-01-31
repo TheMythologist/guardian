@@ -1,17 +1,12 @@
 import ctypes
 import logging
 import sys
-import time
-import traceback
 from multiprocessing import freeze_support
-from typing import Optional
 
 import pydivert
-from prompt_toolkit.styles import Style
 
-from config.configdata import ConfigData
-from config.globallist import Blacklist, Whitelist
 from menu.menu import Menu
+from util.crash import crash_report
 from util.printer import print_white
 
 __version__ = "3.3.1"
@@ -41,50 +36,11 @@ if not debug_logger.handlers:
     )
 debug_logger.addHandler(fh)
 
-LF_FACESIZE = 32
-STD_OUTPUT_HANDLE = -11
-
-style = Style(
-    [
-        ("qmark", "fg:#00FFFF bold"),  # token in front of the question
-        ("question", "bold"),  # question text
-        ("answer", "fg:#00FFFF bold"),  # submitted answer text behind the question
-        ("pointer", "fg:#00FFFF bold"),  # pointer used in select and checkbox prompts
-        ("selected", "fg:#FFFFFF bold"),  # style for a selected item of a checkbox
-        ("separator", "fg:#00FFFF"),  # separator in lists
-        ("instruction", ""),  # user instructions for select, rawselect, checkbox
-    ]
-)
-
-
-def crash_report(
-    exception: Exception,
-    additional: Optional[str] = None,
-    filename: Optional[str] = None,
-) -> None:
-    if filename is None:
-        filename = f"crashreport_{hex(int(time.time_ns()))[2:]}.log"
-
-    with open(filename, "w") as handle:
-        handle.write(
-            f"Report local time: {time.asctime(time.localtime())}\nReport UTC time:   {time.asctime(time.gmtime())}\n\n"
-        )
-        handle.write(f"Error: {exception}\n\n")
-        handle.write(f"{traceback.format_exc()}\n")
-
-        if additional is not None:
-            handle.write(f"\nAdditional info: {additional}\n")
-
 
 if __name__ == "__main__":
     freeze_support()
 
     try:
-        # Initialise singleton objects for thread-safety
-        config = ConfigData()
-        blacklist = Blacklist()
-        whitelist = Whitelist()
-
         logger.info("Init")
         if not ctypes.windll.shell32.IsUserAnAdmin():
             print_white("Please restart as administrator")
