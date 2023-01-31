@@ -42,10 +42,10 @@ class IPValidator(Validator):
 
 
 class IPInBlacklist(IPValidator):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(Blacklist)
 
 
 class IPInWhitelist(IPValidator):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(Whitelist)

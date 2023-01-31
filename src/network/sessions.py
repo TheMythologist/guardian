@@ -194,11 +194,11 @@ class BlacklistSession(AbstractPacketFilter):
         self,
         ips: set[str],
         priority: int,
-        blocks=None,
-        known_allowed=None,
+        blocks: Optional[set] = None,
+        known_allowed: Optional[set[str]] = None,
         session_info: Optional[SessionInfo] = None,
         debug: bool = False,
-    ):
+    ) -> None:
         super().__init__(ips, priority, session_info, debug)
 
         if blocks is None:

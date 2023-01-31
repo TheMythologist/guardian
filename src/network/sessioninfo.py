@@ -111,7 +111,7 @@ class SessionInfo:
         proxy_list: list[ConnectionStats],
         proxy_queue,
         initial_ips: Optional[list[IPTag]] = None,
-    ):
+    ) -> None:
         if initial_ips is None:
             initial_ips = []
 
