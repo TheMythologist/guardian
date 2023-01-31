@@ -133,9 +133,7 @@ class SessionInfo:
 
         self.packet_queue = proxy_queue
 
-        # self.processing_thread = Process(target=self.run)
-        # # Terminate this thread if the parent gets terminated.
-        # self.processing_thread.daemon = True
+        # self.processing_thread = Process(target=self.run, daemon=True)
 
     # def start(self) -> None:
     #     self.processing_thread.start()

@@ -17,8 +17,7 @@ class Context:
 
     def __init__(self, connection: PipeConnection):
         self.queue = connection
-        self.process = Process(target=self.run)
-        self.process.daemon = True
+        self.process = Process(target=self.run, daemon=True)
 
     @property
     def priority(self) -> int:

@@ -103,8 +103,7 @@ class AbstractPacketFilter(ABC):
         self.ips = ips
         self.priority = priority
         self.queue = connection
-        self.process = Process(target=self.run)
-        self.process.daemon = True
+        self.process = Process(target=self.run, daemon=True)
         self.session_info = session_info
         self.debug_print_decisions = debug
 
@@ -273,8 +272,7 @@ class DebugSession:
     def __init__(self, ips: set[str], priority: int):
         self.ips = ips
         self.priority = priority
-        self.process = Process(target=self.run)
-        self.process.daemon = True
+        self.process = Process(target=self.run, daemon=True)
 
     def start(self) -> None:
         self.process.start()
@@ -364,8 +362,7 @@ class IPCollector:
 
     def __init__(self, priority: int, packet_count_min_threshold: int = 1):
         self.priority = priority
-        self.process = Process(target=self.run)
-        self.process.daemon = True
+        self.process = Process(target=self.run, daemon=True)
         self.ips = Manager().list()
         self.seen_ips: DictProxy[
             str, int
