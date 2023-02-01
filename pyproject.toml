@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "Guardian"
-version = "3.3.1"
+version = "3.4.0"
 description = "Custom firewall used to create private lobbies for GTA5 Online"
 authors = ["TheMythologist <leekaixuan2001@gmail.com>"]
 license = "LGPL-3.0"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10.0"
+python = ">=3.10.0,<3.12"
 colorama = "^0.4.6"
 pyinstaller = "^5.7.0"
 pydivert = "2.1.0"

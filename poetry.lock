@@ -288,14 +288,14 @@ files = [
 
 [[package]]
 name = "identify"
-version = "2.5.16"
+version = "2.5.17"
 description = "File identification library for Python"
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "identify-2.5.16-py2.py3-none-any.whl", hash = "sha256:832832a58ecc1b8f33d5e8cb4f7d3db2f5c7fbe922dfee5f958b48fed691501a"},
-    {file = "identify-2.5.16.tar.gz", hash = "sha256:c47acedfe6495b1c603ed7e93469b26e839cab38db4155113f36f718f8b3dc47"},
+    {file = "identify-2.5.17-py2.py3-none-any.whl", hash = "sha256:7d526dd1283555aafcc91539acc061d8f6f59adb0a7bba462735b0a318bff7ed"},
+    {file = "identify-2.5.17.tar.gz", hash = "sha256:93cc61a861052de9d4c541a7acb7e3dcc9c11b398a2144f6e52ae5285f5f4f06"},
 ]
 
 [package.extras]
@@ -966,5 +966,5 @@ files = [
 
 [metadata]
 lock-version = "2.0"
-python-versions = "3.10"
-content-hash = "d0c7ca731ec89510358a3a881a50fde163b24f3043071be1403536a22e0864a3"
+python-versions = ">=3.10.0,<3.12"
+content-hash = "1d04810676c43c200014e7c2647d2ccfa00804eb44f6b51222d3c01ec1a9018f"

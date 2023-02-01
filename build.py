@@ -1,6 +1,6 @@
 import PyInstaller.__main__
 
-version = "3.3.1"
+version = "3.4.0"
 
 if __name__ == "__main__":
     PyInstaller.__main__.run(

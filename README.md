@@ -8,7 +8,7 @@ Guardian intercepts all incoming GTA traffic, and only allows specific packets t
 
 By observing network activity while playing GTA Online, it is discovered that the "type" of packet can be determined based on the packet's payload size even though they are encrypted. Other than user-defined configuration, the only other behaviours intended to be allowed through are the session "heartbeat" and any session information requests from the "matchmaking service" which provides initial connection details to clients.
 
-## [Download 3.3.1 (latest)](https://github.com/TheMythologist/guardian/releases/tag/3.3.1)
+## [Download 3.4.0 (latest)](https://github.com/TheMythologist/guardian/releases/tag/3.4.0)
 
 ## How to use
 
