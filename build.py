@@ -5,7 +5,7 @@ version = "3.4.0"
 if __name__ == "__main__":
     PyInstaller.__main__.run(
         (
-            "src\\app.py",
+            "guardian\\app.py",
             "--onefile",
             "--icon",
             "logo.ico",

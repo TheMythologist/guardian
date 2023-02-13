@@ -34,6 +34,7 @@ extend-ignore = ["E203", "E501"]
 
 [tool.isort]
 profile = "black"
+src_paths = ["guardian", "tests"]
 
 [tool.mypy]
 platform = "win32"
