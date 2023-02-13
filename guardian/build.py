@@ -2,10 +2,11 @@ import PyInstaller.__main__
 
 version = "3.4.0"
 
-if __name__ == "__main__":
+
+def build() -> None:
     PyInstaller.__main__.run(
         (
-            "guardian\\app.py",
+            "guardian\\__main__.py",
             "--onefile",
             "--icon",
             "logo.ico",
