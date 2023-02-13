@@ -91,7 +91,13 @@ GTA Online on PC was too crazy with modders wreaking havoc and constantly spammi
 - Build the package from the top-level repo folder.
 
   ```bash
-  poetry run python setup.py build
+  poetry run build
+  ```
+
+- Alternatively, you can run directly from the codebase without building
+
+  ```bash
+  poetry run python guardian
   ```
 
 ## Miscellaneous
