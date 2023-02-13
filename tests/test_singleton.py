@@ -1,4 +1,4 @@
-from src.util.singleton import Singleton
+from guardian.util.singleton import Singleton
 
 
 def test_singleton():
