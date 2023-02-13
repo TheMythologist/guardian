@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction --no-root
       - name: Build executable
-        run: poetry run python build.py
+        run: poetry run build
       - uses: softprops/action-gh-release@v1
         with:
           files: dist/Guardian-*.exe
