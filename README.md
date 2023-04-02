@@ -106,7 +106,7 @@ GTA Online on PC was too crazy with modders wreaking havoc and constantly spammi
 - No decryption (nor any similar attack on encryption used to secure GTA Online) was performed to investigate packets
 - I will not be held responsible for any misusing of this tool, including:
   - Getting banned by R* (unlikely to happen)
-  - Still getting hacked/harrassed by modders despiste using the tool
+  - Still getting hacked/harrassed by modders despite using the tool
 
 ## Support
 
