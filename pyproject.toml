@@ -9,7 +9,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = ">=3.10.0,<3.12"
 colorama = "^0.4.6"
-pyinstaller = "^5.7.0"
+pyinstaller = "^5.12.0"
 pydivert = "2.1.0"
 questionary = "^1.10.0"
 tqdm = "^4.64.1"
