@@ -9,7 +9,7 @@ from menu.menu import Menu
 from util.crash import crash_report
 from util.printer import print_white
 
-__version__ = "3.4.0"
+__version__ = "3.4.1"
 
 logger = logging.getLogger(__name__)
 logger.propagate = False
