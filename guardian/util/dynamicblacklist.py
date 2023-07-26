@@ -102,7 +102,9 @@ def get_azure_ip_ranges_download(
 
     # Get the actual page.
     try:
-        response = requests.get(page_to_search)
+        response = requests.get(
+            page_to_search, headers={"User-Agent": "Guardian - GTA5 Firewall"}
+        )
         response.raise_for_status()
         if response.status_code != 200:
             raise ScrapeError(
