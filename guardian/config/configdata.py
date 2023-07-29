@@ -1,5 +1,5 @@
 import json
-import os
+from pathlib import Path
 from typing import TypedDict
 
 from util.singleton import Singleton
@@ -12,20 +12,20 @@ class ConfigDataType(TypedDict):
 
 class ConfigData(metaclass=Singleton):
     def __init__(self, data_file: str = "data.json"):
-        self.data_file = data_file
+        self.data_file = Path(data_file)
         self.data: ConfigDataType
-        if os.path.isfile(data_file):
+        if self.data_file.is_file():
             self.load()
         else:
             self.data = {"blacklist": {}, "whitelist": {}}
             self.save()
 
     def load(self) -> None:
-        with open(self.data_file, "r") as file:
+        with self.data_file.open("r") as file:
             self.data = json.load(file)
 
     def save(self) -> None:
-        with open(self.data_file, "w") as file:
+        with self.data_file.open("w") as file:
             json.dump(self.data, file, indent=4)
 
     def get(self, key: str, default=None):

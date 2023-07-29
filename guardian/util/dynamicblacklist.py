@@ -1,7 +1,7 @@
 import json
-import os.path
 import re
 import time
+from pathlib import Path
 
 import prsw
 import requests
@@ -158,19 +158,18 @@ def get_dynamic_blacklist(backup_file: str = "db.json") -> set[tuple[int, int]]:
     # to download the file anyways. Ideally, we want to be able to skip trying to download all together because
     # the method isn't entirely reliable, and also fallback to the previously saved version if the download fails.
 
+    backup_path = Path(backup_file)
     try:
         download_link, content = get_azure_ip_ranges_download()
         ranges = parse_azure_ip_ranges(content)
-        with open(backup_file, mode="wb") as file:
-            file.write(azure_file_add_timestamp(content, download_link))
+        backup_path.write_bytes(azure_file_add_timestamp(content, download_link))
         ranges.extend(T2_EU)  # add R* EU ranges
         ranges.extend(T2_US)  # add R* US ranges
     except Exception as e:
         print("ERROR: Could not parse Azure ranges from URL. Reason: ", e)
-        if not os.path.isfile(backup_file):
+        if not Path(backup_file).is_file():
             raise FileNotFoundError(
                 f"ERROR: Could not find backup file {backup_file}."
             ) from e
-        with open(backup_file, mode="rb") as file:
-            ranges = parse_azure_ip_ranges(file.read())
+        ranges = parse_azure_ip_ranges(backup_path.read_bytes())
     return construct_cidr_block_set(ranges)
