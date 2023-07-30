@@ -1,5 +1,6 @@
 import time
 import traceback
+from pathlib import Path
 from typing import Optional
 
 
@@ -11,7 +12,7 @@ def crash_report(
     if filename is None:
         filename = f"crashreport_{hex(int(time.time_ns()))[2:]}.log"
 
-    with open(filename, "w") as handle:
+    with Path(filename).open("w") as handle:
         handle.write(
             f"Report local time: {time.asctime(time.localtime())}\nReport UTC time:   {time.asctime(time.gmtime())}\n\n"
         )

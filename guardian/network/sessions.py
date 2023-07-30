@@ -4,13 +4,14 @@ import re
 from abc import ABC, abstractmethod
 from multiprocessing import Manager, Process
 from multiprocessing.connection import PipeConnection
-from multiprocessing.managers import DictProxy
+from multiprocessing.managers import DictProxy, ListProxy
 from typing import Optional
 
 import pydivert
 
 from network.sessioninfo import SessionInfo
 from util.network import ip_in_cidr_block_set
+from util.types import CIDR_BLOCK
 
 logger = logging.getLogger(__name__)
 debug_logger = logging.getLogger("debugger")
@@ -204,7 +205,7 @@ class BlacklistSession(AbstractPacketFilter):
         ips: set[str],
         priority: int,
         connection: PipeConnection,
-        blocks: Optional[set] = None,
+        blocks: Optional[set[CIDR_BLOCK]] = None,
         known_allowed: Optional[set[str]] = None,
         session_info: Optional[SessionInfo] = None,
         debug: bool = False,
@@ -314,11 +315,15 @@ class DebugSession:
                 else:
                     filler = "Blocked"
 
-                if packet.is_inbound:
-                    log = f"[{filler}] {src}:{packet.src_port} --> {dst}:{packet.dst_port}"
-                else:
-                    log = f"[{filler}] {src}:{packet.src_port} <-- {dst}:{packet.dst_port}"
-                debug_logger.debug(log)
+                debug_logger.debug(
+                    "[%s] %s:%s %s %s:%s",
+                    filler,
+                    src,
+                    packet.src_port,
+                    "-->" if packet.is_inbound else "<--",
+                    dst,
+                    packet.dst_port,
+                )
 
 
 # Okay, so there's a couple of changes that need to be done to fix auto-whitelisting.
@@ -363,7 +368,7 @@ class IPCollector:
     def __init__(self, priority: int, packet_count_min_threshold: int = 1):
         self.priority = priority
         self.process = Process(target=self.run, daemon=True)
-        self.ips = Manager().list()
+        self.ips: ListProxy[str] = Manager().list()
         self.seen_ips: DictProxy[
             str, int
         ] = Manager().dict()  # key is IP address, value is packets seen

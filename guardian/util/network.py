@@ -1,9 +1,11 @@
 import contextlib
 import socket
+from typing import cast
 
 import requests
 
 from util.constants import CIDR_MASKS
+from util.types import CIDR_BLOCK
 
 
 def get_public_ip() -> str:
@@ -11,11 +13,10 @@ def get_public_ip() -> str:
 
 
 def get_private_ip() -> str:
-    soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    soc.connect(("8.8.8.8", 80))
-    local_ip = soc.getsockname()[0]
-    soc.close()
-    return local_ip
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as soc:
+        soc.connect(("8.8.8.8", 80))
+        local_ip = soc.getsockname()[0]
+    return cast(str, local_ip)
 
 
 def calculate_ip_to_int(ip: str) -> int:
@@ -34,7 +35,7 @@ def calculate_ip_to_int(ip: str) -> int:
 # right-most bit (move one bit left), append /31, and so on.
 
 
-def ip_in_cidr_block_set(ip: str, cidr_block_set: set[tuple[int, int]]) -> bool:
+def ip_in_cidr_block_set(ip: str, cidr_block_set: set[CIDR_BLOCK]) -> bool:
     """
     Essentially a reverse-search for all possible entries in cidr_block_set that would contain ip.
     """
@@ -45,7 +46,7 @@ def ip_in_cidr_block_set(ip: str, cidr_block_set: set[tuple[int, int]]) -> bool:
     return False
 
 
-def cidr_to_tuple(ip_in_cidr: str) -> tuple[int, int]:
+def cidr_to_tuple(ip_in_cidr: str) -> CIDR_BLOCK:
     """
     Converts a string representing an IP in CIDR notation to two integers,
     the first integer represents the lowest IP in the CIDR block,
@@ -59,7 +60,7 @@ def cidr_to_tuple(ip_in_cidr: str) -> tuple[int, int]:
     return calculate_ip_to_int(ip), suffix_int
 
 
-def construct_cidr_block_set(ips_in_cidr: list[str]) -> set[tuple[int, int]]:
+def construct_cidr_block_set(ips_in_cidr: list[str]) -> set[CIDR_BLOCK]:
     """
     Construct a set of IPs in CIDR notation. This set is specifically optimised to only work with the
     ip_in_cidr_block_set() function.
