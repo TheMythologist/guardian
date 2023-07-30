@@ -1,7 +1,11 @@
+from __future__ import annotations
+
 import logging
 import time
 import webbrowser
+from enum import Enum
 from multiprocessing import Pipe
+from typing import Any, cast
 
 import questionary
 from tqdm import trange
@@ -52,33 +56,40 @@ class Menu:
                 return
 
     @staticmethod
-    def confirm_session(session_type: type[AbstractPacketFilter] | str):
+    def confirm_session(
+        session_type: type[AbstractPacketFilter] | str,
+    ) -> Prompts.CONFIRM_SESSION_ANSWER:
         pretty_print(Prompts.EXPLANATIONS[session_type])
         session_type = (
             session_type if isinstance(session_type, str) else session_type.__name__
         )
-        return questionary.select(
-            f"Session type: {session_type}, are you sure?",
-            Prompts.CONFIRM_SESSION_OPTIONS,
-            style=UI_STYLE,
-        ).ask()
+        return cast(
+            Prompts.CONFIRM_SESSION_ANSWER,
+            questionary.select(
+                f"Session type: {session_type}, are you sure?",
+                Prompts.CONFIRM_SESSION_OPTIONS,
+                style=UI_STYLE,
+            ).ask(),
+        )
 
     @staticmethod
-    def launch_session(session_type: type[AbstractPacketFilter], *args, **kwargs):
+    def launch_session(
+        session_type: type[AbstractPacketFilter], *args: Any, **kwargs: Any
+    ) -> None:
         answer = Menu.confirm_session(session_type)
-        if answer and answer == Prompts.CONFIRM_SESSION_ANSWER_YES:
+        if answer and answer == Prompts.CONFIRM_SESSION_ANSWER.YES:
             session = session_type(*args, **kwargs)
             Menu.context.add_filter(session)
             Menu.context.start_latest_filter()
 
     @staticmethod
-    def launch_solo_session():
+    def launch_solo_session() -> None:
         Menu.launch_session(
             SoloSession, priority=Menu.context.priority, connection=Menu.child_conn
         )
 
     @staticmethod
-    def launch_whitelisted_session():
+    def launch_whitelisted_session() -> None:
         ip_set = set()
         debug_logger.debug("Validating whitelisted IPs")
         for ip, name in Menu.whitelist:
@@ -95,7 +106,7 @@ class Menu:
         )
 
     @staticmethod
-    def launch_blacklisted_session():
+    def launch_blacklisted_session() -> None:
         ip_set = set()
         debug_logger.debug("Validating blacklisted IPs")
         for ip, name in Menu.blacklist:
@@ -114,23 +125,23 @@ class Menu:
         )
 
     @staticmethod
-    def launch_locked_session():
+    def launch_locked_session() -> None:
         Menu.launch_session(
             LockedSession, priority=Menu.context.priority, connection=Menu.child_conn
         )
 
     @staticmethod
-    def launch_new_session():
+    def launch_new_session() -> None:
         answer = Menu.confirm_session("New Session")
-        if answer and answer == Prompts.CONFIRM_SESSION_ANSWER_YES:
+        if answer and answer == Prompts.CONFIRM_SESSION_ANSWER.YES:
             session = SoloSession(Menu.context.priority, connection=Menu.child_conn)
             Menu.context.add_filter(session)
             Menu.context.start_latest_filter()
 
     @staticmethod
-    def launch_auto_whitelisted_session():
+    def launch_auto_whitelisted_session() -> None:
         answer = Menu.confirm_session("Auto-Whitelisted")
-        if answer and answer == Prompts.CONFIRM_SESSION_ANSWER_YES:
+        if answer and answer == Prompts.CONFIRM_SESSION_ANSWER.YES:
             print("Collecting active IPs...")
             ip_set = Menu.collect_active_ips()
             print("Checking for potential tunnels in collected IPs...")
@@ -141,7 +152,7 @@ class Menu:
                 and ip not in Menu.whitelist
             }
             if potential_tunnels:
-                questionary.checkbox(
+                ip_answer = questionary.checkbox(
                     f"WARNING! Guardian has detected {len(potential_tunnels)} IP"
                     f"{'' if len(potential_tunnels) == 1 else 's'} in your current session that "
                     "may be used for connection tunnelling, and may break session security if added "
@@ -154,10 +165,10 @@ class Menu:
                     "direct connection, you can prevent this message from appearing by manually adding "
                     "them to your Whitelist.\n\nSelect the potentially session-security-breaking IPs "
                     "you wish to keep whitelisted, if any.",
-                    choices=potential_tunnels,
+                    choices=list(potential_tunnels),
                     style=UI_STYLE,
                 ).ask()
-                for ip in answer:
+                for ip in ip_answer:
                     potential_tunnels.remove(ip)
                 for ip in potential_tunnels:
                     ip_set.remove(ip)
@@ -170,9 +181,9 @@ class Menu:
             Menu.context.start_latest_filter()
 
     @staticmethod
-    def kick_unknowns():
+    def kick_unknowns() -> None:
         answer = Menu.confirm_session("Kick Unknowns")
-        if answer and answer == Prompts.CONFIRM_SESSION_ANSWER_YES:
+        if answer and answer == Prompts.CONFIRM_SESSION_ANSWER.YES:
             ip_set = set()
             for ip, name in Menu.whitelist:
                 try:
@@ -190,12 +201,12 @@ class Menu:
             Menu.context.kill_latest_filter()
 
     @staticmethod
-    def kick_by_ip():
+    def kick_by_ip() -> None:
         answer = Menu.confirm_session("Kick by IP")
-        if answer and answer == Prompts.CONFIRM_SESSION_ANSWER_YES:
+        if answer and answer == Prompts.CONFIRM_SESSION_ANSWER.YES:
             ip_set = Menu.collect_active_ips()
             choices = questionary.checkbox(
-                "Select IPs to kick", ip_set, style=UI_STYLE
+                "Select IPs to kick", list(ip_set), style=UI_STYLE
             ).ask()
             for ip in choices:
                 ip_set.remove(ip)
@@ -209,12 +220,12 @@ class Menu:
             Menu.context.kill_latest_filter()
 
     @staticmethod
-    def open_discord():
+    def open_discord() -> None:
         print("Opening Discord URL...")
         webbrowser.open(DISCORD_URL)
 
     @staticmethod
-    def quit():
+    def quit() -> None:
         raise KeyboardInterrupt
 
     @staticmethod
@@ -248,12 +259,13 @@ class Prompts:
         {"name": "Quit", "value": Menu.quit},
     ]
 
-    CONFIRM_SESSION_ANSWER_YES = "y"
-    CONFIRM_SESSION_ANSWER_NO = "n"
+    class CONFIRM_SESSION_ANSWER(Enum):
+        YES = "y"
+        NO = "n"
 
     CONFIRM_SESSION_OPTIONS = [
-        {"name": "Yes, start", "value": CONFIRM_SESSION_ANSWER_YES},
-        {"name": "No, go back", "value": CONFIRM_SESSION_ANSWER_NO},
+        {"name": "Yes, start", "value": CONFIRM_SESSION_ANSWER.YES},
+        {"name": "No, go back", "value": CONFIRM_SESSION_ANSWER.NO},
     ]
 
     EXPLANATIONS = {

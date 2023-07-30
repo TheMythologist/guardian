@@ -1,7 +1,9 @@
-from typing import Any, Iterable
+from typing import Any, Iterator, TypeVar, cast
 
-from config.configdata import ConfigData
+from config.configdata import LIST_TYPE, ConfigData
 from util.singleton import Singleton
+
+T = TypeVar("T")
 
 
 class GlobalList:
@@ -9,7 +11,7 @@ class GlobalList:
     Used for whitelisting or blacklisting IP addresses
     """
 
-    def __init__(self, list_name: str):
+    def __init__(self, list_name: LIST_TYPE):
         self.list_name = list_name
         self.config = ConfigData()
         # Sample self.data: {"192.168.0.1", "bad guy"}
@@ -26,7 +28,7 @@ class GlobalList:
     def __contains__(self, key: str) -> bool:
         return key in self.data
 
-    def __iter__(self) -> Iterable[tuple[str, Any]]:
+    def __iter__(self) -> Iterator[tuple[str, Any]]:
         return iter(self.data.items())
 
     def __len__(self) -> int:
@@ -35,7 +37,7 @@ class GlobalList:
     def add(self, ip: str, name: str) -> None:
         self.data[ip] = name
 
-    def get(self, ip: str, default=None):
+    def get(self, ip: str, default: Any | T = None) -> Any | T:
         return self.data.get(ip, default)
 
     def has(self, name: str) -> bool:
@@ -54,7 +56,7 @@ class GlobalList:
         self.config.save()
 
     def load(self) -> None:
-        self.data: dict = self.config.get(self.list_name, {})
+        self.data = self.config.get(self.list_name, cast(dict[str, str], {}))
 
     def reload(self) -> None:
         self.load()

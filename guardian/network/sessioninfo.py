@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, cast
 
 from pydivert import packet
 
@@ -105,10 +105,14 @@ class SessionInfo:
     connection_stats: Array of ConnectionStats, which contain the calculations and statistics of connections.
     """
 
-    def __init__(
+    # TODO: Use `DictProxy` and `ListProxy` instead
+    # Reference: https://github.com/python/cpython/issues/107431
+    def __init__(  # type: ignore[no-untyped-def]
         self,
-        proxy_dict,
+        proxy_dict: dict[str, int],
         proxy_list: list[ConnectionStats],
+        # Unforunately multiprocessing.queue is not subscriptable here
+        # Reference: https://github.com/python/cpython/issues/99509#issuecomment-1629764827
         proxy_queue,
         initial_ips: Optional[list[IPTag]] = None,
     ) -> None:
@@ -116,7 +120,7 @@ class SessionInfo:
             initial_ips = []
 
         self.known_ips = proxy_dict
-        self.connection_stats: list[ConnectionStats] = proxy_list
+        self.connection_stats = proxy_list
 
         for ip_tag in initial_ips:
             self.add_con_stat_from_ip_tag(ip_tag)
@@ -152,7 +156,7 @@ class SessionInfo:
         # filtering thread and so processing will happen later (and almost certainly on a different thread).
         self.packet_queue.put((packet, allowed), block=False)
 
-    def process_item(self, block=True) -> None:
+    def process_item(self, block: bool = True) -> None:
         """
         Depletes the queue of a single packet that has been added from the filtering thread.
         Note that by default, whatever thread calls this method *will be blocked* until there is an item in the queue.
@@ -163,8 +167,8 @@ class SessionInfo:
         packet, allowed = self.packet_queue.get(block)
         self.process_packet(packet, allowed)
 
-    def process_packet(self, packet: packet.Packet, allowed) -> None:
-        ip = packet.src_addr if packet.is_inbound else packet.dst_addr
+    def process_packet(self, packet: packet.Packet, allowed: bool) -> None:
+        ip = cast(str, packet.src_addr if packet.is_inbound else packet.dst_addr)
 
         # If we're not aware of this destination, a new ConnectionStat (and conseq. IPTag) is required.
         if ip not in self.known_ips:
@@ -194,7 +198,7 @@ class SessionInfo:
             self.known_ips[this_ip] = len(self.connection_stats)
             self.connection_stats.append(ConnectionStats(ip_tag))
 
-    def get_con_stat_from_ip(self, ip):
+    def get_con_stat_from_ip(self, ip: str) -> ConnectionStats:
         """
         Returns the connection stat object associated with this IP.
 

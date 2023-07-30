@@ -42,6 +42,7 @@ src_paths = ["guardian", "tests"]
 [tool.mypy]
 platform = "win32"
 exclude = ["speed_tests/", "tests/", "build.py"]
+strict = true
 
 [[tool.mypy.overrides]]
 module = ["pydivert", "prsw"]

@@ -7,6 +7,7 @@ import prsw
 import requests
 
 from util.network import construct_cidr_block_set
+from util.types import CIDR_BLOCK
 
 # This file contains classes and methods to manage acquiring, parsing, and updating a possibly dynamic list of IP ranges
 # that Guardian needs to be aware of. Such ranges include R* / T2 official IPs, as well as IPs that can be used for
@@ -138,6 +139,7 @@ def azure_file_add_timestamp(azure_file_contents: bytes, filename: str) -> bytes
 
 
 def parse_azure_ip_ranges(azure_file_contents: bytes) -> list[str]:
+    # TODO: Type the json output
     azure_cloud_json = json.loads(azure_file_contents)
     categories = azure_cloud_json["values"]
     arr_ranges = next(
@@ -150,10 +152,10 @@ def parse_azure_ip_ranges(azure_file_contents: bytes) -> list[str]:
     )
     if arr_ranges is None:
         raise ValueError("Could not find AzureCloud category in values array.")
-    return arr_ranges
+    return arr_ranges  # type: ignore[no-any-return]
 
 
-def get_dynamic_blacklist(backup_file: str = "db.json") -> set[tuple[int, int]]:
+def get_dynamic_blacklist(backup_file: str = "db.json") -> set[CIDR_BLOCK]:
     # TODO: We can tell if the file has been updated by checking `changeNumber`, but that requires attempting
     # to download the file anyways. Ideally, we want to be able to skip trying to download all together because
     # the method isn't entirely reliable, and also fallback to the previously saved version if the download fails.

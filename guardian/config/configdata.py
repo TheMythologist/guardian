@@ -1,8 +1,11 @@
 import json
 from pathlib import Path
-from typing import TypedDict
+from typing import Any, Literal, TypedDict, TypeVar
 
 from util.singleton import Singleton
+
+LIST_TYPE = Literal["blacklist", "whitelist"]
+T = TypeVar("T", bound=dict[str, str])
 
 
 class ConfigDataType(TypedDict):
@@ -28,7 +31,7 @@ class ConfigData(metaclass=Singleton):
         with self.data_file.open("w") as file:
             json.dump(self.data, file, indent=4)
 
-    def get(self, key: str, default=None):
+    def get(self, key: LIST_TYPE, default: Any | T = None) -> Any | T:
         """
         Retrieve data from the configuration
         :param key: Key to find in the config data
@@ -37,10 +40,10 @@ class ConfigData(metaclass=Singleton):
         """
         return self.data.get(key, default)
 
-    def set(self, key: str, value) -> None:
+    def set(self, key: LIST_TYPE, value: T) -> None:
         """
         Set data to configuration
         :param key: Key to store the data on the config
         :param value: Value to store
         """
-        self.data[key] = value  # type: ignore[literal-required]
+        self.data[key] = value
