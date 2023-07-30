@@ -100,6 +100,7 @@ GTA Online on PC was too crazy with modders wreaking havoc and constantly spammi
   - Just double-click and run!
 - Able to change session type safely and securely with 0 downtime in-between
 - Smaller package size
+- Speed improvements
 - UI overhaul
 - Better developing experience (in my opinion, anyways)
 
