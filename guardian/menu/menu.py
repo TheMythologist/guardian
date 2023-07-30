@@ -255,7 +255,7 @@ class Prompts:
         },
         {"name": "Kick by IP", "value": Menu.kick_by_ip},
         {"name": "Edit lists", "value": Lists.choose_list},
-        {"name": "Discord", "value": Menu.open_discord},
+        {"name": "Speyedr's Discord", "value": Menu.open_discord},
         {"name": "Quit", "value": Menu.quit},
     ]
 

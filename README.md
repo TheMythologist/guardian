@@ -1,32 +1,33 @@
 # Guardian
 
-Custom firewall used for the game GTA Online (1.54 and onwards), written in Python.
+Custom firewall for the game GTA Online (version 1.54 and onwards).
+
+## [Download the latest version](https://github.com/TheMythologist/guardian/releases/latest)
+
+### Requirements
+
+- Windows 8/10/11 or Windows Server 2012 64-bit
+- Administrator Privileges
+
+## How to use
+
+1. Download the latest version from the [releases](https://github.com/TheMythologist/guardian/releases)
+2. Run `Guardian.exe` (you will be prompted to run as Administrator)
+3. Start a **Solo Session** with Guardian
+4. Launch GTA online and enjoy 🎉
+   - If you want to let your friends in, add their IP addresses into the `Whitelist` and use a **Whitelisted Session** instead.
+5. If you don't know your friends' IPs, you'll have to stop the **Solo Session** and tell them to join as quick as possible.
+   - Note that the session is vulnerable to randoms during this time.
+6. Once your friends are loading into your session (they've confirmed they want to join your session and are now in the clouds), start a **Locked Session**.
+   - While a session is Locked, no one will be able to join the session, but those already connecting / connected should remain.
+
+Guardian *may* work in other circumstances/setups, but is less likely to produce secure sessions.
 
 ## How it works
 
 Guardian intercepts all incoming GTA traffic, and only allows specific packets through depending on the configuration. GTA service-related packets are still allowed so you can communicate with GTA servers, but other players will not be able to join your session (unless you specify their IP addresses in the whitelist configuration).
 
 By observing network activity while playing GTA Online, it is discovered that the "type" of packet can be determined based on the packet's payload size even though they are encrypted. Other than user-defined configuration, the only other behaviours intended to be allowed through are the session "heartbeat" and any session information requests from the "matchmaking service" which provides initial connection details to clients.
-
-## [Download 3.4.1 (latest)](https://github.com/TheMythologist/guardian/releases/tag/3.4.1)
-
-## How to use
-
-To increase the chance of a successful session, it is recommended that you follow these instructions:
-
-1. Download the latest version from the [releases](https://github.com/TheMythologist/guardian/releases)
-2. Unzip the zipfile
-3. Run `Guardian.exe` as Administrator
-4. Start a **Solo Session** with Guardian
-5. Launch GTA online and enjoy 🎉
-\- If you want to let your friends in and have added their IP addresses `Whitelist`, stop the **Solo Session** and start a **Whitelisted Session**.
-\- Your session should now be secure, and your friends can join you! 🎉
-6. If you don't know your friends' IPs, you'll have to stop the **Solo Session** and tell them to join as quick as possible.
-\- Note that the session is vulnerable to randoms during this time.
-7. Once your friends are loading into your session (they've confirmed they want to join your session and are now in the clouds), start a **Locked Session**.
-\- While a session is Locked, no one will be able to join the session, but those already connecting / connected should remain.
-
-Guardian *may* work in other circumstances/setups, but is less likely to produce secure sessions.
 
 ## Session Types
 
@@ -53,30 +54,10 @@ The most important requirement for securing a session with Guardian is that you 
 
 GTA Online on PC was too crazy with modders wreaking havoc and constantly spamming text messages or emails. They could also crash sessions, leak IPs, or even scrape R* IDs to join non-public sessions to continue harrassing people. Speyedr did some research and testing, and was eventually able to get Guardian to work again, and he publicly shared it with the open-source community (check out his repository [here](https://gitlab.com/Speyedr/guardian-fastload-fix)). I then decided to fork his own project and improve on the codebase further, as well as further improvements that I think the codebase can benefit from.
 
-- [Requirements](#requirements)
-  - [System](#system)
-  - [Packages](#packages-only-if-building-from-source)
-- [Build from source](#build-from-source)
-- [Miscellaneous](#miscellaneous)
-- [Credits](#credits-for-this-fork)
-  - [Developers](#developers)
-- [License](LICENSE)
-
-## Requirements
-
-### System
-
-- Python 3.10+ 64-bit
-- Windows 8/10/11 or Windows Server 2012 64 bit
-- Administrator Privileges
-
-### Packages *(only if building from source)*
-
-- View the section `tool.poetry.dependencies` in [pyproject.toml](pyproject.toml)
-
 ## Build from source
 
-- Install poetry.
+- Install Python 3.10+
+- **(Recommended)** Use poetry.
 
   ```bash
   pip install poetry
@@ -88,7 +69,7 @@ GTA Online on PC was too crazy with modders wreaking havoc and constantly spammi
   poetry install
   ```
 
-- Build the package from the top-level repo folder.
+- Build the package from the top-level repo folder. The executable will be found in the `dist` directory.
 
   ```bash
   poetry run build
@@ -108,16 +89,22 @@ GTA Online on PC was too crazy with modders wreaking havoc and constantly spammi
   - Getting banned by R* (unlikely to happen)
   - Still getting hacked/harrassed by modders despite using the tool
 
-## Support
+## Key differences in this fork
 
-- [**> Open an issue**](https://github.com/TheMythologist/guardian/issues/new)
-- [**> Join Speyedr's Discord server**](https://discord.gg/6FzKCh4j4v)
-
-## Credits (for this fork)
-
-- [**DigitalArc Studio**](https://gitlab.com/digitalarc/guardian)
-- [**Speyedr**](https://gitlab.com/Speyedr/guardian-fastload-fix)
+- Single executable binary
+  - Just double-click and run!
+- Able to change session type safely and securely with 0 downtime in-between
+- Smaller package size
+- UI overhaul
+- Better developing experience (in my opinion, anyways)
 
 ## Developers
 
 - [**TheMythologist**](https://github.com/TheMythologist)
+- [**Speyedr**](https://gitlab.com/Speyedr/guardian-fastload-fix) (previous fork)
+- [**DigitalArc Studio**](https://gitlab.com/digitalarc/guardian) (original fork)
+
+## Support
+
+- [**> Open an issue**](https://github.com/TheMythologist/guardian/issues/new)
+- [**> Join Speyedr's Discord server**](https://discord.gg/6FzKCh4j4v)
