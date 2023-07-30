@@ -2,6 +2,11 @@
 
 Custom firewall for the game GTA Online (version 1.54 and onwards).
 
+[![Latest release](https://img.shields.io/github/v/release/TheMythologist/guardian)](https://github.com/TheMythologist/guardian/releases/latest)
+[![CI status](https://github.com/TheMythologist/guardian/workflows/build/badge.svg)](https://github.com/TheMythologist/guardian/actions?query=branch%3Amain)
+[![Downloads](https://img.shields.io/github/downloads/TheMythologist/guardian/total)](https://github.com/TheMythologist/guardian/releases)
+[![License](https://img.shields.io/github/license/TheMythologist/guardian)](LICENSE)
+
 ## [Download the latest version](https://github.com/TheMythologist/guardian/releases/latest)
 
 ### Requirements
