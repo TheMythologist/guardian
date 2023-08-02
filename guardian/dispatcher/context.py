@@ -53,7 +53,7 @@ class Context:
             # Kill other filters
             for priority_identifier in list(self.filters)[:-1]:
                 debug_logger.debug("Killing %s", self.filters[priority_identifier])
-                self.filters.pop(priority_identifier).stop()
+                self.filters.pop(priority_identifier).stop(overwrite_title=False)
 
     def start_latest_filter(self, kill_others: bool = True) -> None:
         self.filters[list(self.filters)[-1]].start()
@@ -66,7 +66,7 @@ class Context:
             debug_logger.debug(
                 "Killing latest filter %s", self.filters[latest_priority]
             )
-            self.filters.pop(latest_priority).stop()
+            self.filters.pop(latest_priority).stop(overwrite_title=True)
             self._current_priority -= 1
 
     def is_filter_running(self) -> bool:
