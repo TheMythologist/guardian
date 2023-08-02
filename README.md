@@ -1,6 +1,6 @@
 # Guardian
 
-Custom firewall for the game GTA Online (version 1.54 and onwards).
+Custom firewall for the game GTA Online (version 1.66 and onwards).
 
 [![Latest release](https://img.shields.io/github/v/release/TheMythologist/guardian)](https://github.com/TheMythologist/guardian/releases/latest)
 [![CI status](https://github.com/TheMythologist/guardian/workflows/build/badge.svg)](https://github.com/TheMythologist/guardian/actions?query=branch%3Amain)

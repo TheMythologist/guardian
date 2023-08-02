@@ -69,13 +69,17 @@ PACKET_FILTER = "udp.DstPort == 6672 and udp.PayloadLength > 0 and ip"
 
 # Interesting note: All the matchmaker requests have payload sizes that may be 16 bytes apart.
 
-HEARTBEAT_SIZES = {12, 18}
+HEARTBEAT_SIZES = {12, 18, 63}
 MATCHMAKING_SIZES = {
-    245,
-    261,
-    277,
-    293,
+    191,
+    207,
+    223,
+    239,
 }  # probably a player looking to join the session.
+DTLs = {0xFEFF, 0xFEFD}
+KNOWNS = {0x39, 0x31, 0x29}
+# RECORDS = {20, 21, 22, 23}
+
 
 KNOWN_SIZES = HEARTBEAT_SIZES.union(MATCHMAKING_SIZES)
 
@@ -196,7 +200,31 @@ class WhitelistSession(AbstractPacketFilter):
 
         # The "special sauce" for the new filtering logic. We're using payload sizes to guess if the packet
         # has a behaviour we want to allow through.
-        return ip in self.ips or size in KNOWN_SIZES
+        if ip in self.ips or size in HEARTBEAT_SIZES:
+            return True
+
+        wrapper = 0 if size < 5 else int.from_bytes(packet.raw[28:30], "big")
+        magic_byte = packet.payload[4]
+
+        if size == wrapper:
+            offset = packet.payload[2] ^ magic_byte
+            code = 0
+            alt = 0
+            if offset == 17 and size >= 27:
+                code = int.from_bytes(packet.payload[25:27], "big")
+                alt = packet.payload[24]
+            elif offset == 49 and size >= 91:
+                code = int.from_bytes(packet.payload[89:91], "big")
+
+            magic = 0 if size < 5 else int.from_bytes([magic_byte, magic_byte], "big")
+            if (
+                code ^ magic in DTLs
+                or alt ^ magic_byte in KNOWNS
+                or code ^ magic < 0x10
+            ):
+                return True
+
+        return False
 
 
 class BlacklistSession(AbstractPacketFilter):
