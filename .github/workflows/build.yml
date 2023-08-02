@@ -30,6 +30,10 @@ jobs:
           install-only: true
       - name: Build executable
         run: poetry run build
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Guardian.exe
+          path: dist/Guardian-*.exe
       - uses: softprops/action-gh-release@v1
         with:
           files: dist/Guardian-*.exe
