@@ -1,6 +1,6 @@
 import PyInstaller.__main__
 
-version = "3.4.1"
+version = "3.5.0"
 
 
 def build() -> None:
