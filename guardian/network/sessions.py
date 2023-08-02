@@ -10,6 +10,7 @@ from typing import Optional
 import pydivert
 
 from network.sessioninfo import SessionInfo
+from util.console import get_original_console_title, set_console_title
 from util.network import ip_in_cidr_block_set
 from util.types import CIDR_BLOCK
 
@@ -114,10 +115,13 @@ class AbstractPacketFilter(ABC):
     def start(self) -> None:
         self.process.start()
         logger.info("Dispatched %s blocker process", self.__class__.__name__)
+        set_console_title(f"{get_original_console_title()} - {self.__class__.__name__}")
 
-    def stop(self) -> None:
+    def stop(self, overwrite_title: bool = True) -> None:
         self.process.terminate()
         logger.info("Terminated %s blocker process", self.__class__.__name__)
+        if overwrite_title:
+            set_console_title(get_original_console_title())
 
     @abstractmethod
     def is_packet_allowed(self, packet: pydivert.Packet) -> bool:
