@@ -805,13 +805,13 @@ types-urllib3 = "*"
 
 [[package]]
 name = "types-tqdm"
-version = "4.66.0.1"
+version = "4.66.0.2"
 description = "Typing stubs for tqdm"
 optional = false
 python-versions = "*"
 files = [
-    {file = "types-tqdm-4.66.0.1.tar.gz", hash = "sha256:6457c90f03cc5a0fe8dd11839c8cbf5572bf542b438b1af74233801728b5dfbc"},
-    {file = "types_tqdm-4.66.0.1-py3-none-any.whl", hash = "sha256:6a1516788cbb33d725803439b79c25bfed7e8176b8d782020b5c24aedac1649b"},
+    {file = "types-tqdm-4.66.0.2.tar.gz", hash = "sha256:9553a5e44c1d485fce19f505b8bd65c0c3e87e870678d1f2ed764ae59a55d45f"},
+    {file = "types_tqdm-4.66.0.2-py3-none-any.whl", hash = "sha256:13dddd38908834abdf0acdc2b70cab7ac4bcc5ad7356ced450471662e58a0ffc"},
 ]
 
 [[package]]
@@ -887,4 +887,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10.0,<3.12"
-content-hash = "d94a8461b4e8b5304d22307b3e15326e20f795d0c5c85be533b3091ec50c96eb"
+content-hash = "e2ae6feb2e6ccdcd2672583bd3a43c30a29319b49b85ccffd2b75259716a7277"
