@@ -1,3 +1,5 @@
+from multiprocessing import Queue
+from multiprocessing.managers import DictProxy, ListProxy
 from typing import Optional, cast
 
 from pydivert import packet
@@ -105,15 +107,11 @@ class SessionInfo:
     connection_stats: Array of ConnectionStats, which contain the calculations and statistics of connections.
     """
 
-    # TODO: Use `DictProxy` and `ListProxy` instead
-    # Reference: https://github.com/python/cpython/issues/107431
-    def __init__(  # type: ignore[no-untyped-def]
+    def __init__(
         self,
-        proxy_dict: dict[str, int],
-        proxy_list: list[ConnectionStats],
-        # Unforunately multiprocessing.queue is not subscriptable here
-        # Reference: https://github.com/python/cpython/issues/99509#issuecomment-1629764827
-        proxy_queue,
+        proxy_dict: DictProxy[str, int],
+        proxy_list: ListProxy[ConnectionStats],
+        proxy_queue: Queue[tuple[packet.Packet, bool]],
         initial_ips: Optional[list[IPTag]] = None,
     ) -> None:
         if initial_ips is None:
