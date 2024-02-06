@@ -779,13 +779,13 @@ telegram = ["requests"]
 
 [[package]]
 name = "types-colorama"
-version = "0.4.15.12"
+version = "0.4.15.20240205"
 description = "Typing stubs for colorama"
 optional = false
-python-versions = "*"
+python-versions = ">=3.8"
 files = [
-    {file = "types-colorama-0.4.15.12.tar.gz", hash = "sha256:fbdfc5d9d24d85c33bd054fbe33adc6cec44eedb19cfbbabfbbb57dc257ae4b8"},
-    {file = "types_colorama-0.4.15.12-py3-none-any.whl", hash = "sha256:23c9d4a00961227f7ef018d5a1c190c4bbc282119c3ee76a17677a793f13bb82"},
+    {file = "types-colorama-0.4.15.20240205.tar.gz", hash = "sha256:7ae4f58d407d387f4f98b24d81e1b7657ec754ea1dc4619ae5bd27f0c367637e"},
+    {file = "types_colorama-0.4.15.20240205-py3-none-any.whl", hash = "sha256:3ab26dcd76d2f13b1b795ed5c87a1a1a29331ea64cf614bb6ae958a3cebc3a53"},
 ]
 
 [[package]]
@@ -875,4 +875,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10.0,<3.12"
-content-hash = "44ac9d039b5fca396fda81b2b0eac8e3b01f871eb16462f055e27b10c79ec9e2"
+content-hash = "52111c246773c3d4f9fa965b3c6eaf6e1a1a378f3e8309278753c60d8d0a5a24"
