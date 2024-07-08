@@ -12,7 +12,7 @@ colorama = "^0.4.6"
 pyinstaller = "^5.13.2"
 pydivert = "2.1.0"
 questionary = "^2.0.1"
-tqdm = "^4.66.3"
+tqdm = "^4.66.4"
 requests = "^2.32.2"
 prsw = "^0.3.1"
 
