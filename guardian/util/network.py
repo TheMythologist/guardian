@@ -22,9 +22,7 @@ def get_private_ip() -> str:
 def calculate_ip_to_int(ip: str) -> int:
     octets = [int(num) for num in ip.split(".")]
     # Manually perform calculation for speed purposes
-    return (
-        octets[0] * (2**24) + octets[1] * (2**16) + octets[2] * (2**8) + octets[3]
-    )
+    return octets[0] * (2**24) + octets[1] * (2**16) + octets[2] * (2**8) + octets[3]
 
 
 # TODO: Convert all CIDR notation into integers (by chopping off the subnet mask part). Then, store all these integers
