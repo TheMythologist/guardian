@@ -12,9 +12,7 @@ def cidr_to_tuple(ip_in_cidr: str) -> tuple[int, int]:
     ip_str, _, suffix = ip_in_cidr.partition("/")
     suffix_int = int(suffix)
     octets = [int(num) for num in ip_str.split(".")]
-    ip_int = (
-        octets[0] * (2**24) + octets[1] * (2**16) + octets[2] * (2**8) + octets[3]
-    )
+    ip_int = octets[0] * (2**24) + octets[1] * (2**16) + octets[2] * (2**8) + octets[3]
     return ip_int, suffix_int
 
 

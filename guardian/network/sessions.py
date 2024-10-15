@@ -401,9 +401,9 @@ class IPCollector:
         self.priority = priority
         self.process = Process(target=self.run, daemon=True)
         self.ips: ListProxy[str] = Manager().list()
-        self.seen_ips: DictProxy[
-            str, int
-        ] = Manager().dict()  # key is IP address, value is packets seen
+        self.seen_ips: DictProxy[str, int] = (
+            Manager().dict()
+        )  # key is IP address, value is packets seen
         self.min_packets = packet_count_min_threshold  # minimum amount of packets required to be seen to be added
 
     def add_seen_ip(self, ip: str) -> None:
