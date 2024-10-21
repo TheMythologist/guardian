@@ -25,7 +25,7 @@ pre-commit = "^4.0.1"
 mypy = "^1.11"
 types-colorama = "^0.4.15.20240311"
 types-tqdm = "^4.66.0.20240417"
-types-requests = "^2.32.0.20240914"
+types-requests = "^2.32.0.20241016"
 pytest = "^8.3.3"
 
 [tool.poetry.scripts]
