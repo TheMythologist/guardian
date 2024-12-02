@@ -24,7 +24,7 @@ pyproject-flake8 = "^6.0.0.post1"
 pre-commit = "^4.0.1"
 mypy = "^1.13"
 types-colorama = "^0.4.15.20240311"
-types-tqdm = "^4.66.0.20240417"
+types-tqdm = "^4.67.0.20241119"
 types-requests = "^2.32.0.20241016"
 pytest = "^8.3.4"
 
