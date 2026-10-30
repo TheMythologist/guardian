@@ -1,3 +1,4 @@
+import inspect
 import json
 import re
 import time
@@ -5,9 +6,25 @@ from pathlib import Path
 
 import prsw
 import requests
+from prsw import api as _prsw_api
 
 from util.network import construct_cidr_block_set
 from util.types import CIDR_BLOCK
+
+# The RIPE Stat API now returns extra response fields (e.g. `pipeline`) that the
+# released prsw's Output.__init__ does not model, which makes it raise TypeError.
+# Wrap Output.__init__ so any unknown fields are ignored, keeping
+# announced_prefixes() working regardless of new fields RIPE adds later.
+_orig_output_init = _prsw_api.Output.__init__
+_allowed_output_params = set(inspect.signature(_orig_output_init).parameters)
+
+
+def _patched_output_init(self, _url, *args, **kwargs):  # type: ignore[no-untyped-def]
+    filtered = {k: v for k, v in kwargs.items() if k in _allowed_output_params}
+    _orig_output_init(self, _url, *args, **filtered)
+
+
+_prsw_api.Output.__init__ = _patched_output_init  # type: ignore[method-assign]
 
 # This file contains classes and methods to manage acquiring, parsing, and updating a possibly dynamic list of IP ranges
 # that Guardian needs to be aware of. Such ranges include R* / T2 official IPs, as well as IPs that can be used for
@@ -22,7 +39,12 @@ ripe = prsw.RIPEstat()
 try:
     T2_EU = {peer.prefix.compressed for peer in ripe.announced_prefixes(202021)}
     T2_US = {peer.prefix.compressed for peer in ripe.announced_prefixes(46555)}
-except ConnectionError:
+except (ConnectionError, prsw.exceptions.RequestError) as e:
+    print(
+        "WARNING: Could not fetch R* IP ranges from RIPE Stat; "
+        f"falling back to built-in ranges. Reason: {e}"
+    )
+
     # https://whois.ipip.net/AS202021
     T2_EU = {
         "185.56.64.0/24",
