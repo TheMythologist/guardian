@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from multiprocessing import Queue
 from multiprocessing.managers import DictProxy, ListProxy
 from typing import Optional, cast
